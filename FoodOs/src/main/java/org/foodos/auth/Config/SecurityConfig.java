@@ -6,6 +6,7 @@ import org.foodos.auth.authenticationProviders.JWTAuthenticationProvider;
 import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
 import org.foodos.auth.filters.JwtValidationFilter;
+import org.foodos.auth.repositry.UserAuthRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,13 +37,15 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final UserAuthRepository userAuthRepository;
 
     @Value("${frontend.port.url}")
     private String frontendUrl;
 
-    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService) {
+    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService , UserAuthRepository userAuthRepository) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
+        this.userAuthRepository = userAuthRepository;
     }
 
     @Bean
@@ -93,7 +96,7 @@ public class SecurityConfig {
     ) throws Exception {
 
         JWTAuthenticationFilter jwtAuthenticationFilter =
-                new JWTAuthenticationFilter(authenticationManager, jwtUtil);
+                new JWTAuthenticationFilter(authenticationManager, jwtUtil , userAuthRepository);
 
         JwtValidationFilter jwtValidationFilter =
                 new JwtValidationFilter(authenticationManager);
@@ -106,7 +109,7 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/sign-up", "/auth/google/**").permitAll()
+                        .requestMatchers("/api/auth/signup", "/auth/google/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
