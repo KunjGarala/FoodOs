@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Exception.OAuthAuthenticationException;
 import org.foodos.auth.Utils.JwtUtil;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthEntityRepo;
+import org.foodos.auth.repositry.UserAuthRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,7 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GoogleAuthService {
 
-    private final UserAuthEntityRepo userAuthEntityRepo;
+    private final UserAuthRepository userAuthRepository;
     private final RestTemplate restTemplate;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
@@ -159,13 +159,13 @@ public class GoogleAuthService {
     }
 
     private UserAuthEntity findOrCreateUser(String email) {
-        return userAuthEntityRepo.findByEmail(email)
+        return userAuthRepository.findByEmail(email)
                 .orElseGet(() -> {
                     UserAuthEntity newUser = new UserAuthEntity();
                     newUser.setEmail(email);
                     newUser.setUsername(generateUniqueUsername(email));
                     newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-                    return userAuthEntityRepo.save(newUser);
+                    return userAuthRepository.save(newUser);
                 });
     }
 
@@ -186,7 +186,7 @@ public class GoogleAuthService {
         String username = base;
         int count = 1;
 
-        while (userAuthEntityRepo.existsByUsername(username)) {
+        while (userAuthRepository.existsByUsername(username)) {
             username = base + count;
             count++;
         }

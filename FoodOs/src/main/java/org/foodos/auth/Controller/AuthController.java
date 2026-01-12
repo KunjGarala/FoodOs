@@ -2,31 +2,34 @@ package org.foodos.auth.Controller;
 
 
 import lombok.RequiredArgsConstructor;
+import org.foodos.auth.DTO.Request.SignupRequest;
+import org.foodos.auth.DTO.Response.SignupResponse;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthEntityRepo;
-import org.springframework.beans.factory.annotation.Value;
+import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.service.AuthService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 
-@RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/auth/")
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    final UserAuthEntityRepo userAuthEntityRepo;
-    final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
 
+    @PostMapping("/signup")
+    public ResponseEntity<SignupResponse> signup(
+            @RequestBody SignupRequest request
+    ) {
+        UserAuthEntity user = authService.signup(request);
 
-    @PostMapping("/sign-up")
-    public ResponseEntity<?> signUp(@RequestBody UserAuthEntity userAuthEntity){
-        // Implement sign-up logic here
-        userAuthEntity.setPassword(passwordEncoder.encode(userAuthEntity.getPassword()));
-        userAuthEntityRepo.save(userAuthEntity);
-        return ResponseEntity.ok("User registered successfully");
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new SignupResponse(
+                        "User registered successfully",
+                        user.getUsername()
+                ));
     }
-
-
-
 }
