@@ -3,7 +3,7 @@ package org.foodos.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

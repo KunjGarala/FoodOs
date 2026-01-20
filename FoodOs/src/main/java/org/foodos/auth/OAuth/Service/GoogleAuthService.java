@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Exception.OAuthAuthenticationException;
 import org.foodos.auth.Utils.JwtUtil;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;

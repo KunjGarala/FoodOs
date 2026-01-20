@@ -5,11 +5,9 @@ import lombok.RequiredArgsConstructor;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.DTO.Response.SignupResponse;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthRepository;
 import org.foodos.auth.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 

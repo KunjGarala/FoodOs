@@ -6,7 +6,7 @@ import org.foodos.auth.authenticationProviders.JWTAuthenticationProvider;
 import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
 import org.foodos.auth.filters.JwtValidationFilter;
-import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

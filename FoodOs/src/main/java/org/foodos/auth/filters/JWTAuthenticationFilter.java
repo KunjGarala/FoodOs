@@ -10,7 +10,7 @@ import org.foodos.auth.OAuth.Controller.GoogleAuthController;
 import org.foodos.auth.Utils.JwtUtil;
 import org.foodos.auth.entity.LoginRequest;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
