@@ -1,4 +1,4 @@
-package org.foodos.auth.Exceptions;
+package org.foodos.common.exceptionhandling;
 
 
 import jakarta.servlet.ServletException;

@@ -2,6 +2,7 @@ package org.foodos.auth.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.foodos.restaurant.entity.Restaurant;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,13 +34,14 @@ public class UserAuthEntity implements UserDetails {
     private Long id;
 
     @Column(name = "user_uuid", unique = true, nullable = false, updatable = false)
+    @Builder.Default
     private String userUuid = UUID.randomUUID().toString();
 
     // ===================== MULTI TENANT =====================
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "restaurant_id", nullable = false)
-//    private Restaurant restaurant;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restaurant_id", nullable = false)
+    private Restaurant restaurant;
 
     // ===================== AUTH =====================
 
@@ -57,7 +59,8 @@ public class UserAuthEntity implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private UserRole role = UserRole.WAITER;
+    @Builder.Default
+    private UserRole role = UserRole.OWNER;
 
     // ===================== PROFILE =====================
 
@@ -75,18 +78,22 @@ public class UserAuthEntity implements UserDetails {
     private  String emailVerificationCode;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "is_locked", nullable = false)
+    @Builder.Default
     private Boolean isLocked = false;
 
     @Column(name = "failed_login_attempts", nullable = false)
+    @Builder.Default
     private Integer failedLoginAttempts = 0;
 
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
     @Column(name = "force_password_change", nullable = false)
+    @Builder.Default
     private Boolean forcePasswordChange = false;
 
     // ===================== SESSION =====================
@@ -117,9 +124,11 @@ public class UserAuthEntity implements UserDetails {
     private String assignedSections;
 
     @Column(name = "preferred_language", length = 10)
+    @Builder.Default
     private String preferredLanguage = "en";
 
     @Column(length = 50)
+    @Builder.Default
     private String timezone = "Asia/Kolkata";
 
     // ===================== AUDIT =====================

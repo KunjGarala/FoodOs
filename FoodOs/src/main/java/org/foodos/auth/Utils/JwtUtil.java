@@ -1,8 +1,7 @@
-package org.foodos.auth.Utils;
+package org.foodos.auth.utils;
 
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 

@@ -1,7 +1,7 @@
-package org.foodos.auth.Config;
+package org.foodos.config;
 
 
-import org.foodos.auth.Utils.JwtUtil;
+import org.foodos.auth.utils.JwtUtil;
 import org.foodos.auth.authenticationProviders.JWTAuthenticationProvider;
 import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
@@ -109,7 +109,15 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/signup", "/auth/google/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/signup", "/auth/google/**" ,
+                                "/actuator/**" , "/auth/verify-email",
+                                "/api/auth/login",
+                                "/v3/api-docs/**", "/swagger-ui/**",
+                                "/swagger-ui.html",
+
+                                "/api/test/s3/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
@@ -120,4 +128,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

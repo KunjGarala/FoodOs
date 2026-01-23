@@ -1,8 +1,8 @@
 package org.foodos.auth.service;
 
 import lombok.RequiredArgsConstructor;
-import org.foodos.Utils.Emailservice;
-import org.foodos.Utils.Helper;
+import org.foodos.common.Utils.EmailService;
+import org.foodos.common.Utils.Helper;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
@@ -16,7 +16,7 @@ public class AuthService {
 
     private final UserAuthRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final Emailservice emailService;
+    private final EmailService emailService;
     private final Helper helper;
 
     public UserAuthEntity signup(SignupRequest request) {
@@ -46,7 +46,7 @@ public class AuthService {
         user.setRole(UserRole.valueOf(request.getRole()));
 
         // defaults (already set, but explicit is good)
-        user.setIsActive(true);
+        user.setIsActive(false);
         user.setIsLocked(false);
         user.setFailedLoginAttempts(0);
 

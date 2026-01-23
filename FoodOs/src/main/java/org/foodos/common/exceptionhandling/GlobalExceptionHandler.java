@@ -1,6 +1,9 @@
-package org.foodos.auth.Exceptions;
+package org.foodos.common.exceptionhandling;
 
-import org.foodos.auth.DTO.Response.ApiError;
+import jakarta.servlet.http.HttpServletRequest;
+import org.foodos.common.exceptionhandling.dto.ApiError;
+import org.foodos.common.exceptionhandling.exception.EmailSenderException;
+import org.foodos.common.exceptionhandling.exception.FileIsNotImageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -58,5 +61,16 @@ public class GlobalExceptionHandler {
                         "INTERNAL_ERROR",
                         "Something went wrong"
                 ));
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, NullPointerException.class , EmailSenderException.class , FileIsNotImageException.class , RuntimeException.class})
+    public ResponseEntity<ApiError> handleBadReuqests(Exception ex, HttpServletRequest request){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ApiError(
+                        400,
+                        "BAD_REQUEST",
+                        ex.getMessage()
+                )
+        );
     }
 }

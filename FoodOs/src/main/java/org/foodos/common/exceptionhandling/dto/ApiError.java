@@ -1,4 +1,4 @@
-package org.foodos.auth.DTO.Response;
+package org.foodos.common.exceptionhandling.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

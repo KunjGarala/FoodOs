@@ -1,4 +1,4 @@
-package org.foodos.auth.Controller;
+package org.foodos.auth.controller;
 
 
 import lombok.RequiredArgsConstructor;

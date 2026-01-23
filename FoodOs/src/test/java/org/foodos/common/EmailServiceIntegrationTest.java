@@ -1,5 +1,6 @@
-package org.foodos.Utils;
+package org.foodos.common;
 
+import org.foodos.common.Utils.EmailService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 public class EmailServiceIntegrationTest {
 
     @Autowired
-    private Emailservice emailservice;
+    private EmailService emailservice;
 
     @Test
     @Disabled("Enable this test to verify real email sending. Ensure valid mail properties are set in application.properties or overridden here.")

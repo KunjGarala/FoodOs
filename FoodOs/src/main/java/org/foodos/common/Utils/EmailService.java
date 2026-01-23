@@ -1,4 +1,4 @@
-package org.foodos.Utils;
+package org.foodos.common.Utils;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,7 +7,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
-public class Emailservice {
+public class EmailService {
 
     @Autowired
     private JavaMailSender javaMailSender;
@@ -17,7 +17,6 @@ public class Emailservice {
 
     public void sendEmail(String to, String subject, String body) {
         // Implementation for sending email
-
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setTo(to);
         mailMessage.setSubject(subject);
