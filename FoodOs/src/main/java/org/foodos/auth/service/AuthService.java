@@ -1,10 +1,12 @@
 package org.foodos.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import org.foodos.common.Utils.EmailService;
+import org.foodos.common.Utils.Helper;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
-import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,8 @@ public class AuthService {
 
     private final UserAuthRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+    private final Helper helper;
 
     public UserAuthEntity signup(SignupRequest request) {
 
@@ -32,17 +36,23 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setRestaurantId(request.getRestaurantId());
         user.setEmployeeCode(request.getEmployeeCode());
         user.setPin(request.getPin());
+//        user.setRestaurantId(request.getRestaurantId());
 
+
+        String emailValidationCode = java.util.UUID.randomUUID().toString();
+        user.setEmailVerificationCode(emailValidationCode);
         user.setRole(UserRole.valueOf(request.getRole()));
 
         // defaults (already set, but explicit is good)
-        user.setIsActive(true);
+        user.setIsActive(false);
         user.setIsLocked(false);
         user.setFailedLoginAttempts(0);
 
+
+        String varificationLink = helper.generateEmailVerificationLink(emailValidationCode);
+        emailService.sendEmail(user.getEmail(),"Email Verification Link For FoodOs" , varificationLink);
         return userRepository.save(user);
     }
 }

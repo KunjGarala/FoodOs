@@ -1,4 +1,4 @@
-package org.foodos.auth.Utils;
+package org.foodos.auth.utils;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 

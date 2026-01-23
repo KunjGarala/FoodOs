@@ -1,12 +1,15 @@
 package org.foodos.auth.Listener;
 
-
 import lombok.RequiredArgsConstructor;
-import org.foodos.auth.repositry.UserAuthRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AuthenticationFailureListener {
@@ -14,13 +17,35 @@ public class AuthenticationFailureListener {
     private final UserAuthRepository userRepository;
 
     @EventListener
-    public void onFailure(AbstractAuthenticationFailureEvent event) {
+    @Transactional
+    public void onAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
 
-        String username = (String) event.getAuthentication().getPrincipal();
+        // getName() is safe and consistent across auth types
+        String username = event.getAuthentication().getName();
 
-        userRepository.findByUsername(username).ifPresent(user -> {
-            user.incrementFailedLoginAttempts();
-            userRepository.save(user);
-        });
+        if (username == null || username.isBlank()) {
+            log.warn("Authentication failure with empty username");
+            return;
+        }
+
+        userRepository.findByUsernameAndDeletedAtIsNull(username)
+                .ifPresentOrElse(
+                        user -> handleFailure(user, event),
+                        () -> log.warn("Authentication failed for non-existing user: {}", username)
+                );
+    }
+
+    private void handleFailure(UserAuthEntity user, AbstractAuthenticationFailureEvent event) {
+        user.onLoginFailure();
+
+        userRepository.save(user);
+
+        log.warn(
+                "Authentication failure for user={}, failedAttempts={}, locked={}, reason={}",
+                user.getUsername(),
+                user.getFailedLoginAttempts(),
+                user.getIsLocked(),
+                event.getException().getClass().getSimpleName()
+        );
     }
 }

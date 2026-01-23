@@ -1,4 +1,4 @@
-package org.foodos.auth.repositry;
+package org.foodos.auth.repository;
 
 import org.foodos.auth.entity.UserAuthEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,4 +11,8 @@ public interface UserAuthRepository extends JpaRepository<UserAuthEntity, Long> 
 
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+
+    Optional<UserAuthEntity> findByUsernameAndDeletedAtIsNull(String username);
+
+    Optional<UserAuthEntity> findByEmailVerificationCode(String code);
 }

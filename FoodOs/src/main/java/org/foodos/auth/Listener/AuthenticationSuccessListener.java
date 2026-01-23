@@ -1,12 +1,15 @@
 package org.foodos.auth.Listener;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
-import org.foodos.auth.repositry.UserAuthRepository;
+import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AuthenticationSuccessListener {
@@ -14,12 +17,28 @@ public class AuthenticationSuccessListener {
     private final UserAuthRepository userRepository;
 
     @EventListener
-    public void onSuccess(AuthenticationSuccessEvent event) {
+    @Transactional
+    public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
 
-        UserAuthEntity user =
-                (UserAuthEntity) event.getAuthentication().getPrincipal();
+        Object principal = event.getAuthentication().getPrincipal();
 
-        user.resetFailedLoginAttempts();
+        // Safety: works even with custom authentication providers
+        if (!(principal instanceof UserAuthEntity user)) {
+            log.warn("AuthenticationSuccessEvent principal is not User: {}",
+                    principal.getClass().getName());
+            return;
+        }
+
+        // Reset security state
+        user.onLoginSuccess();
+
         userRepository.save(user);
+
+        log.info(
+                "Authentication success for user={}, role={}",
+                user.getUsername(),
+                user.getRole()
+//                user.getRestaurant().getId()
+        );
     }
 }
