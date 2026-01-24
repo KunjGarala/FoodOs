@@ -39,9 +39,18 @@ public class UserAuthEntity implements UserDetails {
 
     // ===================== MULTI TENANT =====================
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_restaurants",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "restaurant_id")
+    )
+    @Builder.Default
+    private Set<Restaurant> restaurants = new HashSet<>(); // restaurants the user has access to
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "restaurant_id", nullable = false)
-    private Restaurant restaurant;
+    @JoinColumn(name = "primary_restaurant_id")
+    private Restaurant primaryRestaurant; // primary restaurant for the user
 
     // ===================== AUTH =====================
 
@@ -255,6 +264,35 @@ public class UserAuthEntity implements UserDetails {
     }
 
     // ===================== ROLE HELPERS =====================
+
+    public void addRestaurant(Restaurant restaurant) {
+        restaurants.add(restaurant);
+        restaurant.getEmployees().add(this);
+
+        // Set as primary if first restaurant
+        if (primaryRestaurant == null) {
+            primaryRestaurant = restaurant;
+        }
+    }
+
+    public void removeRestaurant(Restaurant restaurant) {
+        restaurants.remove(restaurant);
+        restaurant.getEmployees().remove(this);
+
+        // Update primary if removed
+        if (primaryRestaurant != null && primaryRestaurant.equals(restaurant)) {
+            primaryRestaurant = restaurants.isEmpty() ? null : restaurants.iterator().next();
+        }
+    }
+
+    public boolean canAccessRestaurant(Long restaurantId) {
+        return restaurants.stream()
+                .anyMatch(r -> r.getId().equals(restaurantId));
+    }
+
+    public boolean isOwner() {
+        return role == UserRole.OWNER;
+    }
 
     public boolean hasRole(UserRole requiredRole) {
         return this.role == requiredRole;

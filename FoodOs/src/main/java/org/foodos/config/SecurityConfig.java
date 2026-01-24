@@ -111,7 +111,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/signup", "/auth/google/**" ,
-                                "/actuator/**" , "/auth/verify-email",
+                                "/actuator/**" , "/auth/verify-email/**",
                                 "/api/auth/login",
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html",
