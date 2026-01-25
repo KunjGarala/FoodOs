@@ -25,20 +25,10 @@ public class JWTAuthenticationProvider implements AuthenticationProvider {
         String token = ((JwtAuthenticationToken) authentication).getToken();
 
         String username = jwtUtil.validateTokenAndGetUsername(token);
-        String role = jwtUtil.getRoleFromToken(token);
-
         if(username == null){
             throw  new BadCredentialsException("Invalid JWT token");
         }
 
-        if (role != null) {
-            UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                    .username(username)
-                    .password("")
-                    .authorities(role)
-                    .build();
-            return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-        }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
         return new UsernamePasswordAuthenticationToken(userDetails , null , userDetails.getAuthorities());

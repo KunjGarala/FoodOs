@@ -94,15 +94,19 @@ public class Restaurant {
     @Builder.Default
     private List<Restaurant> childRestaurants = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private UserAuthEntity owner;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
     // ===== RELATIONSHIPS =====
 
-    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ManyToMany(mappedBy = "restaurants", fetch = FetchType.LAZY)
     @Builder.Default
-    private List<UserAuthEntity> users = new ArrayList<>();
+    private Set<UserAuthEntity> employees = new HashSet<>();
 
     @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -183,11 +187,33 @@ public class Restaurant {
     public void addChildRestaurant(Restaurant child) {
         childRestaurants.add(child);
         child.setParentRestaurant(this);
+        child.setOwner(this.owner); // Inherit owner
+    }
+
+    public boolean isParentRestaurant() {
+        return parentRestaurant == null && !childRestaurants.isEmpty();
+    }
+
+    public boolean isChildRestaurant() {
+        return parentRestaurant != null;
+    }
+
+    public Restaurant getRootRestaurant() {
+        return parentRestaurant == null ? this : parentRestaurant.getRootRestaurant();
     }
 
     public void removeChildRestaurant(Restaurant child) {
         childRestaurants.remove(child);
         child.setParentRestaurant(null);
+    }
+
+    public List<Restaurant> getAllChildRestaurants() {
+        List<Restaurant> allChildren = new ArrayList<>();
+        for (Restaurant child : childRestaurants) {
+            allChildren.add(child);
+            allChildren.addAll(child.getAllChildRestaurants());
+        }
+        return allChildren;
     }
 
 }

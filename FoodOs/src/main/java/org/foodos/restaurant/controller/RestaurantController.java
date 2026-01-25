@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,15 +26,15 @@ public class RestaurantController {
     private final RestaurantService restaurantService;
 
 
-//    @PreAuthorize("hasRole('OWNER')")
-//    @PostMapping("/create")
-//    public ResponseEntity<?> createRestaurant(@AuthenticationPrincipal UserAuthEntity user, CreateRestaurantRequestDto requestDto) {
-//
-//        RestaurantResponseDto restaurant =  restaurantService.createRestaurant(user , requestDto);
-//
-//        return ResponseEntity
-//                .status(HttpStatus.CREATED)
-//                .body(restaurant);
-//    }
+    @PreAuthorize("hasRole('OWNER')")
+    @PostMapping("/create/first")
+    public ResponseEntity<?> createFirstRestaurant(@AuthenticationPrincipal UserAuthEntity user, @RequestBody CreateRestaurantRequestDto requestDto) {
+
+        RestaurantResponseDto restaurant =  restaurantService.createParentRestaurant(user , requestDto);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(restaurant);
+    }
 
 }
