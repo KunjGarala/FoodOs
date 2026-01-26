@@ -1,4 +1,4 @@
-package org.foodos.common.Utils;
+package org.foodos.common.emails;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

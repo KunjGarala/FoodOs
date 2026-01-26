@@ -1,6 +1,7 @@
 package org.foodos.auth.controller;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.DTO.Response.SignupResponse;
@@ -20,7 +21,7 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<SignupResponse> signup(
-            @RequestBody SignupRequest request
+            @RequestBody @Valid SignupRequest request
     ) {
         UserAuthEntity user = authService.signup(request);
 

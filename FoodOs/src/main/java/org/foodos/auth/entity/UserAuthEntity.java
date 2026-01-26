@@ -82,6 +82,9 @@ public class UserAuthEntity implements UserDetails {
     @Column(name = "employee_code", length = 20)
     private String employeeCode;
 
+    @Column(name = "profile_picture_url")
+    private  String profilePictureUrl;
+
     // ===================== SECURITY FLAGS =====================
     @Column(name = "email_verified")
     private  String emailVerificationCode;

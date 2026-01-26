@@ -1,6 +1,6 @@
 package org.foodos.common;
 
-import org.foodos.common.Utils.EmailService;
+import org.foodos.common.emails.EmailService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

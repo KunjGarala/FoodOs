@@ -1,6 +1,7 @@
 package org.foodos.restaurant.dto.request;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.foodos.restaurant.entity.enums.LicenseType;
 import org.foodos.restaurant.entity.enums.RestaurantType;
@@ -12,11 +13,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateRestaurantRequestDto {
+public class UpdateRestaurantRequestDto {
 
-    /* ================= BASIC INFO ================= */
-
-    @NotBlank(message = "Restaurant name is required")
     @Size(max = 200)
     private String name;
 
@@ -25,7 +23,6 @@ public class CreateRestaurantRequestDto {
 
     /* ================= CONTACT ================= */
 
-    @NotBlank
     @Size(max = 15)
     private String phoneNumber;
 
@@ -65,7 +62,6 @@ public class CreateRestaurantRequestDto {
 
     /* ================= LICENSE ================= */
 
-    @NotNull
     private LicenseType licenseType;
 
     private LocalDateTime licenseExpiry;
@@ -73,13 +69,4 @@ public class CreateRestaurantRequestDto {
     /* ================= RESTAURANT CONFIG ================= */
 
     private RestaurantType restaurantType;
-
-
-//    private Boolean isMultiOutlet;
-//
-//    /**
-//     * UUID of parent restaurant (only if this is a branch / outlet)
-//     * Null for main restaurant
-//     */
-//    private String parentRestaurantUuid;
 }

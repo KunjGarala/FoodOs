@@ -9,6 +9,10 @@ import lombok.Getter;
 @Getter
 public enum UserRole {
 
+    ADMIN(120, "Administrator" , new String[]{
+            "ALL_PERMISSIONS"
+    }),
+
     /**
      * Owner/Administrator - Full system access (SRS Section 2.3.1)
      */
