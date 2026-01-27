@@ -1,7 +1,6 @@
 package org.foodos.restaurant.controller;
 
 import jakarta.validation.Valid;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.DTO.Response.ProfileResponseDTO;
@@ -48,7 +47,7 @@ public class RestaurantController {
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'OWNER')")
     @PostMapping("/create-first")
     public ResponseEntity<RestaurantResponseDto> createFirstRestaurant(
-            @AuthenticationPrincipal UserAuthEntity currentUser,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser,
             @Valid @RequestBody CreateRestaurantRequestDto requestDto
     ) {
         RestaurantResponseDto restaurant =
@@ -77,7 +76,7 @@ public class RestaurantController {
 
             @Valid @RequestBody CreateRestaurantRequestDto requestDto,
 
-            @AuthenticationPrincipal UserAuthEntity currentUser
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         RestaurantResponseDto restaurant =
                 restaurantService.createChildRestaurant(
@@ -109,7 +108,7 @@ public class RestaurantController {
 
             @Valid @RequestBody UpdateRestaurantRequestDto requestDto,
 
-            @AuthenticationPrincipal UserAuthEntity currentUser
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         RestaurantResponseDto restaurant =
                 restaurantService.updateRestaurant(
@@ -142,7 +141,7 @@ public class RestaurantController {
     public ResponseEntity<String> deleteRestaurant(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
-            @AuthenticationPrincipal UserAuthEntity currentUser
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         restaurantService.deleteRestaurant(restaurantUuid, currentUser);
         return ResponseEntity.ok("Restaurant deleted successfully.");
@@ -202,7 +201,7 @@ public class RestaurantController {
             @Parameter(description = "Restaurant UUID (optional for OWNER / ADMIN)")
             @RequestParam(required = false) String restaurantUuid,
 
-            @AuthenticationPrincipal UserAuthEntity currentUser
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         List<ProfileResponseDTO> employees =
                 restaurantService.getAllEmployeesByRole(role, restaurantUuid, currentUser);

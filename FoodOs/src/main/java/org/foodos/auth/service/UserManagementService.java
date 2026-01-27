@@ -26,7 +26,11 @@ public class UserManagementService {
     private final PasswordEncoder passwordEncoder;
     private final WelcomeEmailService emailService;
 
-    public UserAuthEntity createEmployee(SignupRequest request, UserAuthEntity currentUser) {
+    public UserAuthEntity createEmployee(SignupRequest request, UserAuthEntity currentUserParam) {
+        // 0️⃣ Re-attach currentUser to current transaction to avoid LazyInitializationException
+        UserAuthEntity currentUser = userAuthRepository.findById(currentUserParam.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
+
         // 1️⃣ Validate role creation permissions
         UserRole creatorRole = currentUser.getRole();
         UserRole targetRole = UserRole.valueOf(request.getRole());
@@ -39,7 +43,7 @@ public class UserManagementService {
 
         // 3️⃣ Verify creator has access to this restaurant
         if (creatorRole != UserRole.ADMIN &&
-                !restaurant.getOwner().equals(currentUser) &&
+                !restaurant.getOwner().getId().equals(currentUser.getId()) &&
                 !currentUser.canAccessRestaurant(restaurant.getId())) {
             throw new BusinessException("You cannot create users for this restaurant");
         }

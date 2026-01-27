@@ -1,5 +1,6 @@
 package org.foodos.auth.controller;
 
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,7 @@ public class UserManagementController {
     @PostMapping("/create-employee")
     public ResponseEntity<?> createEmployee(
             @RequestBody @Valid SignupRequest request,
-            @AuthenticationPrincipal UserAuthEntity currentUser
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         UserAuthEntity createdUser = userManagementService.createEmployee(request, currentUser);
 

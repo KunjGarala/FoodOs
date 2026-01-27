@@ -78,7 +78,7 @@ public class RestaurantService {
                 userRepository.getReferenceById(requestingUser.getId());
 
         Restaurant parent = restaurantRepo
-                .findByRestaurantUuidAnd(parentRestaurantUuid)
+                .findByRestaurantUuid(parentRestaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Parent restaurant not found"));
 
@@ -111,7 +111,7 @@ public class RestaurantService {
     @Transactional
     public RestaurantResponseDto updateRestaurant(String restaurantUuid, UpdateRestaurantRequestDto requestDto, UserAuthEntity currentUser) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuidAnd(restaurantUuid)
+                .findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -134,7 +134,7 @@ public class RestaurantService {
 
     public RestaurantHierarchyResponseDto getRestaurantHierarchy(String restaurantUuid) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuidAnd(restaurantUuid)
+                .findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -143,7 +143,7 @@ public class RestaurantService {
 
     public void deleteRestaurant(String restaurantUuid, UserAuthEntity currentUser) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuidAnd(restaurantUuid)
+                .findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -163,19 +163,23 @@ public class RestaurantService {
 
     public RestaurantResponseDto getRestaurantDetail(String restaurantUuid) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuidAnd(restaurantUuid)
+                .findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
         return restaurantMapper.toResponseDto(restaurant);
     }
 
-
+    @Transactional
     public List<ProfileResponseDTO> getAllEmployeesByRole(
             String role,
             String restaurantUuid,
-            UserAuthEntity currentUser
+            UserAuthEntity currentUserParam
     ) {
+        // Re-attach currentUser to current transaction to avoid LazyInitializationException
+        UserAuthEntity currentUser = userRepository.findById(currentUserParam.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
+
         // 1. Validate and convert role
         UserRole requestedRole;
         try {
@@ -184,80 +188,135 @@ public class RestaurantService {
             throw new BusinessException("Invalid role: " + role);
         }
 
-        // 2. Check if user has permission to view this role
-        if (!hasPermissionToViewRole(currentUser, requestedRole)) {
-            throw new BusinessException("You are not allowed to view employees with role: " + requestedRole);
+        // 2. Check if user has permission to view this role based on hierarchy
+        if (!canViewRole(currentUser, requestedRole)) {
+            throw new BusinessException(
+                    String.format("You cannot view %s role. Your role level (%s: %d) is lower than requested role (%s: %d)",
+                            requestedRole.getDisplayName(),
+                            currentUser.getRole().getDisplayName(),
+                            currentUser.getRole().getLevel(),
+                            requestedRole.getDisplayName(),
+                            requestedRole.getLevel()
+                    )
+            );
         }
 
-        List<UserAuthEntity> employees;
-
-        // 3. Handle by current user role
-        switch (currentUser.getRole()) {
-            case MANAGER:
-                // Manager can only view employees in their primary restaurant
-                if (currentUser.getPrimaryRestaurant() == null) {
-                    throw new BusinessException("Manager does not have an assigned restaurant");
+        List<UserAuthEntity> employees = switch (currentUser.getRole()) {
+            case ADMIN ->
+                // ADMIN (120) can view all employees including other ADMINS and OWNERS
+                    userRepository.findByRole(requestedRole);
+            case OWNER -> {
+                // OWNER (100) can view roles up to OWNER level in their restaurants
+                // OWNER cannot view ADMIN roles (since ADMIN level = 120 > OWNER level = 100)
+                if (requestedRole == UserRole.ADMIN) {
+                    throw new BusinessException("OWNER cannot view ADMIN employees");
                 }
 
-                employees = userRepository.findByRoleAndRestaurants_IdAndIsActiveTrue(
-                        requestedRole,
-                        currentUser.getPrimaryRestaurant().getId()
-                );
-                break;
-
-            case OWNER:
-                // Owner can view employees in specific restaurant or all their outlets
-                if (restaurantUuid != null && !restaurantUuid.isBlank()) {
-                    // Specific restaurant
-                    Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
-                            .orElseThrow(() -> new BusinessException("Restaurant not found: " + restaurantUuid));
-
-                    // Verify owner has access to this restaurant
-                    if (!currentUser.canAccessRestaurant(restaurant.getId())) {
-                        throw new BusinessException("You don't have access to this restaurant");
-                    }
-
-                    employees = userRepository.findByRoleAndRestaurants_IdAndIsActiveTrue(
-                            requestedRole,
-                            restaurant.getId()
-                    );
-                } else {
-                    // All restaurants owned by this owner
-                    Set<Long> restaurantIds = currentUser.getRestaurants().stream()
-                            .map(Restaurant::getId)
-                            .collect(Collectors.toSet());
-
-                    if (restaurantIds.isEmpty()) {
-                        return Collections.emptyList();
-                    }
-
-                    employees = userRepository.findByRoleAndRestaurants_IdInAndIsActiveTrue(
-                            requestedRole,
-                            restaurantIds
-                    );
+                yield getOwnerEmployees(requestedRole, restaurantUuid, currentUser);
+            }
+            case MANAGER -> {
+                // MANAGER (80) can view roles up to MANAGER level in their primary restaurant
+                if (requestedRole.getLevel() > UserRole.MANAGER.getLevel()) {
+                    throw new BusinessException("MANAGER cannot view roles higher than MANAGER");
                 }
-                break;
 
-            case ADMIN:
-                // Admin can view system-wide (all restaurants)
-                employees = userRepository.findByRoleAndIsActiveTrue(requestedRole);
-                break;
+                yield getManagerEmployees(requestedRole, currentUser);
+            }
+            case CASHIER, WAITER, CHEF, GUEST ->
+                // Lower level roles cannot view employees (don't have MANAGE_STAFF permission)
+                    throw new BusinessException(
+                            String.format("%s role is not authorized to view employees",
+                                    currentUser.getRole().getDisplayName())
+                    );
+            default -> throw new BusinessException("Unauthorized role");
+        };
 
-            default:
-                throw new BusinessException("You are not authorized to view employees");
-        }
+        // 3. Handle by current user role with hierarchical permissions
 
-        // 4. Map to DTO and filter out the current user
+        // 4. Filter out current user and inactive users
         return employees.stream()
-                .filter(emp -> !emp.getId().equals(currentUser.getId())) // Exclude self
+                .filter(emp -> !emp.getId().equals(currentUser.getId()))
+                .filter(emp -> Boolean.TRUE.equals(emp.getIsActive()))
                 .map(profileMapper::toProfileDTO)
                 .collect(Collectors.toList());
     }
 
     // Helper method to check if user can view a specific role
-    private boolean hasPermissionToViewRole(UserAuthEntity currentUser, UserRole requestedRole) {
-        // Users cannot view roles higher than their own
-        return requestedRole.getLevel() <= currentUser.getRole().getLevel();
+    private boolean canViewRole(UserAuthEntity currentUser, UserRole requestedRole) {
+        UserRole currentRole = currentUser.getRole();
+
+        // Check if current user has MANAGE_STAFF permission
+        if (!hasManageStaffPermission(currentUser)) {
+            return false;
+        }
+
+        // Check hierarchical level - cannot view roles higher than your own
+        return requestedRole.getLevel() <= currentRole.getLevel();
+    }
+
+    // Helper method to check if user has MANAGE_STAFF permission
+    private boolean hasManageStaffPermission(UserAuthEntity user) {
+        UserRole role = user.getRole();
+
+        // OWNER and ADMIN have all permissions
+        if (role == UserRole.OWNER || role == UserRole.ADMIN) {
+            return true;
+        }
+
+        // Check if role has MANAGE_STAFF permission
+        return role.hasPermission("MANAGE_STAFF");
+    }
+
+    // Helper method for OWNER logic
+    private List<UserAuthEntity> getOwnerEmployees(
+            UserRole requestedRole,
+            String restaurantUuid,
+            UserAuthEntity currentUser
+    ) {
+        if (restaurantUuid != null && !restaurantUuid.isBlank()) {
+            // Specific restaurant
+            Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+                    .orElseThrow(() -> new BusinessException("Restaurant not found: " + restaurantUuid));
+
+            // Verify owner has access to this restaurant
+            if (!currentUser.canAccessRestaurant(restaurant.getId())) {
+                throw new BusinessException("You don't have access to this restaurant");
+            }
+
+            return userRepository.findByRoleAndRestaurants_IdAndIsActiveTrue(
+                    requestedRole,
+                    restaurant.getId()
+            );
+        } else {
+            // All restaurants owned by this owner
+            Set<Long> restaurantIds = currentUser.getRestaurants().stream()
+                    .map(Restaurant::getId)
+                    .collect(Collectors.toSet());
+
+            if (restaurantIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            return userRepository.findByRoleAndRestaurants_IdInAndIsActiveTrue(
+                    requestedRole,
+                    restaurantIds
+            );
+        }
+    }
+
+    // Helper method for MANAGER logic
+    private List<UserAuthEntity> getManagerEmployees(
+            UserRole requestedRole,
+            UserAuthEntity currentUser
+    ) {
+        if (currentUser.getPrimaryRestaurant() == null) {
+            throw new BusinessException("Manager does not have an assigned restaurant");
+        }
+
+        return userRepository.findByRoleAndRestaurants_IdAndIsActiveTrue(
+                requestedRole,
+                currentUser.getPrimaryRestaurant().getId()
+        );
     }
 
 }

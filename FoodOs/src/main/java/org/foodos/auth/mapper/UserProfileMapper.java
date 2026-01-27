@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,5 @@ public interface UserProfileMapper {
 
     @Mapping(target = "id", source = "id")
     @Mapping(target = "name", source = "name")
-    @Mapping(target = "code", source = "restaurantCode")
     RestaurantBasicDTO toRestaurantBasicDTO(Restaurant restaurant);
 }

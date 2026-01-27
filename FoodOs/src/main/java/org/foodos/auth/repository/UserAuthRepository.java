@@ -21,10 +21,9 @@ public interface UserAuthRepository extends JpaRepository<UserAuthEntity, Long> 
 
     Optional<UserAuthEntity> findByEmailVerificationCode(String code);
 
-    List<UserAuthEntity> findByRoleAndIsActiveTrue(UserRole requestedRole);
-
     List<UserAuthEntity> findByRoleAndRestaurants_IdAndIsActiveTrue(UserRole requestedRole, Long id);
 
     List<UserAuthEntity> findByRoleAndRestaurants_IdInAndIsActiveTrue(UserRole requestedRole, Set<Long> restaurantIds);
 
+    List<UserAuthEntity> findByRole(UserRole requestedRole);
 }

@@ -208,7 +208,7 @@ public class Restaurant {
     }
 
     public boolean isParentRestaurant() {
-        return parentRestaurant == null && !childRestaurants.isEmpty();
+        return parentRestaurant == null;
     }
 
     public boolean isChildRestaurant() {
