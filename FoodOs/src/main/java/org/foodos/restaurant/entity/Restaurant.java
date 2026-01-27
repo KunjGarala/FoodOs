@@ -1,19 +1,33 @@
 package org.foodos.restaurant.entity;
 
 import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.product.entity.Category;
 import org.foodos.product.entity.ModifierGroup;
 import org.foodos.restaurant.entity.enums.LicenseType;
 import org.foodos.restaurant.entity.enums.RestaurantType;
+import org.hibernate.annotations.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
 @Table(name = "restaurants")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@SQLDelete(sql = "UPDATE restaurants SET is_active = false, deleted_at = now() WHERE id = ?")
+@FilterDef(
+        name = "activeFilter",
+        parameters = @ParamDef(name = "isActive", type = Boolean.class)
+)
+@Filter(
+        name = "activeFilter",
+        condition = "is_active = :isActive"
+)
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Restaurant {
 
@@ -41,6 +55,9 @@ public class Restaurant {
 
     @Column(length = 100)
     private String state;
+
+    @Column(length = 1000)
+    private String description;
 
 
     @Column(name = "postal_code", length = 10)
@@ -191,7 +208,7 @@ public class Restaurant {
     }
 
     public boolean isParentRestaurant() {
-        return parentRestaurant == null && !childRestaurants.isEmpty();
+        return parentRestaurant == null;
     }
 
     public boolean isChildRestaurant() {
@@ -208,12 +225,19 @@ public class Restaurant {
     }
 
     public List<Restaurant> getAllChildRestaurants() {
-        List<Restaurant> allChildren = new ArrayList<>();
-        for (Restaurant child : childRestaurants) {
-            allChildren.add(child);
-            allChildren.addAll(child.getAllChildRestaurants());
-        }
-        return allChildren;
+        return new ArrayList<>(childRestaurants);
     }
+
+    public List<Restaurant> getAllActiveChildRestaurants() {
+        List<Restaurant> activeChildren = new ArrayList<>();
+        for (Restaurant child : childRestaurants) {
+            if (Boolean.TRUE.equals(child.getIsActive())) {
+                activeChildren.add(child);
+            }
+        }
+        return activeChildren;
+    }
+
+
 
 }

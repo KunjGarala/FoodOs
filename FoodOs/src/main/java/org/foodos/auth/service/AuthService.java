@@ -1,7 +1,7 @@
 package org.foodos.auth.service;
 
 import lombok.RequiredArgsConstructor;
-import org.foodos.common.Utils.EmailService;
+import org.foodos.common.emails.EmailService;
 import org.foodos.common.Utils.Helper;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
