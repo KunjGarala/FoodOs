@@ -69,7 +69,7 @@ public class UserAuthEntity implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private UserRole role = UserRole.OWNER;
+    private UserRole role = UserRole.GUEST;
 
     // ===================== PROFILE =====================
 

@@ -7,6 +7,7 @@ import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
 import org.foodos.auth.filters.JwtValidationFilter;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.auth.utils.RestaurantGetUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,14 +39,16 @@ public class SecurityConfig {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final UserAuthRepository userAuthRepository;
+    private final RestaurantGetUtil restaurantGetUtil;
 
     @Value("${frontend.port.url}")
     private String frontendUrl;
 
-    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService , UserAuthRepository userAuthRepository) {
+    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService , UserAuthRepository userAuthRepository , RestaurantGetUtil restaurantGetUtil) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.userAuthRepository = userAuthRepository;
+        this.restaurantGetUtil = restaurantGetUtil;
     }
 
     @Bean
@@ -96,12 +99,12 @@ public class SecurityConfig {
     ) throws Exception {
 
         JWTAuthenticationFilter jwtAuthenticationFilter =
-                new JWTAuthenticationFilter(authenticationManager, jwtUtil , userAuthRepository);
+                new JWTAuthenticationFilter(authenticationManager, jwtUtil , userAuthRepository , restaurantGetUtil);
 
         JwtValidationFilter jwtValidationFilter =
                 new JwtValidationFilter(authenticationManager);
 
-        JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager , jwtUtil);
+        JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager , jwtUtil , restaurantGetUtil);
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

@@ -12,9 +12,11 @@ import org.foodos.restaurant.dto.response.RestaurantResponseDto;
 import org.foodos.restaurant.service.RestaurantService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,13 +47,14 @@ public class RestaurantController {
             @ApiResponse(responseCode = "400", description = "Business rule violation")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'OWNER')")
-    @PostMapping("/create-first")
+    @PostMapping(value = "/create-first", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RestaurantResponseDto> createFirstRestaurant(
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser,
-            @Valid @RequestBody CreateRestaurantRequestDto requestDto
+            @Valid @RequestPart("data") CreateRestaurantRequestDto requestDto,
+            @RequestPart(value = "image", required = false) MultipartFile image
     ) {
         RestaurantResponseDto restaurant =
-                restaurantService.createParentRestaurant(currentUser, requestDto);
+                restaurantService.createParentRestaurant(currentUser, requestDto, image);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }
@@ -69,12 +72,13 @@ public class RestaurantController {
             @ApiResponse(responseCode = "400", description = "Business rule violation")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'OWNER')")
-    @PostMapping("/{parentRestaurantUuid}/outlets")
+    @PostMapping(value = "/{parentRestaurantUuid}/outlets", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RestaurantResponseDto> createOutletRestaurant(
             @Parameter(description = "Parent restaurant UUID", required = true)
             @PathVariable String parentRestaurantUuid,
 
-            @Valid @RequestBody CreateRestaurantRequestDto requestDto,
+            @Valid @RequestPart("data") CreateRestaurantRequestDto requestDto,
+            @RequestPart(value = "image", required = false) MultipartFile image,
 
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
@@ -82,7 +86,8 @@ public class RestaurantController {
                 restaurantService.createChildRestaurant(
                         parentRestaurantUuid,
                         requestDto,
-                        currentUser
+                        currentUser,
+                        image
                 );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
@@ -101,12 +106,13 @@ public class RestaurantController {
             @ApiResponse(responseCode = "400", description = "Business rule violation")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication , 'OWNER')")
-    @PatchMapping("/{restaurantUuid}/update")
+    @PatchMapping(value = "/{restaurantUuid}/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RestaurantResponseDto> updateRestaurant(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
 
-            @Valid @RequestBody UpdateRestaurantRequestDto requestDto,
+            @Valid @RequestPart("data") UpdateRestaurantRequestDto requestDto,
+            @RequestPart(value = "image", required = false) MultipartFile image,
 
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
@@ -114,7 +120,8 @@ public class RestaurantController {
                 restaurantService.updateRestaurant(
                         restaurantUuid,
                         requestDto,
-                        currentUser
+                        currentUser,
+                        image
                 );
 
         return ResponseEntity.ok(restaurant);

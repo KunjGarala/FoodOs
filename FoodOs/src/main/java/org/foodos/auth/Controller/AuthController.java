@@ -1,15 +1,23 @@
 package org.foodos.auth.controller;
 
 
-import jakarta.validation.Valid;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.DTO.Response.SignupResponse;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.service.AuthService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Set;
 
 
 @RestController
@@ -18,12 +26,32 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
-    @PostMapping("/signup")
+    @PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SignupResponse> signup(
-            @RequestBody @Valid SignupRequest request
+            @RequestPart("data") String data,
+            @RequestPart(value = "image", required = false) MultipartFile image
     ) {
-        UserAuthEntity user = authService.signup(request);
+
+        SignupRequest request;
+        try {
+            request = objectMapper.readValue(data, SignupRequest.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid JSON format");
+        }
+
+        Set<ConstraintViolation<SignupRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (ConstraintViolation<SignupRequest> violation : violations) {
+                sb.append(violation.getMessage()).append("; ");
+            }
+            throw new IllegalArgumentException(sb.toString());
+        }
+
+        UserAuthEntity user = authService.signup(request, image);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new SignupResponse(
@@ -31,4 +59,16 @@ public class AuthController {
                         user.getUsername()
                 ));
     }
+
+
+    @GetMapping("/userWantCreateRestaurant")
+    @PreAuthorize("hasRole('GUEST')")
+    public ResponseEntity<?> userWantCreateRestaurant(
+            @RequestParam boolean request,
+            @AuthenticationPrincipal UserAuthEntity currentUser
+    ){
+        authService.userWantCreateRestaurant(request , currentUser);
+        return ResponseEntity.ok().build();
+    }
+
 }
