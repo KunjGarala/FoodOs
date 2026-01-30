@@ -7,6 +7,7 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.mapper.UserProfileMapper;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.common.Utils.S3Service;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
 import org.foodos.restaurant.dto.request.UpdateRestaurantRequestDto;
@@ -18,6 +19,7 @@ import org.foodos.restaurant.repository.RestaurantRepo;
 import org.foodos.restaurant.dto.request.CreateRestaurantRequestDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collections;
 import java.util.List;
@@ -37,10 +39,13 @@ public class RestaurantService {
 
     private final UserProfileMapper profileMapper;
 
+    private final S3Service s3Service;
+
     @Transactional
     public RestaurantResponseDto createParentRestaurant(
             UserAuthEntity currentUser,
-            CreateRestaurantRequestDto requestDto) {
+            CreateRestaurantRequestDto requestDto,
+            MultipartFile image) {
 
         UserAuthEntity owner =
                 userRepository.getReferenceById(currentUser.getId());
@@ -58,6 +63,11 @@ public class RestaurantService {
         restaurant.setOwner(owner);
         restaurant.setOwnerName(owner.getFullName());
 
+        if (image != null && !image.isEmpty()) {
+            String logoUrl = s3Service.uploadImage(image, "restaurants/logo");
+            restaurant.setLogoUrl(logoUrl);
+        }
+
         Restaurant savedRestaurant = restaurantRepo.save(restaurant);
 
         owner.addRestaurant(savedRestaurant); // managed → auto flushed
@@ -71,7 +81,8 @@ public class RestaurantService {
     public RestaurantResponseDto createChildRestaurant(
             String parentRestaurantUuid,
             CreateRestaurantRequestDto requestDto,
-            UserAuthEntity requestingUser
+            UserAuthEntity requestingUser,
+            MultipartFile image
     ) {
 
         UserAuthEntity owner =
@@ -96,6 +107,11 @@ public class RestaurantService {
         child.setOwnerName(owner.getFullName());
         child.setIsActive(true);
 
+        if (image != null && !image.isEmpty()) {
+            String logoUrl = s3Service.uploadImage(image, "restaurants/logo");
+            child.setLogoUrl(logoUrl);
+        }
+
         parent.addChildRestaurant(child);
         parent.setIsMultiOutlet(true);
 
@@ -109,7 +125,7 @@ public class RestaurantService {
 
 
     @Transactional
-    public RestaurantResponseDto updateRestaurant(String restaurantUuid, UpdateRestaurantRequestDto requestDto, UserAuthEntity currentUser) {
+    public RestaurantResponseDto updateRestaurant(String restaurantUuid, UpdateRestaurantRequestDto requestDto, UserAuthEntity currentUser, MultipartFile image) {
         Restaurant restaurant = restaurantRepo
                 .findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() ->
@@ -127,6 +143,10 @@ public class RestaurantService {
 
         restaurantMapper.updateRestaurantFromDto(requestDto, restaurant);
 
+        if (image != null && !image.isEmpty()) {
+            String logoUrl = s3Service.uploadImage(image, "restaurants/logo");
+            restaurant.setLogoUrl(logoUrl);
+        }
 
         log.info("Restaurant updated with ID: {}", restaurant.getId());
         return restaurantMapper.toResponseDto(restaurant);

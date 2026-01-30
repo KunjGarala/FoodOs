@@ -17,10 +17,13 @@ public class JwtUtil {
     private static  final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
 
 
-    public String generateToken(String username, String role, long expiryMinutes) {
+    public String generateToken(String username, String role, String userId, java.util.List<String> restaurantIds, long expiryMinutes) {
         return Jwts.builder()
                 .subject(username)
+                .claim("username", username)
                 .claim("role", role)
+                .claim("userId", userId)
+                .claim("restaurantIds", restaurantIds)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiryMinutes * 60 * 1000))
                 .signWith(key)

@@ -1,14 +1,17 @@
 package org.foodos.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import org.aspectj.lang.annotation.RequiredTypes;
 import org.foodos.common.emails.EmailService;
 import org.foodos.common.Utils.Helper;
+import org.foodos.common.Utils.S3Service;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -18,8 +21,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final Helper helper;
+    private final S3Service s3Service;
 
-    public UserAuthEntity signup(SignupRequest request) {
+    public UserAuthEntity signup(SignupRequest request, MultipartFile image) {
 
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("Username already exists");
@@ -43,7 +47,16 @@ public class AuthService {
 
         String emailValidationCode = java.util.UUID.randomUUID().toString();
         user.setEmailVerificationCode(emailValidationCode);
-        user.setRole(UserRole.valueOf(request.getRole()));
+        if(request.getRole() == null || request.getRole().isEmpty()) {
+            user.setRole(UserRole.OWNER); // default role
+        } else {
+            user.setRole(UserRole.valueOf(request.getRole()));
+        }
+
+        if (image != null && !image.isEmpty()) {
+            String profileUrl = s3Service.uploadImage(image, "users/profile");
+            user.setProfilePictureUrl(profileUrl);
+        }
 
         // defaults (already set, but explicit is good)
         user.setIsActive(false);
@@ -54,5 +67,14 @@ public class AuthService {
         String varificationLink = helper.generateEmailVerificationLink(emailValidationCode);
         emailService.sendEmail(user.getEmail(),"Email Verification Link For FoodOs" , varificationLink);
         return userRepository.save(user);
+    }
+
+    public void userWantCreateRestaurant(boolean request , UserAuthEntity currentUser) {
+        if (currentUser.getRole() != UserRole.GUEST) {
+            throw new IllegalStateException("Only GUEST can request");
+        }
+
+        currentUser.setRole(request ? UserRole.OWNER : UserRole.GUEST);
+        userRepository.save(currentUser);
     }
 }

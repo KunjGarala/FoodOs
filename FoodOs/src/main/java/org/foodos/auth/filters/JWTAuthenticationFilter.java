@@ -11,12 +11,16 @@ import org.foodos.auth.utils.JwtUtil;
 import org.foodos.auth.entity.LoginRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.auth.utils.RestaurantGetUtil;
+import org.foodos.restaurant.entity.Restaurant;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @RequiredArgsConstructor
 public class JWTAuthenticationFilter extends OncePerRequestFilter {
@@ -24,6 +28,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserAuthRepository userRepository;
+    private final RestaurantGetUtil restaurantGetUtil;
 
     @Override
     protected void doFilterInternal(
@@ -55,17 +60,19 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         user.resetFailedLoginAttempts();
         userRepository.save(user);
 
-        String role = authResult.getAuthorities().iterator().next().getAuthority();
+        String role = user.getRole().name();
+
+        List<String> restaurantUuids = restaurantGetUtil.getRestaurantUuids(user);
+
 
         String accessToken =
-                jwtUtil.generateToken(user.getUsername(), role, 15);
+                jwtUtil.generateToken(user.getUsername(), role, user.getUserUuid(), restaurantUuids, 15);
 
         String refreshToken =
-                jwtUtil.generateToken(user.getUsername(), role, 7 * 24 * 60);
+                jwtUtil.generateToken(user.getUsername(), role, user.getUserUuid(), restaurantUuids, 7 * 24 * 60);
 
         response.setHeader("Authorization", "Bearer " + accessToken);
         GoogleAuthController.generateCookie(response, refreshToken);
         response.setStatus(HttpServletResponse.SC_OK);
     }
 }
-

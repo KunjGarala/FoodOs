@@ -5,6 +5,8 @@ import org.foodos.auth.OAuth.Exception.OAuthAuthenticationException;
 import org.foodos.auth.utils.JwtUtil;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.auth.utils.RestaurantGetUtil;
+import org.foodos.restaurant.entity.Restaurant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,9 +15,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +25,7 @@ public class GoogleAuthService {
     private final RestTemplate restTemplate;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RestaurantGetUtil restaurantGetUtil;
 
     @Value("${google.oauth.client-id}")
     private String clientId;
@@ -62,11 +63,16 @@ public class GoogleAuthService {
 
         String email = validateEmail(userInfo);
 
-        UserAuthEntity user = findOrCreateUser(email);
+        UserAuthEntity user = findOrCreateUser(email ,  userInfo);
 
-        String role = "ROLE_" + user.getRole().name();
-        String jwtAccessToken = jwtUtil.generateToken(user.getUsername(), role, 15); // 15 min
-        String jwtRefreshToken = jwtUtil.generateToken(user.getUsername(), role, 10080); // 7 days
+        String role = user.getRole().name();
+
+        List<String> restaurantUuids = restaurantGetUtil.getRestaurantUuids(user);
+
+
+
+        String jwtAccessToken = jwtUtil.generateToken(user.getUsername(), role , user.getUserUuid() , restaurantUuids ,  15); // 15 min
+        String jwtRefreshToken = jwtUtil.generateToken(user.getUsername(), role , user.getUserUuid() ,  restaurantUuids , 10080); // 7 days
 
         Map<String, String> result = new HashMap<>();
         result.put("access_token", jwtAccessToken);
@@ -158,13 +164,16 @@ public class GoogleAuthService {
         return email;
     }
 
-    private UserAuthEntity findOrCreateUser(String email) {
+    private UserAuthEntity findOrCreateUser(String email , Map<String, Object> userInfo) {
         return userAuthRepository.findByEmail(email)
                 .orElseGet(() -> {
                     UserAuthEntity newUser = new UserAuthEntity();
                     newUser.setEmail(email);
                     newUser.setUsername(generateUniqueUsername(email));
                     newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+                    newUser.setFullName(userInfo.getOrDefault("name", newUser.getUsername()).toString());
+                    newUser.setProfilePictureUrl(userInfo.getOrDefault("picture", "").toString());
+                    newUser.setRole(org.foodos.auth.entity.UserRole.GUEST);
                     return userAuthRepository.save(newUser);
                 });
     }

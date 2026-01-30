@@ -3,6 +3,8 @@ package org.foodos.auth.service;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.foodos.common.Utils.S3Service;
+import org.foodos.auth.DTO.Request.ProfileUpdateDTO;
 import org.foodos.auth.DTO.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
@@ -14,6 +16,8 @@ import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.repository.RestaurantRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.foodos.auth.mapper.UserProfileMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -25,8 +29,10 @@ public class UserManagementService {
     private final RestaurantRepo restaurantRepository;
     private final PasswordEncoder passwordEncoder;
     private final WelcomeEmailService emailService;
+    private final S3Service s3Service;
+    private final UserProfileMapper userProfileMapper;
 
-    public UserAuthEntity createEmployee(SignupRequest request, UserAuthEntity currentUserParam) {
+    public UserAuthEntity createEmployee(SignupRequest request, UserAuthEntity currentUserParam, MultipartFile image) {
         // 0️⃣ Re-attach currentUser to current transaction to avoid LazyInitializationException
         UserAuthEntity currentUser = userAuthRepository.findById(currentUserParam.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
@@ -69,6 +75,11 @@ public class UserManagementService {
                 .isActive(true)
                 .createdByUser(currentUser) // Track who created this user
                 .build();
+
+        if (image != null && !image.isEmpty()) {
+            String profileUrl = s3Service.uploadImage(image, "users/profile");
+            user.setProfilePictureUrl(profileUrl);
+        }
 
         // 6️⃣ Establish bidirectional relationship
         user.addRestaurant(restaurant); // This sets both sides of the relationship
@@ -114,4 +125,33 @@ public class UserManagementService {
 
         throw new BusinessException("You are not allowed to create users");
     }
+
+    public UserAuthEntity updateProfile(UserAuthEntity currentUserParam, ProfileUpdateDTO request, MultipartFile image) {
+        UserAuthEntity user = userAuthRepository.findById(currentUserParam.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // Use Mapper for basic fields
+        userProfileMapper.updateUserFromDto(request, user);
+
+        // Handle Primary Restaurant
+        if (request.getPrimaryRestaurantId() != null) {
+            Restaurant restaurant = restaurantRepository.findById(request.getPrimaryRestaurantId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+
+            // Validate user has access to this restaurant
+            if (!user.canAccessRestaurant(restaurant.getId())) {
+                 throw new BusinessException("You do not have access to this restaurant");
+            }
+
+            user.setPrimaryRestaurant(restaurant);
+        }
+
+        if (image != null && !image.isEmpty()) {
+            String profileUrl = s3Service.uploadImage(image, "users/profile");
+            user.setProfilePictureUrl(profileUrl);
+        }
+
+        return userAuthRepository.save(user);
+    }
 }
+

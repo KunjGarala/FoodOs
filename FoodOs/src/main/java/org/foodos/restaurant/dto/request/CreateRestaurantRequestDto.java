@@ -25,7 +25,7 @@ public class CreateRestaurantRequestDto {
 
     /* ================= CONTACT ================= */
 
-    @NotBlank
+//    @NotBlank
     @Size(max = 15)
     private String phoneNumber;
 
