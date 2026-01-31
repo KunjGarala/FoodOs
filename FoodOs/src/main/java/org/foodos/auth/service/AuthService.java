@@ -1,7 +1,12 @@
 package org.foodos.auth.service;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.annotation.RequiredTypes;
+import org.foodos.auth.OAuth.Controller.GoogleAuthController;
+import org.foodos.auth.utils.RestaurantGetUtil;
 import org.foodos.common.emails.EmailService;
 import org.foodos.common.Utils.Helper;
 import org.foodos.common.Utils.S3Service;
@@ -12,6 +17,9 @@ import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.foodos.auth.utils.JwtUtil;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +30,8 @@ public class AuthService {
     private final EmailService emailService;
     private final Helper helper;
     private final S3Service s3Service;
+    private final JwtUtil jwtUtil;
+    private final RestaurantGetUtil restaurantGetUtil;
 
     public UserAuthEntity signup(SignupRequest request, MultipartFile image) {
 
@@ -69,12 +79,40 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    public void userWantCreateRestaurant(boolean request , UserAuthEntity currentUser) {
+    @Transactional
+    public void userWantCreateRestaurant(
+            HttpServletResponse response,
+            HttpServletRequest request,
+            boolean wantToCreateRestaurant,
+            UserAuthEntity currentUser
+    ) {
         if (currentUser.getRole() != UserRole.GUEST) {
             throw new IllegalStateException("Only GUEST can request");
         }
 
-        currentUser.setRole(request ? UserRole.OWNER : UserRole.GUEST);
+        if (!wantToCreateRestaurant) {
+            return;
+        }
+
+        currentUser.setRole(UserRole.OWNER);
         userRepository.save(currentUser);
+
+        UserAuthEntity updatedUser = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+
+        String accessToken = jwtUtil.generateToken(
+                updatedUser,
+                15
+        );
+
+        String refreshToken = jwtUtil.generateToken(
+                updatedUser,
+                7 * 24 * 60
+        );
+
+        response.setHeader("Authorization", "Bearer " + accessToken);
+        GoogleAuthController.generateCookie(response, refreshToken);
     }
+
 }

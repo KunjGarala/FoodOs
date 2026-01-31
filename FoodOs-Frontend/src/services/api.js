@@ -127,11 +127,26 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  signup: (userData) => api.post('/api/auth/sign-up', userData),
+  // Modified to accept FormData
+  signup: (userData) => {
+    return api.post('/api/auth/signup', userData);
+  },
   
   // Login returns the Promise so authSlice can handle the response data
   login: (credentials) => api.post('/genrate-token', credentials),
-  
+
+  userWantCreateRestaurant: (request) => {
+    return api.post(`/api/auth/user-want-create-restaurant?wantToCreateRestaurant=${request}`);
+  }
+};
+
+export const restaurantAPI = {
+    createFirstRestaurant: (formData) => {
+        return api.post('/api/restaurants/create-first', formData);
+    },
+    createOutlet: (parentRestaurantUuid, data) => {
+        return api.post(`/api/restaurants/${parentRestaurantUuid}/outlets`, data);
+    }
 };
 
 export default api;

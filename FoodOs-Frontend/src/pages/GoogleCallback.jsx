@@ -29,11 +29,19 @@ const GoogleCallback = () => {
       try {
         const tokenPayload = JSON.parse(atob(accessToken.split('.')[1]));
         const username = tokenPayload.sub || 'User';
+        const roles = tokenPayload.roles || [];
+        const restaurantIds = tokenPayload.restaurantIds || null;
+
         
         // Update Redux state
         dispatch(setGoogleAuthTokens({ 
           token: accessToken, 
-          username: username 
+          user: {
+            username,
+            roles,
+            restaurantIds
+          }
+
         }));
         
         // Redirect to dashboard
