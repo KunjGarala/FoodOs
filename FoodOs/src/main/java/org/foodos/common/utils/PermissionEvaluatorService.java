@@ -1,4 +1,4 @@
-package org.foodos.common.utils_temp;
+package org.foodos.common.utils;
 
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;

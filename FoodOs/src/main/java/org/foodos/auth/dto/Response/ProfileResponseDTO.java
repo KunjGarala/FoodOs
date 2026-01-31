@@ -1,4 +1,4 @@
-package org.foodos.auth.dto_temp.Response;
+package org.foodos.auth.dto.Response;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

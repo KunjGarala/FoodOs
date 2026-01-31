@@ -1,4 +1,4 @@
-package org.foodos.common.utils_temp;
+package org.foodos.common.utils;
 
 import lombok.RequiredArgsConstructor;
 import org.foodos.common.exceptionhandling.exception.FileIsNotImageException;

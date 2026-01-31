@@ -1,4 +1,4 @@
-package org.foodos.auth.dto_temp.Response;
+package org.foodos.auth.dto.Response;
 
 
 import io.swagger.v3.oas.annotations.media.Schema;

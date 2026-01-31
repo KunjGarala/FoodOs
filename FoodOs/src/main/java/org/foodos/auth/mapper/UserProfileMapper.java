@@ -1,7 +1,7 @@
 package org.foodos.auth.mapper;
 
-import org.foodos.auth.dto_temp.Request.ProfileUpdateDTO;
-import org.foodos.auth.dto_temp.Response.ProfileResponseDTO;
+import org.foodos.auth.dto.Request.ProfileUpdateDTO;
+import org.foodos.auth.dto.Response.ProfileResponseDTO;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.restaurant.dto.response.RestaurantBasicDTO;
 import org.foodos.restaurant.entity.Restaurant;

@@ -1,4 +1,4 @@
-package org.foodos.common.utils_temp;
+package org.foodos.common.utils;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

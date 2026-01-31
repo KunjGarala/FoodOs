@@ -1,4 +1,4 @@
-package org.foodos.auth.listener_temp;
+package org.foodos.auth.listener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

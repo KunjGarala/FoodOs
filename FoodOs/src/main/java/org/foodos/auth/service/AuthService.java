@@ -5,18 +5,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Controller.GoogleAuthController;
-import org.foodos.auth.utils_temp.restaurantGetUtil_temp;
+import org.foodos.auth.utils.RestaurantGetUtil;
 import org.foodos.common.emails.EmailService;
-import org.foodos.common.utils_temp.Helper;
-import org.foodos.common.utils_temp.S3Service;
-import org.foodos.auth.dto_temp.Request.SignupRequest;
+import org.foodos.common.utils.Helper;
+import org.foodos.common.utils.S3Service;
+import org.foodos.auth.dto.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.foodos.auth.utils_temp.JwtUtil;
+import org.foodos.auth.utils.JwtUtil;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +28,7 @@ public class AuthService {
     private final Helper helper;
     private final S3Service s3Service;
     private final JwtUtil jwtUtil;
-    private final restaurantGetUtil_temp restaurantGetUtilTemp;
+    private final RestaurantGetUtil restaurantGetUtil;
 
     public UserAuthEntity signup(SignupRequest request, MultipartFile image) {
 

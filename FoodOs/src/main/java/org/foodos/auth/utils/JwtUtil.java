@@ -1,4 +1,4 @@
-package org.foodos.auth.utils_temp;
+package org.foodos.auth.utils;
 
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -17,17 +17,17 @@ public class JwtUtil {
 
     private static final String SECRET_KEY = "sjjagdaygdahhbcysdabafcyus a bcvff7l nfbfvyc bv6c gydryfvgv v";
     private static  final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
-    private final restaurantGetUtil_temp restaurantGetUtilTemp;
+    private final RestaurantGetUtil restaurantGetUtil;
 
-    public JwtUtil(restaurantGetUtil_temp restaurantGetUtilTemp) {
-        this.restaurantGetUtilTemp = restaurantGetUtilTemp;
+    public JwtUtil(RestaurantGetUtil restaurantGetUtil) {
+        this.restaurantGetUtil = restaurantGetUtil;
     }
 
     public String generateToken(UserAuthEntity user , long expiryMinutes) {
         String username = user.getUsername();
         String userId = user.getUserUuid();
         String role = user.getRole().name();
-        List<String> restaurantIds = restaurantGetUtilTemp.getRestaurantUuids(user);
+        List<String> restaurantIds = restaurantGetUtil.getRestaurantUuids(user);
         return Jwts.builder()
                 .subject(username)
                 .claim("username", username)

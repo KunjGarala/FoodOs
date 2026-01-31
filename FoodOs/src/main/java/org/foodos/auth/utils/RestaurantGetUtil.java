@@ -1,4 +1,4 @@
-package org.foodos.auth.utils_temp;
+package org.foodos.auth.utils;
 
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.restaurant.entity.Restaurant;
@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class restaurantGetUtil_temp {
+public class RestaurantGetUtil {
 
     public List<String> getRestaurantUuids(UserAuthEntity user) {
         List<String> restaurantUuids = new ArrayList<>();

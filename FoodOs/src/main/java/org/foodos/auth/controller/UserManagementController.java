@@ -1,11 +1,11 @@
-package org.foodos.auth.controller_temp;
+package org.foodos.auth.controller;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.foodos.auth.dto_temp.Request.ProfileUpdateDTO;
-import org.foodos.auth.dto_temp.Request.SignupRequest;
+import org.foodos.auth.dto.Request.ProfileUpdateDTO;
+import org.foodos.auth.dto.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.service.UserManagementService;
 import org.springframework.http.MediaType;

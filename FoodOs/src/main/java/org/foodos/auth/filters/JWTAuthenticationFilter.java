@@ -7,11 +7,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Controller.GoogleAuthController;
-import org.foodos.auth.utils_temp.JwtUtil;
+import org.foodos.auth.utils.JwtUtil;
 import org.foodos.auth.entity.LoginRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.auth.utils_temp.restaurantGetUtil_temp;
+import org.foodos.auth.utils.RestaurantGetUtil;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,7 +25,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserAuthRepository userRepository;
-    private final restaurantGetUtil_temp restaurantGetUtilTemp;
+    private final RestaurantGetUtil restaurantGetUtil;
 
     @Override
     protected void doFilterInternal(

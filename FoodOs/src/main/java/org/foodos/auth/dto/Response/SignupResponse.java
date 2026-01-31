@@ -1,4 +1,4 @@
-package org.foodos.auth.dto_temp.Response;
+package org.foodos.auth.dto.Response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
