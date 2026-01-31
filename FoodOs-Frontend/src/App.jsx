@@ -1,30 +1,117 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import CreateRestaurant from './pages/CreateRestaurant';
+import CreateOutlet from './pages/CreateOutlet';
 import GoogleCallback from './pages/GoogleCallback';
 import ProtectedRoute from './components/ProtectedRoute';
+
+// POS Components
+import TableManagement from './pages/POS/TableManagement';
+import OrderEntry from './pages/POS/OrderEntry';
+import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
+import MenuManagement from './pages/Management/MenuManagement';
+import StaffManagement from './pages/Management/StaffManagement';
+import CustomerCRM from './pages/CRM/CustomerCRM';
+import { MainLayout } from './components/layout/MainLayout';
+
 import './index.css';
+
+// Admin placeholders (for this demo)
+const AdminRestaurants = () => <div className="p-4"><h2>Admin All Restaurants Management</h2></div>;
+const AdminUsers = () => <div className="p-4"><h2>Admin User Management</h2></div>;
+const Unauthorized = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold text-red-600">Unauthorized Access</h1><p>You do not have permission to view this page.</p></div>;
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
+
+          {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/auth/callback" element={<GoogleCallback />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+          
+          {/* OWNER & MANAGER Routes (The functional App) */}
+          <Route path="/app" element={
+            <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF', 'WAITER']}>
+              <MainLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Dashboard />} />
+            
+            <Route path="tables" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <TableManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="order" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <OrderEntry />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="kitchen" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF']}>
+                    <KitchenDisplay />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="menu" element={
+                <ProtectedRoute allowedRoles={['OWNER']}>
+                    <MenuManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="staff" element={
+                <ProtectedRoute allowedRoles={['OWNER']}>
+                    <StaffManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="crm" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CustomerCRM />
+                </ProtectedRoute>
+            } />
+          </Route>
+
+          {/* ADMIN Routes */}
+          <Route path="/admin" element={
+             <ProtectedRoute allowedRoles={['ADMIN']}>
+                <MainLayout /> 
+             </ProtectedRoute>
+          }>
+             <Route path="restaurants" element={<AdminRestaurants />} />
+             <Route path="users" element={<AdminUsers />} />
+             <Route path="reports" element={<div className="p-4">Admin Reports</div>} />
+             {/* Redirect /admin to /admin/restaurants */}
+             <Route index element={<Navigate to="restaurants" replace />} />
+          </Route>
+
+          {/* Legacy/Other Routes */}
+          <Route path="/create-restaurant" element={
+              <ProtectedRoute allowedRoles={['OWNER']}>
+                <CreateRestaurant />
               </ProtectedRoute>
-            }
-          />
+          } />
+          
+          <Route path="/create-outlet" element={
+              <ProtectedRoute allowedRoles={['OWNER']}>
+                <CreateOutlet />
+              </ProtectedRoute>
+          } />
+
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
     </Provider>

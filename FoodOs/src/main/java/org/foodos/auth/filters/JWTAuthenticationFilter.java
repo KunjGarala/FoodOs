@@ -60,16 +60,13 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         user.resetFailedLoginAttempts();
         userRepository.save(user);
 
-        String role = user.getRole().name();
-
-        List<String> restaurantUuids = restaurantGetUtil.getRestaurantUuids(user);
 
 
         String accessToken =
-                jwtUtil.generateToken(user.getUsername(), role, user.getUserUuid(), restaurantUuids, 15);
+                jwtUtil.generateToken(user, 15);
 
         String refreshToken =
-                jwtUtil.generateToken(user.getUsername(), role, user.getUserUuid(), restaurantUuids, 7 * 24 * 60);
+                jwtUtil.generateToken(user, 7 * 24 * 60);
 
         response.setHeader("Authorization", "Bearer " + accessToken);
         GoogleAuthController.generateCookie(response, refreshToken);

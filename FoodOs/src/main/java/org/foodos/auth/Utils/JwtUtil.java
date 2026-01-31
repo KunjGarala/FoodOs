@@ -3,21 +3,31 @@ package org.foodos.auth.utils;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.foodos.auth.entity.UserAuthEntity;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtUtil {
 
     private static final String SECRET_KEY = "sjjagdaygdahhbcysdabafcyus a bcvff7l nfbfvyc bv6c gydryfvgv v";
     private static  final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    private final RestaurantGetUtil restaurantGetUtil;
 
+    public JwtUtil(RestaurantGetUtil restaurantGetUtil) {
+        this.restaurantGetUtil = restaurantGetUtil;
+    }
 
-    public String generateToken(String username, String role, String userId, java.util.List<String> restaurantIds, long expiryMinutes) {
+    public String generateToken(UserAuthEntity user , long expiryMinutes) {
+        String username = user.getUsername();
+        String userId = user.getUserUuid();
+        String role = user.getRole().name();
+        List<String> restaurantIds = restaurantGetUtil.getRestaurantUuids(user);
         return Jwts.builder()
                 .subject(username)
                 .claim("username", username)

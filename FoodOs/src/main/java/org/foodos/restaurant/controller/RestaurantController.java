@@ -1,10 +1,14 @@
 package org.foodos.restaurant.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.foodos.auth.OAuth.Controller.GoogleAuthController;
 import org.foodos.auth.DTO.Response.ProfileResponseDTO;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.auth.utils.JwtUtil;
 import org.foodos.restaurant.dto.request.CreateRestaurantRequestDto;
 import org.foodos.restaurant.dto.request.UpdateRestaurantRequestDto;
 import org.foodos.restaurant.dto.response.RestaurantHierarchyResponseDto;
@@ -34,6 +38,8 @@ import java.util.List;
 public class RestaurantController {
 
     private final RestaurantService restaurantService;
+    private final JwtUtil jwtUtil;
+    private final UserAuthRepository userAuthRepository;
 
     /* ================= CREATE FIRST ================= */
 
@@ -51,10 +57,20 @@ public class RestaurantController {
     public ResponseEntity<RestaurantResponseDto> createFirstRestaurant(
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser,
             @Valid @RequestPart("data") CreateRestaurantRequestDto requestDto,
-            @RequestPart(value = "image", required = false) MultipartFile image
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            HttpServletResponse response
     ) {
         RestaurantResponseDto restaurant =
                 restaurantService.createParentRestaurant(currentUser, requestDto, image);
+
+        UserAuthEntity updatedUser = userAuthRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String accessToken = jwtUtil.generateToken(updatedUser, 15);
+        String refreshToken = jwtUtil.generateToken(updatedUser, 7 * 24 * 60);
+
+        response.setHeader("Authorization", "Bearer " + accessToken);
+        GoogleAuthController.generateCookie(response, refreshToken);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }
@@ -80,7 +96,8 @@ public class RestaurantController {
             @Valid @RequestPart("data") CreateRestaurantRequestDto requestDto,
             @RequestPart(value = "image", required = false) MultipartFile image,
 
-            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser,
+            HttpServletResponse response
     ) {
         RestaurantResponseDto restaurant =
                 restaurantService.createChildRestaurant(
@@ -89,6 +106,15 @@ public class RestaurantController {
                         currentUser,
                         image
                 );
+
+        UserAuthEntity updatedUser = userAuthRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String accessToken = jwtUtil.generateToken(updatedUser, 15);
+        String refreshToken = jwtUtil.generateToken(updatedUser, 7 * 24 * 60);
+
+        response.setHeader("Authorization", "Bearer " + accessToken);
+        GoogleAuthController.generateCookie(response, refreshToken);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }

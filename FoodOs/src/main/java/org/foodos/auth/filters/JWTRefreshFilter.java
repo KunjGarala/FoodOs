@@ -48,11 +48,8 @@ public class JWTRefreshFilter extends OncePerRequestFilter {
             if(authResult.isAuthenticated()) {
                 UserAuthEntity user = (UserAuthEntity) authResult.getPrincipal(); // Cast to UserAuthEntity
 
-                String role = user.getRole().name();
 
-                List<String> restaurantUuids = restaurantGetUtil.getRestaurantUuids(user);
-
-                String token = jwtUtil.generateToken(user.getUsername(), role, user.getUserUuid(), restaurantUuids, 15);
+                String token = jwtUtil.generateToken(user, 15);
                 response.setHeader("Authorization", "Bearer " + token);
             }
         } catch (Exception e) {

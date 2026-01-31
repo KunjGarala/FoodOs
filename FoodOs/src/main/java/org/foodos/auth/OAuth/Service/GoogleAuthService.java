@@ -65,14 +65,12 @@ public class GoogleAuthService {
 
         UserAuthEntity user = findOrCreateUser(email ,  userInfo);
 
-        String role = user.getRole().name();
-
-        List<String> restaurantUuids = restaurantGetUtil.getRestaurantUuids(user);
 
 
 
-        String jwtAccessToken = jwtUtil.generateToken(user.getUsername(), role , user.getUserUuid() , restaurantUuids ,  15); // 15 min
-        String jwtRefreshToken = jwtUtil.generateToken(user.getUsername(), role , user.getUserUuid() ,  restaurantUuids , 10080); // 7 days
+
+        String jwtAccessToken = jwtUtil.generateToken(user,  15); // 15 min
+        String jwtRefreshToken = jwtUtil.generateToken(user, 10080); // 7 days
 
         Map<String, String> result = new HashMap<>();
         result.put("access_token", jwtAccessToken);

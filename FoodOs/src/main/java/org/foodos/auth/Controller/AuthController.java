@@ -3,6 +3,8 @@ package org.foodos.auth.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
@@ -61,14 +63,22 @@ public class AuthController {
     }
 
 
-    @GetMapping("/userWantCreateRestaurant")
+    @PostMapping("/user-want-create-restaurant")
     @PreAuthorize("hasRole('GUEST')")
-    public ResponseEntity<?> userWantCreateRestaurant(
-            @RequestParam boolean request,
+    public ResponseEntity<Void> userWantCreateRestaurant(
+            HttpServletResponse response,
+            HttpServletRequest request,
+            @RequestParam boolean wantToCreateRestaurant,
             @AuthenticationPrincipal UserAuthEntity currentUser
-    ){
-        authService.userWantCreateRestaurant(request , currentUser);
+    ) {
+        authService.userWantCreateRestaurant(
+                response,
+                request,
+                wantToCreateRestaurant,
+                currentUser
+        );
         return ResponseEntity.ok().build();
     }
+
 
 }
