@@ -1,4 +1,4 @@
-package org.foodos.auth.controller;
+package org.foodos.auth.controller_temp;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -8,8 +8,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
-import org.foodos.auth.DTO.Request.SignupRequest;
-import org.foodos.auth.DTO.Response.SignupResponse;
+import org.foodos.auth.dto_temp.Request.SignupRequest;
+import org.foodos.auth.dto_temp.Response.SignupResponse;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.service.AuthService;
 import org.springframework.http.HttpStatus;

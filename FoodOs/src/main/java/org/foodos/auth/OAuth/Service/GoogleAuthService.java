@@ -2,11 +2,10 @@ package org.foodos.auth.OAuth.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Exception.OAuthAuthenticationException;
-import org.foodos.auth.utils.JwtUtil;
+import org.foodos.auth.utils_temp.JwtUtil;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.auth.utils.RestaurantGetUtil;
-import org.foodos.restaurant.entity.Restaurant;
+import org.foodos.auth.utils_temp.RestaurantGetUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;

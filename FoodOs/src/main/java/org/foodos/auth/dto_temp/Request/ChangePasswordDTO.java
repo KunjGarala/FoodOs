@@ -1,4 +1,4 @@
-package org.foodos.auth.DTO.Request;
+package org.foodos.auth.dto_temp.Request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

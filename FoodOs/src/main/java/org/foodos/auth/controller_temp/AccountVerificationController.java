@@ -1,4 +1,4 @@
-package org.foodos.auth.controller;
+package org.foodos.auth.controller_temp;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

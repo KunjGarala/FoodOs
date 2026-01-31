@@ -4,22 +4,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.aspectj.lang.annotation.RequiredTypes;
 import org.foodos.auth.OAuth.Controller.GoogleAuthController;
-import org.foodos.auth.utils.RestaurantGetUtil;
+import org.foodos.auth.utils_temp.RestaurantGetUtil;
 import org.foodos.common.emails.EmailService;
-import org.foodos.common.Utils.Helper;
-import org.foodos.common.Utils.S3Service;
-import org.foodos.auth.DTO.Request.SignupRequest;
+import org.foodos.common.utils_temp.Helper;
+import org.foodos.common.utils_temp.S3Service;
+import org.foodos.auth.dto_temp.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.foodos.auth.utils.JwtUtil;
-
-import java.util.List;
+import org.foodos.auth.utils_temp.JwtUtil;
 
 @Service
 @RequiredArgsConstructor

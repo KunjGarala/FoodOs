@@ -1,7 +1,7 @@
 package org.foodos.auth.mapper;
 
-import org.foodos.auth.DTO.Request.ProfileUpdateDTO;
-import org.foodos.auth.DTO.Response.ProfileResponseDTO;
+import org.foodos.auth.dto_temp.Request.ProfileUpdateDTO;
+import org.foodos.auth.dto_temp.Response.ProfileResponseDTO;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.restaurant.dto.response.RestaurantBasicDTO;
 import org.foodos.restaurant.entity.Restaurant;
@@ -12,7 +12,6 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 
-import java.util.ArrayList;
 import java.util.Set;
 import java.util.stream.Collectors;
 

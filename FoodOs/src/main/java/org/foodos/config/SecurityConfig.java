@@ -1,13 +1,13 @@
 package org.foodos.config;
 
 
-import org.foodos.auth.utils.JwtUtil;
+import org.foodos.auth.utils_temp.JwtUtil;
 import org.foodos.auth.authenticationProviders.JWTAuthenticationProvider;
 import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
 import org.foodos.auth.filters.JwtValidationFilter;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.auth.utils.RestaurantGetUtil;
+import org.foodos.auth.utils_temp.RestaurantGetUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

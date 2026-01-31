@@ -1,4 +1,4 @@
-package org.foodos.auth.controller;
+package org.foodos.auth.controller_temp;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

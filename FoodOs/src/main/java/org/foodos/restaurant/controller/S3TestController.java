@@ -1,7 +1,7 @@
 package org.foodos.restaurant.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.foodos.common.Utils.S3Service;
+import org.foodos.common.utils_temp.S3Service;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;

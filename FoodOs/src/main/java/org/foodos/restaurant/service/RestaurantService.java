@@ -2,12 +2,12 @@ package org.foodos.restaurant.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.foodos.auth.DTO.Response.ProfileResponseDTO;
+import org.foodos.auth.dto_temp.Response.ProfileResponseDTO;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.mapper.UserProfileMapper;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.common.Utils.S3Service;
+import org.foodos.common.utils_temp.S3Service;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
 import org.foodos.restaurant.dto.request.UpdateRestaurantRequestDto;

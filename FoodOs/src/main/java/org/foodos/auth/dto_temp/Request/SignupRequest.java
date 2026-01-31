@@ -1,4 +1,4 @@
-package org.foodos.auth.DTO.Request;
+package org.foodos.auth.dto_temp.Request;
 
 import jakarta.validation.constraints.*;
 import lombok.Getter;

@@ -1,6 +1,6 @@
 package org.foodos.common;
 
-import org.foodos.common.Utils.S3Service;
+import org.foodos.common.utils_temp.S3Service;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
