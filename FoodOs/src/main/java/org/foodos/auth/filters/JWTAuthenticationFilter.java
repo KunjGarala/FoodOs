@@ -11,7 +11,7 @@ import org.foodos.auth.utils_temp.JwtUtil;
 import org.foodos.auth.entity.LoginRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.auth.utils_temp.RestaurantGetUtil;
+import org.foodos.auth.utils_temp.restaurantGetUtil_temp;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,7 +25,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserAuthRepository userRepository;
-    private final RestaurantGetUtil restaurantGetUtil;
+    private final restaurantGetUtil_temp restaurantGetUtilTemp;
 
     @Override
     protected void doFilterInternal(

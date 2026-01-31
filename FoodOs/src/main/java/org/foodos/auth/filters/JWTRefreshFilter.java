@@ -8,7 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.utils_temp.JwtAuthenticationToken;
 import org.foodos.auth.utils_temp.JwtUtil;
-import org.foodos.auth.utils_temp.RestaurantGetUtil;
+import org.foodos.auth.utils_temp.restaurantGetUtil_temp;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -18,12 +18,12 @@ import java.io.IOException;
 public class JWTRefreshFilter extends OncePerRequestFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final RestaurantGetUtil restaurantGetUtil;
+    private final restaurantGetUtil_temp restaurantGetUtilTemp;
 
-    public JWTRefreshFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil , RestaurantGetUtil restaurantGetUtil) {
+    public JWTRefreshFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil , restaurantGetUtil_temp restaurantGetUtilTemp) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
-        this.restaurantGetUtil = restaurantGetUtil;
+        this.restaurantGetUtilTemp = restaurantGetUtilTemp;
     }
 
 

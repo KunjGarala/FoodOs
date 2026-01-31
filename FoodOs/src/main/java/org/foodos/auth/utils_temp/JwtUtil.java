@@ -17,17 +17,17 @@ public class JwtUtil {
 
     private static final String SECRET_KEY = "sjjagdaygdahhbcysdabafcyus a bcvff7l nfbfvyc bv6c gydryfvgv v";
     private static  final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
-    private final RestaurantGetUtil restaurantGetUtil;
+    private final restaurantGetUtil_temp restaurantGetUtilTemp;
 
-    public JwtUtil(RestaurantGetUtil restaurantGetUtil) {
-        this.restaurantGetUtil = restaurantGetUtil;
+    public JwtUtil(restaurantGetUtil_temp restaurantGetUtilTemp) {
+        this.restaurantGetUtilTemp = restaurantGetUtilTemp;
     }
 
     public String generateToken(UserAuthEntity user , long expiryMinutes) {
         String username = user.getUsername();
         String userId = user.getUserUuid();
         String role = user.getRole().name();
-        List<String> restaurantIds = restaurantGetUtil.getRestaurantUuids(user);
+        List<String> restaurantIds = restaurantGetUtilTemp.getRestaurantUuids(user);
         return Jwts.builder()
                 .subject(username)
                 .claim("username", username)

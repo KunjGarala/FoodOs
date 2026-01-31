@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class RestaurantGetUtil {
+public class restaurantGetUtil_temp {
 
     public List<String> getRestaurantUuids(UserAuthEntity user) {
         List<String> restaurantUuids = new ArrayList<>();

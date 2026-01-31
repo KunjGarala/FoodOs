@@ -7,7 +7,7 @@ import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
 import org.foodos.auth.filters.JwtValidationFilter;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.auth.utils_temp.RestaurantGetUtil;
+import org.foodos.auth.utils_temp.restaurantGetUtil_temp;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,16 +39,16 @@ public class SecurityConfig {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final UserAuthRepository userAuthRepository;
-    private final RestaurantGetUtil restaurantGetUtil;
+    private final restaurantGetUtil_temp restaurantGetUtilTemp;
 
     @Value("${frontend.port.url}")
     private String frontendUrl;
 
-    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService , UserAuthRepository userAuthRepository , RestaurantGetUtil restaurantGetUtil) {
+    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService , UserAuthRepository userAuthRepository , restaurantGetUtil_temp restaurantGetUtilTemp) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.userAuthRepository = userAuthRepository;
-        this.restaurantGetUtil = restaurantGetUtil;
+        this.restaurantGetUtilTemp = restaurantGetUtilTemp;
     }
 
     @Bean
@@ -99,12 +99,12 @@ public class SecurityConfig {
     ) throws Exception {
 
         JWTAuthenticationFilter jwtAuthenticationFilter =
-                new JWTAuthenticationFilter(authenticationManager, jwtUtil , userAuthRepository , restaurantGetUtil);
+                new JWTAuthenticationFilter(authenticationManager, jwtUtil , userAuthRepository , restaurantGetUtilTemp);
 
         JwtValidationFilter jwtValidationFilter =
                 new JwtValidationFilter(authenticationManager);
 
-        JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager , jwtUtil , restaurantGetUtil);
+        JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager , jwtUtil , restaurantGetUtilTemp);
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

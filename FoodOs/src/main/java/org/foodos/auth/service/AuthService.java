@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Controller.GoogleAuthController;
-import org.foodos.auth.utils_temp.RestaurantGetUtil;
+import org.foodos.auth.utils_temp.restaurantGetUtil_temp;
 import org.foodos.common.emails.EmailService;
 import org.foodos.common.utils_temp.Helper;
 import org.foodos.common.utils_temp.S3Service;
@@ -28,7 +28,7 @@ public class AuthService {
     private final Helper helper;
     private final S3Service s3Service;
     private final JwtUtil jwtUtil;
-    private final RestaurantGetUtil restaurantGetUtil;
+    private final restaurantGetUtil_temp restaurantGetUtilTemp;
 
     public UserAuthEntity signup(SignupRequest request, MultipartFile image) {
 
