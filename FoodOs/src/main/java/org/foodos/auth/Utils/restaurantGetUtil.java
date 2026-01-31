@@ -1,4 +1,4 @@
-package org.foodos.auth.utils;
+package org.foodos.auth.Utils;
 
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.restaurant.entity.Restaurant;

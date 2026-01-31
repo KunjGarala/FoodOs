@@ -8,7 +8,7 @@ import org.foodos.auth.OAuth.Controller.GoogleAuthController;
 import org.foodos.auth.DTO.Response.ProfileResponseDTO;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
-import org.foodos.auth.utils.JwtUtil;
+import org.foodos.auth.Utils.JwtUtil;
 import org.foodos.restaurant.dto.request.CreateRestaurantRequestDto;
 import org.foodos.restaurant.dto.request.UpdateRestaurantRequestDto;
 import org.foodos.restaurant.dto.response.RestaurantHierarchyResponseDto;

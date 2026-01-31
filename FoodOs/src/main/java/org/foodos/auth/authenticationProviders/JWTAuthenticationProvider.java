@@ -1,8 +1,8 @@
 package org.foodos.auth.authenticationProviders;
 
-import org.foodos.auth.utils.JwtAuthenticationToken;
+import org.foodos.auth.Utils.JwtAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.foodos.auth.utils.JwtUtil;
+import org.foodos.auth.Utils.JwtUtil;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
