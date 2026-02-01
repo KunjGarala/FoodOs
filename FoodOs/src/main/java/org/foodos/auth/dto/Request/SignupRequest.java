@@ -32,8 +32,8 @@ public class SignupRequest {
     )
     private String phoneNumber;
 
-//    @NotNull(message = "Restaurant ID is required")
-    private Long restaurantId;
+    @NotNull(message = "Restaurant ID is required")
+    private String restaurantId;
 
     @Size(max = 50, message = "Employee code must not exceed 50 characters")
     private String employeeCode;

@@ -1,103 +1,120 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { authAPI } from '../services/api';
 import { decodeToken, getUserRole, getAccessibleRestaurants, isTokenExpired } from '../utils/authUtils';
-import { use } from 'react';
 
-// Helper to initialize state from localStorage
-const initializeState = () => {
-  const token = localStorage.getItem('token');
-  let user = null;
-  try {
-      const storedUser = localStorage.getItem('user');
-      // Attempt to parse if it's a JSON object string
-      if (storedUser) {
-          if (storedUser.startsWith('{')) {
-             user = JSON.parse(storedUser);
-          } else {
-             user = { username: storedUser };
-          }
-      }
-  } catch (e) {
-      console.warn("Failed to parse user from local storage", e);
-      user = null;
-  }
-  
-  const savedActiveRestaurantId = localStorage.getItem('activeRestaurantId');
-
-  if (!token) {
-    return {
-      user: null,
-      userId: null,
-      token: null,
-      role: null,
-      restaurantIds: [],
-      activeRestaurantId: null,
-      isAuthenticated: false,
-      loading: false,
-      error: null,
-    };
-  }
-
-  const decoded = decodeToken(token);
-  
-  // Check if token is valid and not expired
-  if (!decoded || isTokenExpired(decoded)) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('activeRestaurantId');
-    return {
-      user: null,
-      userId: null,
-      token: null,
-      role: null,
-      restaurantIds: [],
-      activeRestaurantId: null,
-      isAuthenticated: false,
-      loading: false,
-      error: null,
-    };
-  }
-
-  const role = getUserRole(decoded);
-  const restaurantIds = getAccessibleRestaurants(decoded);
-  
-  // Determine active restaurant ID
-  let activeId = savedActiveRestaurantId;
-  
-  // If specific logic for MANAGER (users with only 1 restaurant)
-  if (!activeId) {
-     if (restaurantIds.length === 1) {
-         activeId = restaurantIds[0];
-     } else if (restaurantIds.length > 0) {
-         activeId = restaurantIds[0]; // Default to first for Owners if nothing selected
-     }
-  }
-
-  // Extract username
-  const username = decoded.username || decoded.sub || (user ? user.username : null);
-
-  return {
-    user: username,
-    userId: decoded.userId || decoded.id,         // User ID
-    token: token,
-    role: role,
-    restaurantIds: restaurantIds,
-    activeRestaurantId: activeId,
-    isAuthenticated: true,
-    loading: false,
-    error: null,
-  };
+// ─────────────────────────────────────────────────────────
+// localStorage keys (refresh token is NEVER here — it lives
+// in an HttpOnly cookie managed by the backend).
+// ─────────────────────────────────────────────────────────
+const KEYS = {
+  TOKEN: 'token',
+  USER: 'user',
+  ACTIVE_RESTAURANT: 'activeRestaurantId',
 };
 
+// ─────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────
+function clearLocalStorage() {
+  localStorage.removeItem(KEYS.TOKEN);
+  localStorage.removeItem(KEYS.USER);
+  localStorage.removeItem(KEYS.ACTIVE_RESTAURANT);
+}
+
+function parseStoredUser() {
+  try {
+    const raw = localStorage.getItem(KEYS.USER);
+    if (!raw) return null;
+    return raw.startsWith('{') ? JSON.parse(raw) : { username: raw };
+  } catch {
+    return null;
+  }
+}
+
+function buildUserPayload(decoded, credentials = {}) {
+  const username = decoded.username || decoded.sub || credentials.username || null;
+  const userId   = decoded.userId  || decoded.id  || null;
+  const role      = getUserRole(decoded);
+  const restaurantIds = getAccessibleRestaurants(decoded);
+
+  return { username, userId, role, restaurantIds };
+}
+
+// ─────────────────────────────────────────────────────────
+// Default / empty state shape
+// ─────────────────────────────────────────────────────────
+const EMPTY_STATE = {
+  user:                null,
+  userId:             null,
+  token:               null,
+  role:                null,
+  restaurantIds:       [],
+  activeRestaurantId:  null,
+  isAuthenticated:     false,
+  loading:             false,
+  error:               null,
+};
+
+// ─────────────────────────────────────────────────────────
+// Hydrate state from localStorage on page load / reload.
+//
+// KEY INSIGHT: If we have an access token (even expired) we
+// assume the HttpOnly refresh-token cookie is still valid and
+// keep isAuthenticated = true.  The Axios response interceptor
+// will transparently refresh the access token on the first
+// API call that returns 401.  Only if the refresh itself fails
+// do we actually log the user out.
+// ─────────────────────────────────────────────────────────
+function initializeState() {
+  const token = localStorage.getItem(KEYS.TOKEN);
+
+  // Nothing persisted → clean logged-out state.
+  if (!token) return { ...EMPTY_STATE };
+
+  const decoded = decodeToken(token);
+
+  // Token is completely unparseable (corrupted) → wipe and reset.
+  if (!decoded) {
+    clearLocalStorage();
+    return { ...EMPTY_STATE };
+  }
+
+  const { username, userId, role, restaurantIds } = buildUserPayload(decoded);
+
+  // Restore the active restaurant, or default to the first accessible one.
+  let activeRestaurantId = localStorage.getItem(KEYS.ACTIVE_RESTAURANT);
+  if (!activeRestaurantId && restaurantIds.length > 0) {
+    activeRestaurantId = restaurantIds[0];
+  }
+
+  return {
+    user:               username,
+    userId,
+    token,
+    role,
+    restaurantIds,
+    activeRestaurantId,
+    // ✅ Stay authenticated even if access token is expired.
+    //    The interceptor will refresh it before any real request hits the server.
+    isAuthenticated:    true,
+    loading:            false,
+    error:              null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────
 // Async thunks
+// ─────────────────────────────────────────────────────────
 export const signup = createAsyncThunk(
   'auth/signup',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await authAPI.signup(userData);
+      const { authAPI } = await import('../services/api');
+      const response    = await authAPI.signup(userData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Signup failed');
+      return rejectWithValue(
+        error.response?.data?.message || error.response?.data || 'Signup failed'
+      );
     }
   }
 );
@@ -106,173 +123,186 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await authAPI.login(credentials);
+      const { authAPI } = await import('../services/api');
+      const response    = await authAPI.login(credentials);
 
-      const token = response.headers['authorization']?.substring(7);
-      
+      // Extract access token from the Authorization header.
+      const authHeader = response.headers?.['authorization'] || '';
+      const token      = authHeader.startsWith('Bearer ')
+        ? authHeader.substring(7)
+        : null;
+
       if (!token) {
-          throw new Error("No token received");
+        return rejectWithValue('No authentication token received from server');
       }
-      
-      localStorage.setItem('token', token);
 
       const decoded = decodeToken(token);
-      const role = getUserRole(decoded);
-      const restaurantIds = getAccessibleRestaurants(decoded);
-      const userId = decoded.userId || decoded.id;
-      const username = decoded.username || decoded.sub || credentials.username;
-      
-      // Auto-select restaurant logic
+      if (!decoded) {
+        return rejectWithValue('Invalid token received from server');
+      }
+
+      const { username, userId, role, restaurantIds } = buildUserPayload(decoded, credentials);
+
+      // Persist access token and user info.
+      localStorage.setItem(KEYS.TOKEN, token);
+      localStorage.setItem(KEYS.USER, JSON.stringify({
+        username,
+        roles: Array.isArray(role) ? role : [role],
+        restaurantIds,
+      }));
+
+      // Auto-select first restaurant.
       let activeRestaurantId = null;
       if (restaurantIds.length > 0) {
-          activeRestaurantId = restaurantIds[0];
-          localStorage.setItem('activeRestaurantId', activeRestaurantId);
+        activeRestaurantId = restaurantIds[0];
+        localStorage.setItem(KEYS.ACTIVE_RESTAURANT, activeRestaurantId);
       }
-      
-      // Store complete user object in localStorage
-      const userObj = {
-          username: username,
-          roles: Array.isArray(role) ? role : [role],
-          restaurantIds: restaurantIds
-      };
-      localStorage.setItem('user', JSON.stringify(userObj));
 
-      return { 
-          user: username,
-          userId,
-          token, 
-          role, 
-          restaurantIds,
-          activeRestaurantId
-      };
+      // NOTE: The HttpOnly refresh-token cookie was set automatically by the
+      // backend in the Set-Cookie header.  We do NOT touch it here.
+
+      return { user: username, userId, token, role, restaurantIds, activeRestaurantId };
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Login failed');
+      return rejectWithValue(
+        error.response?.data?.message ||
+        error.response?.data?.error    ||
+        error.response?.data          ||
+        error.message                 ||
+        'Login failed'
+      );
     }
   }
 );
 
+// ─────────────────────────────────────────────────────────
+// Slice
+// ─────────────────────────────────────────────────────────
 const authSlice = createSlice({
-  name: 'auth',
+  name:         'auth',
   initialState: initializeState(),
+
   reducers: {
+    // ── Full logout ──────────────────────────────────────
     logout: (state) => {
-      state.user = null;
-      state.userId = null;
-      state.token = null;
-      state.role = null;
-      state.restaurantIds = [];
-      state.activeRestaurantId = null;
-      state.isAuthenticated = false;
-      state.error = null;
-      
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('activeRestaurantId');
-      localStorage.removeItem('refreshToken');
+      Object.assign(state, EMPTY_STATE);
+      clearLocalStorage();
+      // The HttpOnly refresh-token cookie is cleared by calling a backend
+      // logout endpoint (handled elsewhere) or expires on its own.
     },
+
+    // ── Clear transient error ────────────────────────────
     clearError: (state) => {
       state.error = null;
     },
+
+    // ── Switch active restaurant (multi-outlet) ─────────
     setActiveRestaurant: (state, action) => {
-        state.activeRestaurantId = action.payload;
-        localStorage.setItem('activeRestaurantId', action.payload);
+      state.activeRestaurantId = action.payload;
+      localStorage.setItem(KEYS.ACTIVE_RESTAURANT, action.payload);
     },
+
+    // ── Called by the interceptor after a successful token refresh ─
+    // Updates the access token + derived fields in Redux & localStorage.
+    updateTokenAndRole: (state, action) => {
+      const token = typeof action.payload === 'string'
+        ? action.payload
+        : action.payload?.token;
+
+      if (!token) return;
+
+      const decoded = decodeToken(token);
+      if (!decoded) return; // Silently ignore undecodable tokens.
+
+      const { username, userId, role, restaurantIds } = buildUserPayload(decoded);
+
+      state.token           = token;
+      state.role            = role;
+      state.isAuthenticated = true;
+      if (userId)        state.userId        = userId;
+      if (username)        state.user          = username;
+      if (restaurantIds)   state.restaurantIds = restaurantIds;
+
+      // Persist.
+      localStorage.setItem(KEYS.TOKEN, token);
+      localStorage.setItem(KEYS.USER, JSON.stringify({
+        username: state.user || username,
+        roles:    Array.isArray(state.role) ? state.role : [state.role],
+        restaurantIds: state.restaurantIds || restaurantIds || [],
+      }));
+    },
+
+    // ── Google / OAuth sign-in (token arrives via callback) ─
     setGoogleAuthTokens: (state, action) => {
       const { token, user } = action.payload;
-      const decoded = decodeToken(token);
-      
-      state.token = token;
-      state.user = user.username || decoded.username || decoded.sub;
-      state.userId = decoded.userId || decoded.id;
-      state.role = use.role || getUserRole(decoded);
-      state.restaurantIds = getAccessibleRestaurants(decoded);
+      const decoded         = decodeToken(token);
+      if (!decoded) return;
+
+      const payload = buildUserPayload(decoded);
+
+      state.token           = token;
+      state.user            = payload.username || user?.username;
+      state.userId         = payload.userId;
+      state.role            = user?.role || payload.role;
+      state.restaurantIds   = payload.restaurantIds;
       state.isAuthenticated = true;
-      state.loading = false;
-      state.error = null;
-      
-      // Auto select restaurant
+      state.loading         = false;
+      state.error           = null;
+
       if (state.restaurantIds.length > 0) {
-          state.activeRestaurantId = state.restaurantIds[0];
-          localStorage.setItem('activeRestaurantId', state.activeRestaurantId);
+        state.activeRestaurantId = state.restaurantIds[0];
+        localStorage.setItem(KEYS.ACTIVE_RESTAURANT, state.activeRestaurantId);
       }
 
-      // Store complete user object
-      const userObj = {
-          username: state.user,
-          roles: user.roles || (state.role ? [state.role] : []), 
-          restaurantIds: state.restaurantIds || []
-      };
-      
-      localStorage.setItem('user', JSON.stringify(userObj));
-      localStorage.setItem('token', token);
+      localStorage.setItem(KEYS.TOKEN, token);
+      localStorage.setItem(KEYS.USER, JSON.stringify({
+        username:      state.user,
+        roles:         user?.roles || (state.role ? [state.role] : []),
+        restaurantIds: state.restaurantIds,
+      }));
     },
-    updateTokenAndRole: (state, action) => {
-      const token = typeof action.payload === 'string' ? action.payload : action.payload.token;
-      
-      if (token) {
-        const decoded = decodeToken(token);
-        const role = getUserRole(decoded);
-        const restaurantIds = getAccessibleRestaurants(decoded);
-        const userId = decoded.userId || decoded.id;
-        const username = decoded.username || decoded.sub;
-
-        state.token = token;
-        state.role = role;
-        
-        if (userId) state.userId = userId;
-        if (username) state.user = username;
-        if (restaurantIds) state.restaurantIds = restaurantIds;
-
-        localStorage.setItem('token', token);
-        
-        const userObj = {
-            username: state.user,
-            roles: Array.isArray(state.role) ? state.role : [state.role],
-            restaurantIds: state.restaurantIds || []
-        };
-        localStorage.setItem('user', JSON.stringify(userObj));
-      }
-    }
-    
   },
+
   extraReducers: (builder) => {
     builder
-      // Signup
-      .addCase(signup.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(signup.fulfilled, (state) => {
-        state.loading = false;
-      })
-      .addCase(signup.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // Login
-      .addCase(login.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(login.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload.user;
-        state.userId = action.payload.userId;
-        state.token = action.payload.token;
-        state.role = action.payload.role;
-        state.restaurantIds = action.payload.restaurantIds;
-        state.activeRestaurantId = action.payload.activeRestaurantId;
-        state.isAuthenticated = true;
+      .addCase(signup.pending,   (state)         => { state.loading = true;  state.error = null; })
+      .addCase(signup.fulfilled, (state)         => { state.loading = false; state.error = null; })
+      .addCase(signup.rejected,  (state, action) => { state.loading = false; state.error = action.payload; })
+
+      .addCase(login.pending,    (state)         => { state.loading = true;  state.error = null; })
+      .addCase(login.fulfilled,  (state, action) => {
+        const { user, userId, token, role, restaurantIds, activeRestaurantId } = action.payload;
+        state.loading            = false;
+        state.error              = null;
+        state.user               = user;
+        state.userId            = userId;
+        state.token              = token;
+        state.role               = role;
+        state.restaurantIds      = restaurantIds;
+        state.activeRestaurantId = activeRestaurantId;
+        state.isAuthenticated    = true;
       })
       .addCase(login.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.loading         = false;
+        state.error           = action.payload;
+        state.isAuthenticated = false;
       });
   },
 });
 
-export const { logout, clearError, setGoogleAuthTokens, setActiveRestaurant, updateTokenAndRole } = authSlice.actions;
-export const selectRole = (state) => state.auth.role;
-export const selectActiveRestaurant = (state) => state.auth.activeRestaurantId;
-export const selectCurrentUser = (state) => state.auth.user;
+// ─────────────────────────────────────────────────────────
+// Exports
+// ─────────────────────────────────────────────────────────
+export const {
+  logout,
+  clearError,
+  setActiveRestaurant,
+  updateTokenAndRole,
+  setGoogleAuthTokens,
+} = authSlice.actions;
+
+export const selectRole              = (state) => state.auth.role;
+export const selectActiveRestaurant  = (state) => state.auth.activeRestaurantId;
+export const selectCurrentUser       = (state) => state.auth.user;
+export const selectIsAuthenticated   = (state) => state.auth.isAuthenticated;
+
 export default authSlice.reducer;

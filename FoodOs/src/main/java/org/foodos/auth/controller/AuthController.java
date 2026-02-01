@@ -6,9 +6,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.foodos.auth.dto.Request.ForgotPasswordRequest;
+import org.foodos.auth.dto.Request.ResetPasswordRequest;
 import org.foodos.auth.dto.Request.SignupRequest;
+import org.foodos.auth.dto.Response.ApiResponse;
 import org.foodos.auth.dto.Response.SignupResponse;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.service.AuthService;
@@ -79,6 +83,32 @@ public class AuthController {
         );
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/request-password-reset")
+    public ResponseEntity<ApiResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(
+                new ApiResponse(true , null ,"If the email exists, a reset link has been sent.")
+        );
+    }
+
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(
+                new ApiResponse(true , null ,"Password has been reset successfully.")
+        );
+    }
+
+
+
+
+
 
 
 }

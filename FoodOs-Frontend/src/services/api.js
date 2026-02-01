@@ -1,152 +1,243 @@
 import axios from 'axios';
 import API_BASE_URL from '../config';
 
+// ─────────────────────────────────────────────────────────
+// Store reference — injected once at app bootstrap via
+// setupInterceptors().  Used only to dispatch updateTokenAndRole
+// or logout after a refresh succeeds or fails.
+// ─────────────────────────────────────────────────────────
+let _store = null;
+
+export function setupInterceptors(storeInstance) {
+  _store = storeInstance;
+}
+
+// ─────────────────────────────────────────────────────────
+// Axios instance
+// ─────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
+  baseURL:        API_BASE_URL,
+  withCredentials: true, // ← sends HttpOnly refresh-token cookie automatically
 });
 
-// Request Interceptor
-api.interceptors.request.use(
-  (config) => {
+// ─────────────────────────────────────────────────────────
+// Refresh-token queue
+// Guarantees that when multiple requests fail with 401
+// simultaneously, only ONE refresh call is made.  All others
+// wait and are retried with the new token.
+// ─────────────────────────────────────────────────────────
+let isRefreshing    = false;
+let pendingRequests = []; // { resolve, reject }
+
+function enqueue() {
+  return new Promise((resolve, reject) => {
+    pendingRequests.push({ resolve, reject });
+  });
+}
+
+function drainQueue(error, token) {
+  pendingRequests.forEach(({ resolve, reject }) =>
+    error ? reject(error) : resolve(token)
+  );
+  pendingRequests = [];
+}
+
+// ─────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────
+function extractToken(response) {
+  // 1. Authorization header  (most common)
+  const header = response.headers?.['authorization'] || '';
+  if (header.startsWith('Bearer ')) return header.substring(7);
+
+  // 2. Response body  (fallback)
+  const data = response.data;
+  if (typeof data === 'string' && data.length > 20) return data;
+  if (data?.token)       return data.token;
+  if (data?.accessToken) return data.accessToken;
+
+  return null;
+}
+
+async function dispatchAction(actionPath, payload) {
+  if (!_store) return;
+  try {
+    const mod = await import(actionPath);
+    _store.dispatch(mod[Object.keys(mod).find((k) => typeof mod[k] === 'function' && k !== 'default')](payload));
+  } catch (e) {
+    console.warn('[api] dispatch failed:', e);
+  }
+}
+
+function redirectToLogin() {
+  if (typeof window !== 'undefined') {
+    window.location.replace('/login');
+  }
+}
+
+function wipeAccessToken() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('activeRestaurantId');
+}
+
+// ─────────────────────────────────────────────────────────
+// REQUEST interceptor
+// ─────────────────────────────────────────────────────────
+api.interceptors.request.use((config) => {
+  // Attach the access token from localStorage (if present) to every request.
+  // The refresh-token endpoint itself does NOT need an access token — the
+  // backend authenticates it via the HttpOnly cookie sent by withCredentials.
+  if (!config.url?.includes('refresh-token')) {
     const token = localStorage.getItem('token');
-    // Don't add token for refresh endpoint
-    if (token && !config.url.includes('refresh-token')) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
   }
-);
+  return config;
+});
 
-// Response Interceptor (Auto-Refresh Logic)
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-
-  failedQueue = [];
-};
-
+// ─────────────────────────────────────────────────────────
+// RESPONSE interceptor
+// ─────────────────────────────────────────────────────────
 api.interceptors.response.use(
+  // ── Success path ─────────────────────────────────────
   (response) => {
-    // Check for new token in response headers
-    const newToken = response.headers['authorization'];
-    if (newToken && newToken.startsWith('Bearer ')) {
-      // Logic to auto-update token if backend rotates it on every request
-      // But we should act cautiously if we only expect rotation on refresh/login
-      // FoodOs implementation had this, so preserving it might be safer, 
-      // but typically you only want this from specific endpoints.
-      // Keeping it as it was in previous FoodOs code:
-      localStorage.setItem('token', newToken.substring(7));
+    // Some backends rotate the access token on every response.
+    // If a new one arrives, persist it silently.
+    const newToken = extractToken(response);
+    if (newToken && newToken !== localStorage.getItem('token')) {
+      localStorage.setItem('token', newToken);
+      if (_store) {
+        const { updateTokenAndRole } = require('../store/authSlice');
+        _store.dispatch(updateTokenAndRole(newToken));
+      }
     }
     return response;
   },
+
+  // ── Error path ───────────────────────────────────────
   async (error) => {
     const originalRequest = error.config;
-    
-    // Log error for debugging (could use toast here if available)
-    if (error.response?.status === 403) {
-      console.warn("Permission denied:", error.response.data);
-    }
-    
-    // Check if error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      
-      if (isRefreshing) {
-        // If already refreshing, queue this request
-        return new Promise(function (resolve, reject) {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers['Authorization'] = 'Bearer ' + token;
-            originalRequest._retry = true;
-            return api(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // Call Refresh API
-        const response = await axios.post(
-          `${API_BASE_URL}/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
-
-        // Extract new token from header
-        const authHeader = response.headers['authorization'];
-        let newToken = null;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            newToken = authHeader.substring(7);
-        }
-
-        if (newToken) {
-          localStorage.setItem('token', newToken);
-
-          // Update default header for future requests
-          api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-          
-          // Update original request
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-
-          processQueue(null, newToken);
-          isRefreshing = false;
-
-          return api(originalRequest);
-        } else {
-             throw new Error("No token found in refresh response");
-        }
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        isRefreshing = false;
-        
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
+    // ── Not a 401 → propagate immediately ──────────────
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    // ── 401 on the login endpoint itself → just reject ─
+    if (originalRequest.url?.includes('genrate-token')) {
+      return Promise.reject(error);
+    }
+
+    // ── 401 on the refresh endpoint → refresh token is
+    //    invalid/expired.  Log out hard.
+    if (originalRequest.url?.includes('refresh-token')) {
+      wipeAccessToken();
+      const { logout } = await import('../store/authSlice');
+      if (_store) _store.dispatch(logout());
+      redirectToLogin();
+      return Promise.reject(error);
+    }
+
+    // ── No access token at all → nothing to refresh from ─
+    if (!localStorage.getItem('token')) {
+      wipeAccessToken();
+      const { logout } = await import('../store/authSlice');
+      if (_store) _store.dispatch(logout());
+      redirectToLogin();
+      return Promise.reject(error);
+    }
+
+    // ── Already retried this exact request → bail ──────
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // ── Another refresh is in flight → queue this request
+    if (isRefreshing) {
+      return enqueue().then((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        originalRequest._retry = true;
+        return api(originalRequest);
+      });
+    }
+
+    // ── Kick off the refresh ────────────────────────────
+    originalRequest._retry = true;
+    isRefreshing           = true;
+
+    try {
+      // POST /refresh-token with NO body.
+      // The HttpOnly cookie is sent automatically by withCredentials: true.
+      // The backend reads it from there.
+      const response = await axios.post(
+        `${API_BASE_URL}/refresh-token`,
+        null,                          // ← empty body
+        { withCredentials: true }      // ← cookie is sent here
+      );
+
+      const newToken = extractToken(response);
+      if (!newToken) {
+        throw new Error('Refresh endpoint did not return a token');
+      }
+
+      // ── Persist & broadcast ──────────────────────────
+      localStorage.setItem('token', newToken);
+
+      if (_store) {
+        const { updateTokenAndRole } = await import('../store/authSlice');
+        _store.dispatch(updateTokenAndRole(newToken));
+      }
+
+      // Update the default header so future requests from this instance use it.
+      api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+
+      // ── Retry the original failed request ────────────
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+      // ── Unblock all queued requests ──────────────────
+      drainQueue(null, newToken);
+      isRefreshing = false;
+
+      return api(originalRequest);
+
+    } catch (refreshError) {
+      // ── Refresh itself failed ────────────────────────
+      drainQueue(refreshError, null);
+      isRefreshing = false;
+
+      // Only force-logout when the server explicitly rejects the refresh
+      // token (401 / 403 / 400).  Network errors are transient — don't
+      // log the user out over a blip.
+      const status = refreshError.response?.status;
+      if (status === 400 || status === 401 || status === 403) {
+        wipeAccessToken();
+        const { logout } = await import('../store/authSlice');
+        if (_store) _store.dispatch(logout());
+        redirectToLogin();
+      }
+
+      return Promise.reject(refreshError);
+    }
   }
 );
 
+// ─────────────────────────────────────────────────────────
+// API endpoint helpers
+// ─────────────────────────────────────────────────────────
 export const authAPI = {
-  // Modified to accept FormData
-  signup: (userData) => {
-    return api.post('/api/auth/signup', userData);
-  },
-  
-  // Login returns the Promise so authSlice can handle the response data
-  login: (credentials) => api.post('/genrate-token', credentials),
-
-  userWantCreateRestaurant: (request) => {
-    return api.post(`/api/auth/user-want-create-restaurant?wantToCreateRestaurant=${request}`);
-  }
+  signup:                (userData)  => api.post('/api/auth/signup', userData),
+  login:                 (creds)     => api.post('/genrate-token', creds),
+  userWantCreateRestaurant: (flag)   => api.post(`/api/auth/user-want-create-restaurant?wantToCreateRestaurant=${flag}`),
+  requestPasswordReset:  (email)     => api.post('/api/auth/request-password-reset', { email }),
+  resetPassword:         (payload)   => api.post('/api/auth/reset-password', payload),
+  logout:                ()          => api.post('/api/auth/logout'), // clears HttpOnly cookie server-side
 };
 
 export const restaurantAPI = {
-    createFirstRestaurant: (formData) => {
-        return api.post('/api/restaurants/create-first', formData);
-    },
-    createOutlet: (parentRestaurantUuid, data) => {
-        return api.post(`/api/restaurants/${parentRestaurantUuid}/outlets`, data);
-    }
+  createFirstRestaurant: (formData)                  => api.post('/api/restaurants/create-first', formData),
+  createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),
 };
 
 export default api;

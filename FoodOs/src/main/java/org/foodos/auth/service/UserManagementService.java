@@ -44,7 +44,7 @@ public class UserManagementService {
 
         // 2️⃣ Fetch restaurant
         Restaurant restaurant = restaurantRepository
-                .findById(request.getRestaurantId())
+                .findByRestaurantUuid(request.getRestaurantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
 
         // 3️⃣ Verify creator has access to this restaurant

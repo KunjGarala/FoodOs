@@ -90,16 +90,27 @@ const Login = () => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        dispatch(login(formData));
+        
+        try {
+            // ✅ Use .unwrap() to get the actual result or throw on rejection
+            await dispatch(login(formData)).unwrap();
+            
+            // ✅ Success! Redux state is updated, useEffect will handle navigation
+            console.log('Login successful');
+            
+        } catch (error) {
+            // ✅ Error is already set in Redux state by login.rejected
+            console.error('Login failed:', error);
+        }
     };
 
     const handleGoogleLogin = () => {
         window.location.href = `${API_BASE_URL}/auth/google/login`;
     };
 
-        return (
+    return (
         <>
             {/* Guest Modal */}
             <Modal
@@ -134,8 +145,7 @@ const Login = () => {
                     </div>
 
                     <Card className="border-slate-200 shadow-xl">
-                        {/* Removed the entire CardHeader section */}
-                        <CardContent className="p-6"> {/* Removed pt-6, use p-6 for consistent padding */}
+                        <CardContent className="p-6">
                             {(error || oauthError) && (
                                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3 text-red-700 text-sm">
                                     <AlertCircle className="h-5 w-5 shrink-0" />
@@ -144,7 +154,6 @@ const Login = () => {
                             )}
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                {/* ... rest of your form remains the same ... */}
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium text-slate-700">Username</label>
                                     <Input
@@ -234,7 +243,6 @@ const Login = () => {
             </div>
         </>
     );
-
 };
 
 export default Login;

@@ -1,11 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { User, Shield, Mail, Phone, MoreHorizontal } from 'lucide-react';
 import { STAFF } from '../../data/mockData';
+import AddEmployee from './AddEmployee';
 
 const StaffManagement = () => {
+  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
+
+  const handleEmployeeCreated = (data) => {
+    console.log('Employee created:', data);
+    // TODO: Refresh staff list or add new employee to state
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
@@ -13,8 +21,14 @@ const StaffManagement = () => {
            <h1 className="text-2xl font-bold text-slate-800">Staff Management</h1>
            <p className="text-slate-500">Manage employees, roles and permissions</p>
         </div>
-        <Button>Add Employee</Button>
+        <Button onClick={() => setIsAddEmployeeOpen(true)}>Add Employee</Button>
       </div>
+
+      <AddEmployee 
+        isOpen={isAddEmployeeOpen} 
+        onClose={() => setIsAddEmployeeOpen(false)}
+        onSuccess={handleEmployeeCreated}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {STAFF.map(staff => (

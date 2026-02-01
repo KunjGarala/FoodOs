@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Controller.GoogleAuthController;
+import org.foodos.auth.dto.Request.ResetPasswordRequest;
 import org.foodos.auth.utils.RestaurantGetUtil;
 import org.foodos.common.emails.EmailService;
 import org.foodos.common.utils.Helper;
@@ -13,10 +14,13 @@ import org.foodos.auth.dto.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.foodos.auth.utils.JwtUtil;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +33,9 @@ public class AuthService {
     private final S3Service s3Service;
     private final JwtUtil jwtUtil;
     private final RestaurantGetUtil restaurantGetUtil;
+
+    @Value("${frontend.port.url}")
+    private String frontendPortUrl;
 
     public UserAuthEntity signup(SignupRequest request, MultipartFile image) {
 
@@ -112,4 +119,28 @@ public class AuthService {
         GoogleAuthController.generateCookie(response, refreshToken);
     }
 
+
+    public void forgotPassword(String email) {
+        UserAuthEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User with email not found"));
+
+        String emailValidationCode = java.util.UUID.randomUUID().toString();
+        user.setEmailVerificationCode(emailValidationCode);
+        String url = frontendPortUrl + "/reset-password?code=" + emailValidationCode;
+        userRepository.save(user);
+        emailService.sendEmail(user.getEmail(), "Forgot Password link", url);
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        UserAuthEntity user = userRepository.findByEmailVerificationCode(request.getToken())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid verification code"));
+
+        if(!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match with each other");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setEmailVerificationCode(null);
+        userRepository.save(user);
+    }
 }

@@ -6,6 +6,7 @@ import lombok.*;
 import org.foodos.restaurant.entity.enums.LicenseType;
 import org.foodos.restaurant.entity.enums.RestaurantType;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -64,7 +65,7 @@ public class UpdateRestaurantRequestDto {
 
     private LicenseType licenseType;
 
-    private LocalDateTime licenseExpiry;
+    private LocalDate licenseExpiry;
 
     /* ================= RESTAURANT CONFIG ================= */
 

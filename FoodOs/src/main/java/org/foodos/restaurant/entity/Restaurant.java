@@ -12,6 +12,7 @@ import org.foodos.restaurant.entity.enums.LicenseType;
 import org.foodos.restaurant.entity.enums.RestaurantType;
 import org.hibernate.annotations.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -87,7 +88,7 @@ public class Restaurant {
     private LicenseType licenseType = LicenseType.TRIAL;
 
     @Column(name = "license_expiry")
-    private LocalDateTime licenseExpiry;
+    private LocalDate licenseExpiry;
 
 
     @Enumerated(EnumType.STRING)
