@@ -7,6 +7,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import CreateRestaurant from './pages/CreateRestaurant';
 import CreateOutlet from './pages/CreateOutlet';
+import RestaurantDetails from './pages/RestaurantDetails';
 import GoogleCallback from './pages/GoogleCallback';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -86,6 +87,12 @@ function App() {
                     <CustomerCRM />
                 </ProtectedRoute>
             } />
+            
+            <Route path="restaurant/:restaurantUuid" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <RestaurantDetails />
+                </ProtectedRoute>
+            } />
           </Route>
 
           {/* ADMIN Routes */}
@@ -96,6 +103,7 @@ function App() {
           }>
              <Route path="restaurants" element={<AdminRestaurants />} />
              <Route path="users" element={<AdminUsers />} />
+             <Route path="restaurant/:restaurantUuid" element={<RestaurantDetails />} />
              <Route path="reports" element={<div className="p-4">Admin Reports</div>} />
              {/* Redirect /admin to /admin/restaurants */}
              <Route index element={<Navigate to="restaurants" replace />} />

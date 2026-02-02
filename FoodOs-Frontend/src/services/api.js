@@ -238,6 +238,12 @@ export const authAPI = {
 export const restaurantAPI = {
   createFirstRestaurant: (formData)                  => api.post('/api/restaurants/create-first', formData),
   createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),
+  getRestaurantDetail:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/detail`),
+};
+
+export const employeeAPI = {
+  getAll: (params) => api.get('/api/restaurants/employees', { params }), // Fixed endpoint based on context, previously was restaurant nested but requirement said /employees
+  update: (userId, data) => api.patch(`/api/users/employee/${userId}`, data),
 };
 
 export default api;

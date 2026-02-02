@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.foodos.auth.dto.Request.EmployeeUpdateRequest;
 import org.foodos.auth.dto.Request.ProfileUpdateDTO;
 import org.foodos.auth.dto.Request.SignupRequest;
 import org.foodos.auth.entity.UserAuthEntity;
@@ -47,5 +48,19 @@ public class UserManagementController {
     ) {
         UserAuthEntity updatedUser = userManagementService.updateProfile(currentUser, request, image);
         return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
+    }
+
+    @PatchMapping(value = "/employee/{userId}")
+    public ResponseEntity<?> updateEmployee(
+            @PathVariable Long userId,
+            @RequestBody @Valid EmployeeUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        UserAuthEntity updatedUser = userManagementService.updateEmployee(userId, request, currentUser);
+        return ResponseEntity.ok(Map.of(
+                "message", "Employee details updated successfully",
+                "userId", updatedUser.getId(),
+                "username", updatedUser.getUsername()
+        ));
     }
 }

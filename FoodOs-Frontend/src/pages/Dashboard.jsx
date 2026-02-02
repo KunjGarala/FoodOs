@@ -65,13 +65,26 @@ const Dashboard = () => {
              {activeRestaurantId && restaurantIds && restaurantIds[0] === activeRestaurantId && (
                  <p className="text-xs text-slate-400">Restaurant ID: {activeRestaurantId}</p>
              )}
-             
-             {/* Create Outlet Button - Only for OWNER with existing restaurants */}
-             {(role === 'OWNER' && restaurantIds && restaurantIds.length > 0 && restaurantIds && restaurantIds[0] === activeRestaurantId ) && (
-                 <Button size="sm" onClick={() => navigate('/create-outlet')}>
-                    Create Outlet
-                 </Button>
-             )}
+
+             <div className="flex items-center gap-2 mt-1">
+                 {/* Restaurant Details Button */}
+                 {activeRestaurantId && (
+                     <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => navigate(`/app/restaurant/${activeRestaurantId}`)}
+                     >
+                        View Details
+                     </Button>
+                 )}
+                 
+                 {/* Create Outlet Button - Only for OWNER with existing restaurants */}
+                 {(role === 'OWNER' && restaurantIds && restaurantIds.length > 0 && restaurantIds && restaurantIds[0] === activeRestaurantId ) && (
+                     <Button size="sm" onClick={() => navigate('/create-outlet')}>
+                        Create Outlet
+                     </Button>
+                 )}
+             </div>
          </div>
       </div>
       

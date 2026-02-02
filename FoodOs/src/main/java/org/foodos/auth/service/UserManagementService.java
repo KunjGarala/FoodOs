@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.foodos.common.utils.S3Service;
 import org.foodos.auth.dto.Request.ProfileUpdateDTO;
 import org.foodos.auth.dto.Request.SignupRequest;
+import org.foodos.auth.dto.Request.EmployeeUpdateRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
@@ -153,5 +154,65 @@ public class UserManagementService {
 
         return userAuthRepository.save(user);
     }
-}
 
+    public UserAuthEntity updateEmployee(Long targetUserId, EmployeeUpdateRequest request, UserAuthEntity currentUserParam) {
+        UserAuthEntity currentUser = userAuthRepository.findById(currentUserParam.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
+
+        UserAuthEntity targetUser = userAuthRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        // Permissions Check
+        if (currentUser.getRole() != UserRole.ADMIN) {
+            boolean sharesRestaurant = false;
+            for (Restaurant r : targetUser.getRestaurants()) {
+                if (currentUser.canAccessRestaurant(r.getId())) {
+                    if (currentUser.getRole() == UserRole.OWNER) {
+                        if (targetUser.getRole() == UserRole.ADMIN || targetUser.getRole() == UserRole.OWNER) {
+                            throw new BusinessException("Owner cannot update this user");
+                        }
+                        sharesRestaurant = true;
+                        break;
+                    }
+
+                    if (currentUser.getRole() == UserRole.MANAGER) {
+                        if (targetUser.getRole() == UserRole.ADMIN || targetUser.getRole() == UserRole.OWNER || targetUser.getRole() == UserRole.MANAGER) {
+                            throw new BusinessException("Manager cannot update this user");
+                        }
+                        sharesRestaurant = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!sharesRestaurant) {
+                throw new BusinessException("You do not have permission to update this user");
+            }
+        }
+
+        // Update Fields
+        if (request.getFullName() != null) targetUser.setFullName(request.getFullName());
+        if (request.getPhoneNumber() != null) targetUser.setPhoneNumber(request.getPhoneNumber());
+        if (request.getEmployeeCode() != null) targetUser.setEmployeeCode(request.getEmployeeCode());
+        if (request.getPin() != null) targetUser.setPin(request.getPin());
+        if (request.getIsActive() != null) targetUser.setIsActive(request.getIsActive());
+
+        if (request.getEmail() != null && !request.getEmail().equals(targetUser.getEmail())) {
+            if (userAuthRepository.existsByEmail(request.getEmail())) {
+                throw new BusinessException("Email already exists");
+            }
+            targetUser.setEmail(request.getEmail());
+        }
+
+        if (request.getRole() != null) {
+            UserRole newRole = UserRole.valueOf(request.getRole());
+            if (targetUser.getRole() != newRole) {
+                validateRoleCreationPermission(currentUser.getRole(), newRole);
+                targetUser.setRole(newRole);
+            }
+        }
+
+        targetUser.setUpdatedByUser(currentUser);
+        return userAuthRepository.save(targetUser);
+    }
+}
