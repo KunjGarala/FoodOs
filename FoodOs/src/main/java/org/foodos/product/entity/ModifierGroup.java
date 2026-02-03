@@ -4,12 +4,25 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.product.entity.enums.SelectionType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
 @Table(name = "modifier_groups") // Table to group modifiers for products e.g. Size, Toppings
+@SQLDelete(sql = "UPDATE modifier_groups SET is_deleted = true WHERE id = ?")
+@FilterDef(
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
+)
+@Filter(
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class ModifierGroup {
@@ -53,6 +66,10 @@ public class ModifierGroup {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     // ===== RELATIONSHIPS =====
 

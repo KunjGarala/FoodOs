@@ -5,6 +5,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.product.entity.enums.DietaryType;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -14,6 +18,15 @@ import java.util.*;
         @Index(name = "idx_sku", columnList = "sku"),
         @Index(name = "idx_name", columnList = "name")
 })
+@SQLDelete(sql = "UPDATE products SET is_deleted = true, deleted_at = now() WHERE id = ?")
+@FilterDef(
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
+)
+@Filter(
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Product {
@@ -105,6 +118,10 @@ public class Product {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @Column(name = "is_featured", nullable = false)
     @Builder.Default

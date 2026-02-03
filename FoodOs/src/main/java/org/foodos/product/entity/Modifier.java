@@ -3,12 +3,25 @@ package org.foodos.product.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
 @Table(name = "modifiers")
+@SQLDelete(sql = "UPDATE modifiers SET is_deleted = true WHERE id = ?")
+@FilterDef(
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
+)
+@Filter(
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Modifier {
@@ -45,6 +58,10 @@ public class Modifier {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @Column(name = "sort_order")
     @Builder.Default
