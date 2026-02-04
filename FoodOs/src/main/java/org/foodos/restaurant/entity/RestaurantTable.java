@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.restaurant.entity.enums.TableStatus;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -14,6 +18,15 @@ import java.util.*;
         @Index(name = "idx_section", columnList = "section_name"),
         @Index(name = "idx_status", columnList = "status")
 })
+@SQLDelete(sql = "UPDATE restaurant_tables SET is_deleted = true WHERE id = ?")
+@FilterDef(
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
+)
+@Filter(
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class RestaurantTable {
@@ -88,6 +101,10 @@ public class RestaurantTable {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @Column(name = "is_merged", nullable = false)
     @Builder.Default

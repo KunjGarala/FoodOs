@@ -93,6 +93,10 @@ public class UserAuthEntity implements UserDetails {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
+
     @Column(name = "is_locked", nullable = false)
     @Builder.Default
     private Boolean isLocked = false;
@@ -231,7 +235,7 @@ public class UserAuthEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return Boolean.TRUE.equals(isActive) && deletedAt == null;
+        return Boolean.TRUE.equals(isActive) && !Boolean.TRUE.equals(isDeleted);
     }
 
     // ===================== SECURITY HELPERS =====================

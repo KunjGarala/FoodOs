@@ -18,14 +18,22 @@ import java.util.*;
 
 @Entity
 @Table(name = "restaurants")
-@SQLDelete(sql = "UPDATE restaurants SET is_active = false, deleted_at = now() WHERE id = ?")
+@SQLDelete(sql = "UPDATE restaurants SET is_deleted = true, deleted_at = now() WHERE id = ?")
+//@FilterDef(
+//        name = "activeFilter",
+//        parameters = @ParamDef(name = "isActive", type = Boolean.class)
+//)
 @FilterDef(
-        name = "activeFilter",
-        parameters = @ParamDef(name = "isActive", type = Boolean.class)
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
 )
+//@Filter(
+//        name = "activeFilter",
+//        condition = "is_active = :isActive"
+//)
 @Filter(
-        name = "activeFilter",
-        condition = "is_active = :isActive"
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
 )
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
@@ -119,6 +127,10 @@ public class Restaurant {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     // ===== RELATIONSHIPS =====
 

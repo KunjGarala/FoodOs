@@ -242,7 +242,7 @@ export const restaurantAPI = {
 };
 
 export const employeeAPI = {
-  getAll: (params) => api.get('/api/restaurants/employees', { params }), // Fixed endpoint based on context, previously was restaurant nested but requirement said /employees
+  getAll: (params) => api.get('/api/restaurants/employees', { params }),
   update: (userId, data) => api.patch(`/api/users/employee/${userId}`, data),
 };
 

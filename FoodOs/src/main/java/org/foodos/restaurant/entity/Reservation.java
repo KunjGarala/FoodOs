@@ -5,6 +5,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.restaurant.entity.enums.ReservationStatus;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -15,6 +19,15 @@ import java.util.*;
         @Index(name = "idx_reservation_date", columnList = "reservation_date"),
         @Index(name = "idx_customer_phone", columnList = "customer_phone")
 })
+@SQLDelete(sql = "UPDATE reservations SET is_deleted = true WHERE id = ?")
+@FilterDef(
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
+)
+@Filter(
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Reservation {
@@ -71,6 +84,10 @@ public class Reservation {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
