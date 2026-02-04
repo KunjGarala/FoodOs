@@ -16,10 +16,6 @@ import java.util.*;
         @Index(name = "idx_sort_order", columnList = "sort_order")
 })
 @SQLDelete(sql = "UPDATE categories SET is_deleted = true WHERE id = ?")
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"

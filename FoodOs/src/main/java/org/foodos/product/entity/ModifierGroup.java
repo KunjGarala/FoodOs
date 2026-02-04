@@ -15,10 +15,6 @@ import java.util.*;
 @Entity
 @Table(name = "modifier_groups") // Table to group modifiers for products e.g. Size, Toppings
 @SQLDelete(sql = "UPDATE modifier_groups SET is_deleted = true WHERE id = ?")
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"

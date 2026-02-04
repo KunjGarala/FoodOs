@@ -19,10 +19,6 @@ import java.util.*;
         @Index(name = "idx_name", columnList = "name")
 })
 @SQLDelete(sql = "UPDATE products SET is_deleted = true, deleted_at = now() WHERE id = ?")
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"

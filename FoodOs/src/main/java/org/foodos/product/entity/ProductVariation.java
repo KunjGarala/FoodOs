@@ -14,10 +14,6 @@ import java.util.*;
 @Entity
 @Table(name = "product_variations")
 @SQLDelete(sql = "UPDATE product_variations SET is_deleted = true WHERE id = ?")
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"

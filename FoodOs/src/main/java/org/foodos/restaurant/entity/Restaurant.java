@@ -23,10 +23,7 @@ import java.util.*;
 //        name = "activeFilter",
 //        parameters = @ParamDef(name = "isActive", type = Boolean.class)
 //)
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
+
 //@Filter(
 //        name = "activeFilter",
 //        condition = "is_active = :isActive"

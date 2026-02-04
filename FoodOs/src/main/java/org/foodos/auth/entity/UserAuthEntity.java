@@ -3,6 +3,10 @@ package org.foodos.auth.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.foodos.restaurant.entity.Restaurant;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
+import org.hibernate.annotations.SQLDelete;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +23,15 @@ import java.util.*;
                 @Index(name = "idx_email", columnList = "email"),
                 @Index(name = "idx_pin", columnList = "pin")
         }
+)
+@SQLDelete(sql = "UPDATE users SET is_deleted = true, deleted_at = now() WHERE id = ?")
+@FilterDef(
+        name = "deletedFilter",
+        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
+)
+@Filter(
+        name = "deletedFilter",
+        condition = "is_deleted = :isDeleted"
 )
 @Getter
 @Setter

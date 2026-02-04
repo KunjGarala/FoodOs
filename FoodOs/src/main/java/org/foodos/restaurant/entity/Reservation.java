@@ -20,10 +20,6 @@ import java.util.*;
         @Index(name = "idx_customer_phone", columnList = "customer_phone")
 })
 @SQLDelete(sql = "UPDATE reservations SET is_deleted = true WHERE id = ?")
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"
