@@ -1,0 +1,37 @@
+package org.foodos.restaurant.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@Schema(description = "Transfer table response")
+public class TransferTableResponseDto {
+
+    @Schema(description = "Order UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String orderId;
+
+    @Schema(description = "Source table number", example = "T10")
+    private String fromTable;
+
+    @Schema(description = "Destination table number", example = "T15")
+    private String toTable;
+
+    @Schema(description = "Source table ID", example = "10")
+    private Long fromTableId;
+
+    @Schema(description = "Destination table ID", example = "15")
+    private Long toTableId;
+
+    @Schema(description = "Timestamp of transfer")
+    private LocalDateTime transferredAt;
+}
