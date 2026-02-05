@@ -113,8 +113,15 @@ const CreateOutlet = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (activeStep !== 4) {
+            return;
+        }
+
         setLoading(true);
         setError(null);
+
+        
 
         if (!parentRestaurantId) {
             setError('Parent restaurant ID not found');
@@ -583,7 +590,11 @@ const CreateOutlet = () => {
                                     {activeStep < steps.length ? (
                                         <Button
                                             type="button"
-                                            onClick={() => setActiveStep(activeStep + 1)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setActiveStep(activeStep + 1);
+                                            }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
                                         >
                                             Next Step
