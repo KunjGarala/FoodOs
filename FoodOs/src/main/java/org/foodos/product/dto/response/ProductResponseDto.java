@@ -11,7 +11,6 @@ import java.util.List;
 @Data
 public class ProductResponseDto {
 
-    private Long id;
     private String productUuid;
     private String restaurantUuid;
     private String restaurantName;

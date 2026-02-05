@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Data
 public class ProductVariationResponseDto {
 
-    private Long id;
     private String variationUuid;
     private String productUuid;
     private String productName;

@@ -47,7 +47,6 @@ public interface ModifierGroupMapper {
                 .filter(m -> !m.getIsDeleted() && m.getIsActive())
                 .map(modifier -> {
                     ModifierResponseDto dto = new ModifierResponseDto();
-                    dto.setId(modifier.getId());
                     dto.setModifierUuid(modifier.getModifierUuid());
                     dto.setModifierGroupUuid(modifier.getModifierGroup().getModifierGroupUuid());
                     dto.setModifierGroupName(modifier.getModifierGroup().getName());

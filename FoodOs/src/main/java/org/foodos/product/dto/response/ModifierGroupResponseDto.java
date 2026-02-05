@@ -9,7 +9,6 @@ import java.util.List;
 @Data
 public class ModifierGroupResponseDto {
 
-    private Long id;
     private String modifierGroupUuid;
     private String restaurantUuid;
     private String restaurantName;

@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Data
 public class ModifierResponseDto {
 
-    private Long id;
     private String modifierUuid;
     private String modifierGroupUuid;
     private String modifierGroupName;

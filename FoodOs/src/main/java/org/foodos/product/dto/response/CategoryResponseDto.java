@@ -24,7 +24,7 @@ public class CategoryResponseDto {
     private String restaurantName;
 
     // Parent category info (for hierarchical structure)
-    private Long parentCategoryUuid;
+    private String parentCategoryUuid;
     private String parentCategoryName;
 
     // Sub-categories (nested structure)
@@ -54,7 +54,6 @@ public class CategoryResponseDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CategorySummaryDto {
-        private Long id;
         private String categoryUuid;
         private String name;
         private String description;
