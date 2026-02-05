@@ -58,7 +58,10 @@ public class RestaurantTable {
     @Builder.Default
     private TableStatus status = TableStatus.VACANT;
 
-    // Current active order on this table
+    // Current active order on this table (UUID until Order module is implemented)
+    @Column(name = "current_order_uuid", length = 36)
+    private String currentOrderUuid;
+
 //    @OneToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "current_order_id")
 //    private Order currentOrder;

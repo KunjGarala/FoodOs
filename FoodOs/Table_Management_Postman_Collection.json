@@ -1,0 +1,301 @@
+{
+  "info": {
+    "name": "FoodOs - Table Management API",
+    "description": "Complete collection of 13 production-grade Table Management APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "FoodOs"
+  },
+  "item": [
+    {
+      "name": "1️⃣ Create Table",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"restaurantId\": 1,\n  \"sectionName\": \"AC Hall\",\n  \"tableNumber\": \"T12\",\n  \"capacity\": 6,\n  \"minCapacity\": 2,\n  \"shape\": \"RECTANGLE\",\n  \"posX\": 420,\n  \"posY\": 180,\n  \"isActive\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables"]
+        },
+        "description": "Creates a new table for a restaurant. Requires MANAGER role."
+      },
+      "response": []
+    },
+    {
+      "name": "2️⃣ Update Table",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sectionName\": \"VIP Area\",\n  \"capacity\": 8,\n  \"minCapacity\": 3,\n  \"posX\": 460,\n  \"posY\": 220,\n  \"shape\": \"OVAL\",\n  \"isActive\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/{{table_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "{{table_id}}"]
+        },
+        "description": "Updates table configuration (not status). Requires MANAGER role."
+      },
+      "response": []
+    },
+    {
+      "name": "3️⃣ Update Table Status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"OCCUPIED\",\n  \"currentOrderId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"waiterId\": 12,\n  \"currentPax\": 4\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/{{table_id}}/status",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "{{table_id}}", "status"]
+        },
+        "description": "Changes table lifecycle status. Requires WAITER role."
+      },
+      "response": []
+    },
+    {
+      "name": "4️⃣ Get Table by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/{{table_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "{{table_id}}"]
+        },
+        "description": "Fetches single table with live status. Requires WAITER role."
+      },
+      "response": []
+    },
+    {
+      "name": "5️⃣ Get All Tables (Paginated)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables?page=0&size=20&status=VACANT",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables"],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "20"
+            },
+            {
+              "key": "status",
+              "value": "VACANT",
+              "description": "Optional: VACANT, OCCUPIED, BILLED, DIRTY, RESERVED"
+            }
+          ]
+        },
+        "description": "Fetches all tables with optional status filter. Requires MANAGER role."
+      },
+      "response": []
+    },
+    {
+      "name": "6️⃣ Get Tables by Restaurant (Floor Plan)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/restaurant/{{restaurant_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "restaurant", "{{restaurant_id}}"]
+        },
+        "description": "Fetches tables for POS floor plan view. Requires WAITER role."
+      },
+      "response": []
+    },
+    {
+      "name": "7️⃣ Get Tables by Restaurant Chain",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/chain/{{parent_restaurant_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "chain", "{{parent_restaurant_id}}"]
+        },
+        "description": "Fetches table summaries for all outlets in a franchise. Requires OWNER role."
+      },
+      "response": []
+    },
+    {
+      "name": "8️⃣ Delete Table (Soft Delete)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/{{table_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "{{table_id}}"]
+        },
+        "description": "Soft deletes a table. Requires MANAGER role."
+      },
+      "response": []
+    },
+    {
+      "name": "9️⃣ Merge Tables",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"parentTableId\": 10,\n  \"childTableIds\": [11, 12]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/merge",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "merge"]
+        },
+        "description": "Combines multiple tables for large party. Requires WAITER role."
+      },
+      "response": []
+    },
+    {
+      "name": "🔟 Transfer Table Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fromTableId\": 10,\n  \"toTableId\": 15\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/transfer",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "transfer"]
+        },
+        "description": "Moves guests and order from one table to another. Requires WAITER role."
+      },
+      "response": []
+    },
+    {
+      "name": "1️⃣1️⃣ Get Table Analytics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/tables/analytics/{{restaurant_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "tables", "analytics", "{{restaurant_id}}"]
+        },
+        "description": "Fetches table utilization analytics. Requires MANAGER role."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "table_id",
+      "value": "45",
+      "type": "string"
+    },
+    {
+      "key": "restaurant_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "parent_restaurant_id",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}
