@@ -18,8 +18,6 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring")
 public interface UserProfileMapper {
 
-    UserProfileMapper INSTANCE = Mappers.getMapper(UserProfileMapper.class);
-
     @Mapping(target = "hasPin" , expression = "java(user.hasPin())")
     @Mapping(target = "primaryRestaurantId", source = "primaryRestaurant.id")
     @Mapping(target = "restaurants", expression = "java(mapRestaurants(user))")

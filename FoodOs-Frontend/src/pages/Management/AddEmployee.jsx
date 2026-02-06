@@ -19,7 +19,7 @@ const AddEmployee = ({ isOpen, onClose, onSuccess }) => {
     restaurantId: activeRestaurantId,
     employeeCode: '',
     pin: '',
-    role: ''
+    role: 'WAITER'
   });
 
   const [image, setImage] = useState(null);
