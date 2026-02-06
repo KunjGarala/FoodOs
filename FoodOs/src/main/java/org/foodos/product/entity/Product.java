@@ -3,14 +3,13 @@ package org.foodos.product.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.product.entity.enums.DietaryType;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
@@ -24,8 +23,8 @@ import java.util.*;
         condition = "is_deleted = :isDeleted"
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-@Builder
-public class Product {
+@SuperBuilder
+public class Product extends BaseSoftDeleteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -115,9 +114,6 @@ public class Product {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
 
     @Column(name = "is_featured", nullable = false)
     @Builder.Default
@@ -166,28 +162,7 @@ public class Product {
     @Builder.Default
     private Long soldCount = 0L; // Total number of units sold
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (productUuid == null) {
-            productUuid = UUID.randomUUID().toString();
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 
     // Helper methods
     public void addVariation(ProductVariation variation) {

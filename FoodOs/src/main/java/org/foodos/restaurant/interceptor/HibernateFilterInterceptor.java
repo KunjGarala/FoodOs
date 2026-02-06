@@ -14,30 +14,30 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @RequiredArgsConstructor
 public class HibernateFilterInterceptor implements HandlerInterceptor {
 
-    private final EntityManager entityManager;
-
-    @Override
-    public boolean preHandle(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Object handler) throws Exception {
-
-        Session session = entityManager.unwrap(Session.class);
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        boolean isAdmin = auth != null && auth.getAuthorities()
-                .stream()
-                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_ADMIN"));
-
-        if(isAdmin){
-            session.disableFilter("activeFilter");
-        }else {
-            session.enableFilter("activeFilter")
-                    .setParameter("isActive", true);
-        }
-
-        return true;
-    }
+//    private final EntityManager entityManager;
+//
+//    @Override
+//    public boolean preHandle(
+//            HttpServletRequest request,
+//            HttpServletResponse response,
+//            Object handler) throws Exception {
+//
+//        Session session = entityManager.unwrap(Session.class);
+//
+//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//
+//        boolean isAdmin = auth != null && auth.getAuthorities()
+//                .stream()
+//                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_ADMIN"));
+//
+//        if(isAdmin){
+//            session.disableFilter("activeFilter");
+//        }else {
+//            session.enableFilter("activeFilter")
+//                    .setParameter("isActive", true);
+//        }
+//
+//        return true;
+//    }
 
 }

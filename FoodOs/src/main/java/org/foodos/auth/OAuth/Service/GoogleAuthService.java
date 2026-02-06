@@ -192,7 +192,7 @@ public class GoogleAuthService {
         String username = base;
         int count = 1;
 
-        while (userAuthRepository.existsByUsername(username)) {
+        while (userAuthRepository.existsByUsernameAndIsDeletedFalse(username)) {
             username = base + count;
             count++;
         }
