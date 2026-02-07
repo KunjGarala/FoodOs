@@ -56,10 +56,10 @@ public class UserManagementService {
         }
 
         // 4️⃣ Check for duplicate username/email
-        if (userAuthRepository.existsByUsername(request.getUsername())) {
+        if (userAuthRepository.existsByUsernameAndIsDeletedFalse(request.getUsername())) {
             throw new BusinessException("Username already exists");
         }
-        if (userAuthRepository.existsByEmail(request.getEmail())) {
+        if (userAuthRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
             throw new BusinessException("Email already exists");
         }
 
@@ -198,7 +198,7 @@ public class UserManagementService {
         if (request.getIsActive() != null) targetUser.setIsActive(request.getIsActive());
 
         if (request.getEmail() != null && !request.getEmail().equals(targetUser.getEmail())) {
-            if (userAuthRepository.existsByEmail(request.getEmail())) {
+            if (userAuthRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
                 throw new BusinessException("Email already exists");
             }
             targetUser.setEmail(request.getEmail());

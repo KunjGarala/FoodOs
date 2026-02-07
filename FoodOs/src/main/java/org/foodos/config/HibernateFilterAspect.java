@@ -20,41 +20,48 @@ public class HibernateFilterAspect {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Around("execution(* org.foodos..service..*(..)) || execution(* org.foodos..repository..*(..))")
+    @Around("execution(* org.springframework.data.jpa.repository.JpaRepository+.*(..))")
     public Object enableFilter(ProceedingJoinPoint joinPoint) throws Throwable {
-        // Prepare session
-        Session session = null;
+
+        Session session;
         try {
             session = entityManager.unwrap(Session.class);
         } catch (Exception e) {
-            // EntityManager might not be available or not a Hibernate session
+            return joinPoint.proceed();
         }
 
-        if (session != null) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAdmin = false;
+        Filter filter = session.getEnabledFilter("deletedFilter");
+        boolean wasEnabled = filter != null;
 
-            if (auth != null && auth.isAuthenticated()) {
-                for (GrantedAuthority authority : auth.getAuthorities()) {
-                    String role = authority.getAuthority();
-                    if (role.equals("ROLE_" + UserRole.ADMIN.name()) ||
-                        role.equals("ROLE_" + UserRole.OWNER.name())) { // Adjust roles as necessary
-                        isAdmin = true;
-                        break;
-                    }
-                }
-            }
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+            boolean isAdmin = auth != null && auth.isAuthenticated()
+                    && auth.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(r ->
+                            r.equals("ROLE_" + UserRole.ADMIN.name()) ||
+                                    r.equals("ROLE_" + UserRole.OWNER.name())
+                    );
 
             if (isAdmin) {
-                if (session.getEnabledFilter("deletedFilter") != null) {
-                    session.disableFilter("deletedFilter");
-                }
+                session.disableFilter("deletedFilter");
             } else {
-                Filter filter = session.enableFilter("deletedFilter");
-                filter.setParameter("isDeleted", false);
+                session.enableFilter("deletedFilter")
+                        .setParameter("isDeleted", false);
+            }
+
+            return joinPoint.proceed();
+        }
+        finally {
+            // restore original state
+            if (wasEnabled) {
+                session.enableFilter("deletedFilter")
+                        .setParameter("isDeleted", false);
+            } else {
+                session.disableFilter("deletedFilter");
             }
         }
-
-        return joinPoint.proceed();
     }
+
 }

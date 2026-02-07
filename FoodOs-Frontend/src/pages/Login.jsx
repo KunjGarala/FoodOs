@@ -61,7 +61,7 @@ const Login = () => {
                 }
             }
         } catch (err) {
-            console.error("Failed to upgrade user", err);
+            console.error("Failed to upgrade user", err.response?.data?.message || err.message || err);
         }
     };
 
@@ -102,7 +102,7 @@ const Login = () => {
             
         } catch (error) {
             // ✅ Error is already set in Redux state by login.rejected
-            console.error('Login failed:', error);
+            console.error('Login failed:', error.response?.data?.message || error.message || error);
         }
     };
 

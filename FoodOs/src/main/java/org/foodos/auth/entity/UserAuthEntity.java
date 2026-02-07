@@ -2,10 +2,10 @@ package org.foodos.auth.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.restaurant.entity.Restaurant;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 import org.hibernate.annotations.SQLDelete;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,10 +25,6 @@ import java.util.*;
         }
 )
 @SQLDelete(sql = "UPDATE users SET is_deleted = true, deleted_at = now() WHERE id = ?")
-@FilterDef(
-        name = "deletedFilter",
-        parameters = @ParamDef(name = "isDeleted", type = Boolean.class)
-)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"
@@ -37,8 +33,8 @@ import java.util.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class UserAuthEntity implements UserDetails {
+@SuperBuilder
+public class UserAuthEntity extends BaseSoftDeleteEntity implements UserDetails {
 
     // ===================== CORE =====================
 
@@ -106,9 +102,6 @@ public class UserAuthEntity implements UserDetails {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
 
     @Column(name = "is_locked", nullable = false)
     @Builder.Default
@@ -170,14 +163,6 @@ public class UserAuthEntity implements UserDetails {
     @JoinColumn(name = "updated_by")
     private UserAuthEntity updatedByUser;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 
     // ===================== RELATIONSHIPS =====================
 
@@ -203,19 +188,7 @@ public class UserAuthEntity implements UserDetails {
 
     // ===================== JPA CALLBACKS =====================
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (userUuid == null) {
-            userUuid = UUID.randomUUID().toString();
-        }
-    }
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 
     // ===================== USER DETAILS =====================
 

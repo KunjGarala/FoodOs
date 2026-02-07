@@ -3,9 +3,10 @@ package org.foodos.restaurant.entity;
 import jakarta.persistence.*;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.product.entity.Category;
 import org.foodos.product.entity.ModifierGroup;
 import org.foodos.restaurant.entity.enums.LicenseType;
@@ -13,35 +14,26 @@ import org.foodos.restaurant.entity.enums.RestaurantType;
 import org.hibernate.annotations.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
 @Table(name = "restaurants")
 @SQLDelete(sql = "UPDATE restaurants SET is_deleted = true, deleted_at = now() WHERE id = ?")
-//@FilterDef(
-//        name = "activeFilter",
-//        parameters = @ParamDef(name = "isActive", type = Boolean.class)
-//)
-
-//@Filter(
-//        name = "activeFilter",
-//        condition = "is_active = :isActive"
-//)
 @Filter(
         name = "deletedFilter",
         condition = "is_deleted = :isDeleted"
 )
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
-@Builder
-public class Restaurant {
+@SuperBuilder
+public class Restaurant extends BaseSoftDeleteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "restaurant_uuid", unique = true, nullable = false, updatable = false)
+    @Builder.Default
     private String restaurantUuid = UUID.randomUUID().toString();
 
     @Column(nullable = false, length = 200)
@@ -125,9 +117,6 @@ public class Restaurant {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
 
     // ===== RELATIONSHIPS =====
 
@@ -167,28 +156,7 @@ public class Restaurant {
     @Builder.Default
     private List<ModifierGroup> modifierGroups = new ArrayList<>();
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (restaurantUuid == null) {
-            restaurantUuid = UUID.randomUUID().toString();
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 
     // Helper methods for bidirectional relationships
 //    public void addUser(User user) {

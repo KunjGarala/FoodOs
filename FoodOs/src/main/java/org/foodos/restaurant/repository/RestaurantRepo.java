@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface RestaurantRepo extends JpaRepository<Restaurant , Long> {
 
-    boolean existsByOwner(UserAuthEntity owner);
+    boolean existsByOwnerAndIsDeletedFalse(UserAuthEntity owner);
 
     Optional<Restaurant> findByRestaurantUuid(String restaurantUuid);
 }

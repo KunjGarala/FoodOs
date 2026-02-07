@@ -2,14 +2,13 @@ package org.foodos.product.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.product.entity.enums.SelectionType;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
@@ -20,8 +19,8 @@ import java.util.*;
         condition = "is_deleted = :isDeleted"
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-@Builder
-public class ModifierGroup {
+@SuperBuilder
+public class ModifierGroup extends BaseSoftDeleteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,10 +62,6 @@ public class ModifierGroup {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
-
     // ===== RELATIONSHIPS =====
 
     // Modifiers in this group
@@ -79,16 +74,6 @@ public class ModifierGroup {
     @Builder.Default
     private Set<Product> products = new HashSet<>();
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (modifierGroupUuid == null) {
-            modifierGroupUuid = UUID.randomUUID().toString();
-        }
-    }
 
     // Helper methods
     public void addModifier(Modifier modifier) {

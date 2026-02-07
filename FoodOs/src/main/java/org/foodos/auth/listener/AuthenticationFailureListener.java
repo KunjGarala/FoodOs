@@ -28,7 +28,7 @@ public class AuthenticationFailureListener {
             return;
         }
 
-        userRepository.findByUsernameAndDeletedAtIsNull(username)
+        userRepository.findByUsername(username)
                 .ifPresentOrElse(
                         user -> handleFailure(user, event),
                         () -> log.warn("Authentication failed for non-existing user: {}", username)
