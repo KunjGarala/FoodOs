@@ -255,7 +255,7 @@ public class RestaurantTableService {
      */
     @Transactional(readOnly = true)
     public List<TableFloorPlanDto> getTablesByRestaurant(String restaurantUuid) {
-        log.info("Fetching tables for restaurant UUID: {} (Floor plan view)", restaurantUuid);
+        log.info("Fetching active tables for restaurant UUID: {} (Floor plan view)", restaurantUuid);
 
         Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() -> {
@@ -265,7 +265,7 @@ public class RestaurantTableService {
 
         List<RestaurantTable> tables = tableRepository.findByRestaurantUuidForFloorPlan(restaurantUuid);
 
-        log.info("Fetched {} tables for restaurant {}", tables.size(), restaurant.getName());
+        log.info("Fetched {} active tables for restaurant {}", tables.size(), restaurant.getName());
 
         return tables.stream()
                 .map(tableMapper::toFloorPlanDto)
@@ -496,11 +496,15 @@ public class RestaurantTableService {
                 });
 
         List<RestaurantTable> allTables = tableRepository.findAllByRestaurantAndIsDeletedFalse(restaurant);
+        // Filter only active tables for analytics
+        List<RestaurantTable> activeTables = allTables.stream()
+                .filter(t -> Boolean.TRUE.equals(t.getIsActive()))
+                .collect(Collectors.toList());
         List<RestaurantTable> occupiedTables = tableRepository.findOccupiedTablesByRestaurantUuid(restaurantUuid);
 
-        // Calculate metrics
-        double occupancyRate = allTables.isEmpty() ? 0.0 :
-                (occupiedTables.size() * 100.0) / allTables.size();
+        // Calculate metrics (using only active tables)
+        double occupancyRate = activeTables.isEmpty() ? 0.0 :
+                (occupiedTables.size() * 100.0) / activeTables.size();
 
         // Calculate average turn time for currently occupied tables
         double avgTurnTime = occupiedTables.stream()
@@ -510,7 +514,7 @@ public class RestaurantTableService {
                 .orElse(0.0);
 
         // Find most used table (simplified - in production, use historical data)
-        String mostUsedTable = allTables.stream()
+        String mostUsedTable = activeTables.stream()
                 .filter(t -> t.getStatus() == TableStatus.OCCUPIED)
                 .findFirst()
                 .map(RestaurantTable::getTableNumber)
@@ -632,6 +636,7 @@ public class RestaurantTableService {
 
                     // If no more children, unmerge parent too
                     if (updatedMergedIds.isEmpty()) {
+                        parentTable.setIsActive(true);
                         parentTable.setIsMerged(false);
                     }
 
