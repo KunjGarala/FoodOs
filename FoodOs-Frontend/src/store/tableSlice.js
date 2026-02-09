@@ -2,6 +2,19 @@ import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit'
 import { tableAPI } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────
+
+// Valid status transitions matching backend validation
+export const VALID_STATUS_TRANSITIONS = {
+  VACANT: ['OCCUPIED', 'RESERVED'],
+  OCCUPIED: ['BILLED', 'VACANT'],
+  BILLED: ['DIRTY', 'VACANT'],
+  DIRTY: ['VACANT'],
+  RESERVED: ['OCCUPIED', 'VACANT'],
+};
+
+// ─────────────────────────────────────────────────────────
 // Async Thunks for Table Management
 // ─────────────────────────────────────────────────────────
 
@@ -227,11 +240,14 @@ const tableSlice = createSlice({
     // Optimistic update for table status (for better UX)
     optimisticUpdateTableStatus: (state, action) => {
       const { tableUuid, status } = action.payload;
-      const table = state.tables.find(t => t.uuid === tableUuid);
+      const table = state.tables.find(t => t.tableUuid === tableUuid);
       if (table) {
         table.status = status;
       }
     },
+
+    // Reset all tables state
+    resetTablesState: () => initialState,
   },
 
   extraReducers: (builder) => {
@@ -257,11 +273,11 @@ const tableSlice = createSlice({
       })
       .addCase(updateTable.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const index = state.tables.findIndex(t => t.uuid === action.payload.uuid);
+        const index = state.tables.findIndex(t => t.tableUuid === action.payload.tableUuid);
         if (index !== -1) {
           state.tables[index] = action.payload;
         }
-        if (state.selectedTable?.uuid === action.payload.uuid) {
+        if (state.selectedTable?.tableUuid === action.payload.tableUuid) {
           state.selectedTable = action.payload;
         }
       })
@@ -277,9 +293,12 @@ const tableSlice = createSlice({
       })
       .addCase(updateTableStatus.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const index = state.tables.findIndex(t => t.uuid === action.payload.uuid);
+        const index = state.tables.findIndex(t => t.tableUuid === action.payload.tableUuid);
         if (index !== -1) {
           state.tables[index] = action.payload;
+        }
+        if (state.selectedTable?.tableUuid === action.payload.tableUuid) {
+          state.selectedTable = action.payload;
         }
       })
       .addCase(updateTableStatus.rejected, (state, action) => {
@@ -358,7 +377,12 @@ const tableSlice = createSlice({
       })
       .addCase(deleteTable.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.tables = state.tables.filter(t => t.uuid !== action.payload);
+        // action.payload contains the deleted tableUuid
+        state.tables = state.tables.filter(t => t.tableUuid !== action.payload);
+        // Clear selected table if it was deleted
+        if (state.selectedTable?.tableUuid === action.payload) {
+          state.selectedTable = null;
+        }
       })
       .addCase(deleteTable.rejected, (state, action) => {
         state.actionLoading = false;
@@ -374,10 +398,19 @@ const tableSlice = createSlice({
         state.actionLoading = false;
         // The response contains the updated parent table and child tables
         if (action.payload.parentTable) {
-          const index = state.tables.findIndex(t => t.uuid === action.payload.parentTable.uuid);
+          const index = state.tables.findIndex(t => t.tableUuid === action.payload.parentTable.tableUuid);
           if (index !== -1) {
             state.tables[index] = action.payload.parentTable;
           }
+        }
+        // Update child tables if provided
+        if (action.payload.childTables) {
+          action.payload.childTables.forEach(childTable => {
+            const childIndex = state.tables.findIndex(t => t.tableUuid === childTable.tableUuid);
+            if (childIndex !== -1) {
+              state.tables[childIndex] = childTable;
+            }
+          });
         }
       })
       .addCase(mergeTables.rejected, (state, action) => {
@@ -394,11 +427,11 @@ const tableSlice = createSlice({
         state.actionLoading = false;
         // Update both source and destination tables
         if (action.payload.fromTable) {
-          const fromIndex = state.tables.findIndex(t => t.uuid === action.payload.fromTable.uuid);
+          const fromIndex = state.tables.findIndex(t => t.tableUuid === action.payload.fromTable.tableUuid);
           if (fromIndex !== -1) state.tables[fromIndex] = action.payload.fromTable;
         }
         if (action.payload.toTable) {
-          const toIndex = state.tables.findIndex(t => t.uuid === action.payload.toTable.uuid);
+          const toIndex = state.tables.findIndex(t => t.tableUuid === action.payload.toTable.tableUuid);
           if (toIndex !== -1) state.tables[toIndex] = action.payload.toTable;
         }
       })
@@ -433,6 +466,7 @@ export const {
   setSectionFilter,
   clearSelectedTable,
   optimisticUpdateTableStatus,
+  resetTablesState,
 } = tableSlice.actions;
 
 // Selectors
@@ -472,6 +506,41 @@ export const selectTablesByStatus = createSelector(
     dirty: tables.filter(t => t.status === 'DIRTY').length,
     reserved: tables.filter(t => t.status === 'RESERVED').length,
   })
+);
+
+// ─────────────────────────────────────────────────────────
+// Validation Helpers
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Get valid next statuses for a given current status
+ * @param {string} currentStatus - Current table status
+ * @returns {Array<string>} Array of valid next statuses
+ */
+export const getValidNextStatuses = (currentStatus) => {
+  return VALID_STATUS_TRANSITIONS[currentStatus] || [];
+};
+
+/**
+ * Check if status transition is valid
+ * @param {string} currentStatus - Current table status
+ * @param {string} newStatus - Desired new status
+ * @returns {boolean} Whether transition is valid
+ */
+export const isValidStatusTransition = (currentStatus, newStatus) => {
+  const validStatuses = VALID_STATUS_TRANSITIONS[currentStatus] || [];
+  return validStatuses.includes(newStatus);
+};
+
+/**
+ * Selector to get valid next statuses for selected table
+ */
+export const selectValidNextStatuses = createSelector(
+  [selectSelectedTable],
+  (selectedTable) => {
+    if (!selectedTable || !selectedTable.status) return [];
+    return getValidNextStatuses(selectedTable.status);
+  }
 );
 
 export default tableSlice.reducer;

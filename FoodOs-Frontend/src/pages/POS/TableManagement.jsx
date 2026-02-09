@@ -7,22 +7,23 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { 
   Users, Clock, Plus, Edit, Trash2, Shuffle, ArrowRightLeft, BarChart3,
-  AlertCircle, X, Check, Loader2
+  AlertCircle, X, Check, Loader2, Power
 } from 'lucide-react';
 import {
-  getTablesByRestaurant, createTable, updateTable, updateTableStatus, deleteTable,
+  getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
   mergeTables, transferTable, getTableAnalytics, clearError, setStatusFilter,
   setSectionFilter, selectFilteredTables, selectTablesByStatus, selectTableLoading,
   selectTableActionLoading, selectTableError, selectTableFilters, selectTableAnalytics,
+  selectTablePagination, getValidNextStatuses, isValidStatusTransition,
 } from '../../store/tableSlice';
-import { selectActiveRestaurant } from '../../store/authSlice';
+import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
 
 const TABLE_SHAPES = ['RECTANGLE', 'ROUND', 'SQUARE', 'OVAL'];
-const TABLE_STATUSES = ['VACANT', 'OCCUPIED', 'BILLED', 'DIRTY', 'RESERVED'];
 
 const TableManagement = () => {
   const dispatch = useDispatch();
   const activeRestaurantId = useSelector(selectActiveRestaurant);
+  const userRole = useSelector(selectRole);
   const tables = useSelector(selectFilteredTables);
   const tablesByStatus = useSelector(selectTablesByStatus);
   const loading = useSelector(selectTableLoading);
@@ -30,6 +31,10 @@ const TableManagement = () => {
   const error = useSelector(selectTableError);
   const filters = useSelector(selectTableFilters);
   const analytics = useSelector(selectTableAnalytics);
+  const pagination = useSelector(selectTablePagination);
+
+  // Determine if user has manager-level access (MANAGER, OWNER, ADMIN)
+  const hasManagerAccess = ['MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -50,12 +55,24 @@ const TableManagement = () => {
 
   const [mergeForm, setMergeForm] = useState({ parentTableUuid: '', childTableUuids: [] });
   const [transferForm, setTransferForm] = useState({ fromTableUuid: '', toTableUuid: '' });
+  const [validStatuses, setValidStatuses] = useState([]);
 
   const sections = ['All', ...new Set(tables.map(t => t.sectionName).filter(Boolean))];
 
+  // Fetch tables based on user role
   useEffect(() => {
-    if (activeRestaurantId) dispatch(getTablesByRestaurant(activeRestaurantId));
-  }, [activeRestaurantId, dispatch]);
+    if (hasManagerAccess) {
+      // MANAGER/OWNER/ADMIN: Fetch all tables with pagination
+      dispatch(getAllTables({ 
+        page: pagination.page, 
+        size: pagination.size, 
+        status: filters.status 
+      }));
+    } else if (activeRestaurantId) {
+      // WAITER: Fetch only restaurant-specific tables
+      dispatch(getTablesByRestaurant(activeRestaurantId));
+    }
+  }, [activeRestaurantId, dispatch, hasManagerAccess, pagination.page, pagination.size, filters.status]);
 
   useEffect(() => {
     if (error) {
@@ -77,6 +94,10 @@ const TableManagement = () => {
   const getStatusBadgeVariant = (status) => {
     const variants = { OCCUPIED: 'warning', BILLED: 'success', DIRTY: 'error', RESERVED: 'info' };
     return variants[status] || 'default';
+  };
+
+  const getInactiveTableStyle = () => {
+    return 'bg-slate-100 border-slate-300 text-slate-400 opacity-60 cursor-not-allowed';
   };
 
   const handleCreateTable = async () => {
@@ -110,6 +131,12 @@ const TableManagement = () => {
         console.error('No table UUID available in statusForm:', statusForm);
         alert('Error: Unable to update table status. Table ID is missing.');
         return;
+
+      // Validate status transition
+      if (selectedTable && !isValidStatusTransition(selectedTable.status, statusData.status)) {
+        alert(`Invalid status transition from ${selectedTable.status} to ${statusData.status}`);
+        return;
+      }
       }
       
       await dispatch(updateTableStatus({ tableUuid, statusData })).unwrap();
@@ -127,6 +154,20 @@ const TableManagement = () => {
         await dispatch(deleteTable(tableUuid)).unwrap();
       } catch (err) {
         console.error('Delete failed:', err);
+      }
+    }
+  };
+
+  const handleToggleTableActive = async (table) => {
+    const action = table.isActive ? 'deactivate' : 'activate';
+    if (window.confirm(`Are you sure you want to ${action} table ${table.tableNumber}?`)) {
+      try {
+        await dispatch(updateTable({ 
+          tableUuid: table.tableUuid, 
+          data: { isActive: !table.isActive } 
+        })).unwrap();
+      } catch (err) {
+        console.error('Toggle active status failed:', err);
       }
     }
   };
@@ -161,6 +202,12 @@ const TableManagement = () => {
   };
 
   const openEditModal = (table) => {
+    // Prevent editing inactive tables
+    if (table.isActive === false) {
+      alert('Cannot edit inactive table. Please activate it first.');
+      return;
+    }
+    
     setSelectedTable(table);
     setTableForm({
       sectionName: table.sectionName || '', tableNumber: table.tableNumber || '',
@@ -176,7 +223,13 @@ const TableManagement = () => {
       console.error('No table provided to openStatusModal');
       return;
     }
-    debugger;
+
+    // Prevent opening modal for inactive tables
+    if (table.isActive === false) {
+      console.log('Cannot modify inactive table:', table.tableNumber);
+      return;
+    }
+    
     if (!table.tableUuid) {
       console.error('Table UUID is missing:', table);
       alert('Error: Table UUID is missing. Please refresh and try again.');
@@ -185,10 +238,14 @@ const TableManagement = () => {
     
     console.log('Opening modal for table:', table.tableNumber, 'UUID:', table.tableUuid);
     
+    // Calculate valid next statuses based on current status
+    const validNextStatuses = getValidNextStatuses(table.status);
+    setValidStatuses(validNextStatuses);
+    
     // Set all state updates - React 18 batches these automatically
     setSelectedTable(table);
     setStatusForm({
-      status: table.status || 'VACANT', 
+      status: validNextStatuses.length > 0 ? validNextStatuses[0] : table.status,
       currentOrderId: table.currentOrderId || '',
       waiterUuid: table.waiterUuid || '', 
       currentPax: table.currentPax || 0,
@@ -214,7 +271,14 @@ const TableManagement = () => {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800">Floor Plan</h1>
-              <p className="text-slate-500">Manage tables and seating</p>
+              <div className="flex items-center gap-2">
+                <p className="text-slate-500">Manage tables and seating</p>
+                {hasManagerAccess && (
+                  <Badge variant="info" size="sm">
+                    {userRole} View - All Restaurants
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleViewAnalytics} disabled={loading}>
@@ -276,30 +340,69 @@ const TableManagement = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-              {tables.map(table => (
+              {tables.map(table => {
+                const isInactive = table.isActive === false;
+                return (
                 <div key={table.tableUuid}
-                  className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center cursor-pointer transition-all hover:shadow-md group ${getStatusColor(table.status)}`}
-                  onClick={() => openStatusModal(table)}>
+                  className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all group ${
+                    isInactive 
+                      ? getInactiveTableStyle() 
+                      : `cursor-pointer hover:shadow-md ${getStatusColor(table.status)}`
+                  }`}
+                  onClick={isInactive ? undefined : () => openStatusModal(table)}>
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); openEditModal(table); }}
-                      className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white shadow-sm">
-                      <Edit className="h-3.5 w-3.5 text-slate-700" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteTable(table.tableUuid); }}
-                      className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white shadow-sm">
-                      <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                    {!isInactive && (
+                      <>
+                        <button onClick={(e) => { e.stopPropagation(); openEditModal(table); }}
+                          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white shadow-sm">
+                          <Edit className="h-3.5 w-3.5 text-slate-700" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteTable(table.tableUuid); }}
+                          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white shadow-sm">
+                          <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                        </button>
+                      </>
+                    )}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleToggleTableActive(table); }}
+                      className={`p-1.5 backdrop-blur-sm rounded-lg shadow-sm ${
+                        isInactive 
+                          ? 'bg-green-500/90 hover:bg-green-600 text-white' 
+                          : 'bg-white/90 hover:bg-white text-slate-700'
+                      }`}
+                      title={isInactive ? 'Activate table' : 'Deactivate table'}
+                    >
+                      <Power className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <div className="absolute top-2 left-2">
-                    <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
+                    {isInactive ? (
+                      <Badge variant="default" size="sm" className="bg-slate-400 text-white">INACTIVE</Badge>
+                    ) : (
+                      <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
+                    )}
                   </div>
-                  <span className="text-2xl font-bold">{table.tableNumber}</span>
+                  {hasManagerAccess && table.restaurantName && (
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <div className={`backdrop-blur-sm rounded px-2 py-1 text-xs font-medium truncate ${
+                        isInactive ? 'bg-slate-400/75 text-slate-200' : 'bg-slate-900/75 text-white'
+                      }`}>
+                        {table.restaurantName}
+                      </div>
+                    </div>
+                  )}
+                  <span className={`text-2xl font-bold ${isInactive ? 'line-through' : ''}`}>{table.tableNumber}</span>
                   <div className="flex items-center gap-1 mt-2 text-sm font-medium opacity-80">
                     <Users className="h-4 w-4" />
                     <span>{table.capacity} Seats</span>
                   </div>
                   {table.sectionName && <span className="text-xs opacity-60 mt-1">{table.sectionName}</span>}
-                  {(table.status === 'OCCUPIED' || table.status === 'BILLED') && (
+                  {isInactive && (
+                    <div className="mt-2 text-xs font-medium text-slate-500">
+                      Not Available
+                    </div>
+                  )}
+                  {!isInactive && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
                     <div className="absolute bottom-4 left-0 right-0 px-4 text-center">
                       {table.currentPax > 0 && (
                         <div className="bg-white/90 backdrop-blur-sm rounded-lg py-1 px-2 text-xs font-semibold shadow-sm mb-1">
@@ -315,10 +418,76 @@ const TableManagement = () => {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+
+        {/* Pagination Controls for Manager/Owner/Admin */}
+        {hasManagerAccess && pagination.totalPages > 1 && (
+          <div className="border-t border-slate-200 p-4 bg-white">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-600">
+                Showing {pagination.page * pagination.size + 1} to{' '}
+                {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of{' '}
+                {pagination.totalElements} tables
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => dispatch(getAllTables({ 
+                    page: pagination.page - 1, 
+                    size: pagination.size, 
+                    status: filters.status 
+                  }))}
+                  disabled={pagination.page === 0 || loading}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    const pageNum = pagination.page < 3 ? i : 
+                                   pagination.page >= pagination.totalPages - 3 ? 
+                                   pagination.totalPages - 5 + i : 
+                                   pagination.page - 2 + i;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => dispatch(getAllTables({ 
+                          page: pageNum, 
+                          size: pagination.size, 
+                          status: filters.status 
+                        }))}
+                        disabled={loading}
+                        className={`min-w-[2rem] h-8 px-2 text-sm rounded ${
+                          pagination.page === pageNum
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => dispatch(getAllTables({ 
+                    page: pagination.page + 1, 
+                    size: pagination.size, 
+                    status: filters.status 
+                  }))}
+                  disabled={pagination.page >= pagination.totalPages - 1 || loading}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Card className="w-80 h-full bg-white hidden lg:flex lg:flex-col">
@@ -433,11 +602,35 @@ const TableManagement = () => {
       <Modal isOpen={showStatusModal} onClose={() => { setShowStatusModal(false); setSelectedTable(null); resetStatusForm(); }}
         title={`Update Status - ${statusForm.tableNumber || 'Table'}`}>
         <div className="space-y-4">
+          {selectedTable && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Current Status:</span> {selectedTable.status}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Valid transitions: {validStatuses.length > 0 ? validStatuses.join(', ') : 'None available'}
+              </p>
+            </div>
+          )}
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">Status *</label>
-            <select id="status" name="status" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={statusForm.status} onChange={(e) => setStatusForm({ ...statusForm, status: e.target.value })}>
-              {TABLE_STATUSES.map(status => (<option key={status} value={status}>{status}</option>))}
+            <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">
+              New Status * {validStatuses.length === 0 && <span className="text-red-600 text-xs">(No valid transitions available)</span>}
+            </label>
+            <select 
+              id="status" 
+              name="status" 
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+              value={statusForm.status} 
+              onChange={(e) => setStatusForm({ ...statusForm, status: e.target.value })}
+              disabled={validStatuses.length === 0}
+            >
+              {validStatuses.length === 0 ? (
+                <option value={selectedTable?.status}>{selectedTable?.status} (No changes allowed)</option>
+              ) : (
+                validStatuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))
+              )}
             </select>
           </div>
           {(statusForm.status === 'OCCUPIED' || statusForm.status === 'BILLED') && (
@@ -462,9 +655,18 @@ const TableManagement = () => {
             </>
           )}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => { setShowStatusModal(false); setSelectedTable(null); resetStatusForm(); }}>Cancel</Button>
-            <Button onClick={handleUpdateStatus} disabled={actionLoading}>
-              {actionLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</> : <><Check className="h-4 w-4 mr-2" />Update Status</>}
+            <Button variant="outline" onClick={() => { setShowStatusModal(false); setSelectedTable(null); resetStatusForm(); }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateStatus} 
+              disabled={actionLoading || validStatuses.length === 0}
+            >
+              {actionLoading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Updating...</>
+              ) : (
+                <><Check className="h-4 w-4 mr-2" />Update Status</>
+              )}
             </Button>
           </div>
         </div>
