@@ -81,15 +81,15 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
-    @PutMapping("/{tableId}")
+    @PutMapping("/{tableUuid}")
     public ResponseEntity<TableResponseDto> updateTable(
-            @Parameter(description = "Table ID", required = true, example = "45")
-            @PathVariable Long tableId,
+            @Parameter(description = "Table UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String tableUuid,
             @Valid @RequestBody UpdateTableRequestDto requestDto,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
-        log.info("PUT /api/v1/tables/{} - Update table request by user: {}", tableId, currentUser.getUsername());
-        TableResponseDto response = tableService.updateTable(tableId, requestDto, currentUser);
+        log.info("PUT /api/v1/tables/{} - Update table request by user: {}", tableUuid, currentUser.getUsername());
+        TableResponseDto response = tableService.updateTable(tableUuid, requestDto, currentUser);
         return ResponseEntity.ok(response);
     }
 
@@ -111,16 +111,16 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
-    @PatchMapping("/{tableId}/status")
+    @PatchMapping("/{tableUuid}/status")
     public ResponseEntity<TableStatusResponseDto> updateTableStatus(
-            @Parameter(description = "Table ID", required = true, example = "45")
-            @PathVariable Long tableId,
+            @Parameter(description = "Table UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String tableUuid,
             @Valid @RequestBody UpdateTableStatusRequestDto requestDto,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         log.info("PATCH /api/v1/tables/{}/status - Update status to {} by user: {}",
-                tableId, requestDto.getStatus(), currentUser.getUsername());
-        TableStatusResponseDto response = tableService.updateTableStatus(tableId, requestDto, currentUser);
+                tableUuid, requestDto.getStatus(), currentUser.getUsername());
+        TableStatusResponseDto response = tableService.updateTableStatus(tableUuid, requestDto, currentUser);
         return ResponseEntity.ok(response);
     }
 
@@ -141,14 +141,14 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
-    @GetMapping("/{tableId}")
+    @GetMapping("/{tableUuid}")
     public ResponseEntity<TableResponseDto> getTableById(
-            @Parameter(description = "Table ID", required = true, example = "45")
-            @PathVariable Long tableId,
+            @Parameter(description = "Table UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String tableUuid,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
-        log.info("GET /api/v1/tables/{} - Fetch table by user: {}", tableId, currentUser.getUsername());
-        TableResponseDto response = tableService.getTableById(tableId);
+        log.info("GET /api/v1/tables/{} - Fetch table by user: {}", tableUuid, currentUser.getUsername());
+        TableResponseDto response = tableService.getTableById(tableUuid);
         return ResponseEntity.ok(response);
     }
 
@@ -202,15 +202,15 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
-    @GetMapping("/restaurant/{restaurantId}")
+    @GetMapping("/restaurant/{restaurantUuid}")
     public ResponseEntity<List<TableFloorPlanDto>> getTablesByRestaurant(
-            @Parameter(description = "Restaurant ID", required = true, example = "1")
-            @PathVariable Long restaurantId,
+            @Parameter(description = "Restaurant UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String restaurantUuid,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         log.info("GET /api/v1/tables/restaurant/{} - Fetch floor plan by user: {}",
-                restaurantId, currentUser.getUsername());
-        List<TableFloorPlanDto> response = tableService.getTablesByRestaurant(restaurantId);
+                restaurantUuid, currentUser.getUsername());
+        List<TableFloorPlanDto> response = tableService.getTablesByRestaurant(restaurantUuid);
         return ResponseEntity.ok(response);
     }
 
@@ -232,15 +232,15 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'OWNER')")
-    @GetMapping("/chain/{parentRestaurantId}")
+    @GetMapping("/chain/{parentRestaurantUuid}")
     public ResponseEntity<List<RestaurantChainTablesSummaryDto>> getTablesByRestaurantChain(
-            @Parameter(description = "Parent restaurant ID", required = true, example = "1")
-            @PathVariable Long parentRestaurantId,
+            @Parameter(description = "Parent restaurant UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String parentRestaurantUuid,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         log.info("GET /api/v1/tables/chain/{} - Fetch chain summary by user: {}",
-                parentRestaurantId, currentUser.getUsername());
-        List<RestaurantChainTablesSummaryDto> response = tableService.getTablesByRestaurantChain(parentRestaurantId);
+                parentRestaurantUuid, currentUser.getUsername());
+        List<RestaurantChainTablesSummaryDto> response = tableService.getTablesByRestaurantChain(parentRestaurantUuid);
         return ResponseEntity.ok(response);
     }
 
@@ -258,14 +258,14 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
-    @DeleteMapping("/{tableId}")
+    @DeleteMapping("/{tableUuid}")
     public ResponseEntity<Void> deleteTable(
-            @Parameter(description = "Table ID", required = true, example = "45")
-            @PathVariable Long tableId,
+            @Parameter(description = "Table UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String tableUuid,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
-        log.info("DELETE /api/v1/tables/{} - Delete table by user: {}", tableId, currentUser.getUsername());
-        tableService.deleteTable(tableId, currentUser);
+        log.info("DELETE /api/v1/tables/{} - Delete table by user: {}", tableUuid, currentUser.getUsername());
+        tableService.deleteTable(tableUuid, currentUser);
         return ResponseEntity.noContent().build();
     }
 
@@ -342,15 +342,15 @@ public class RestaurantTableController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
-    @GetMapping("/analytics/{restaurantId}")
+    @GetMapping("/analytics/{restaurantUuid}")
     public ResponseEntity<TableAnalyticsDto> getTableAnalytics(
-            @Parameter(description = "Restaurant ID", required = true, example = "1")
-            @PathVariable Long restaurantId,
+            @Parameter(description = "Restaurant UUID", required = true, example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String restaurantUuid,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
         log.info("GET /api/v1/tables/analytics/{} - Fetch analytics by user: {}",
-                restaurantId, currentUser.getUsername());
-        TableAnalyticsDto response = tableService.getTableAnalytics(restaurantId);
+                restaurantUuid, currentUser.getUsername());
+        TableAnalyticsDto response = tableService.getTableAnalytics(restaurantUuid);
         return ResponseEntity.ok(response);
     }
 }

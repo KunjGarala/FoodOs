@@ -30,6 +30,18 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
 
     Page<RestaurantTable> findAllByStatusAndIsDeletedFalse(TableStatus status, Pageable pageable);
 
+    @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.isDeleted = false")
+    List<RestaurantTable> findByRestaurantUuidForFloorPlan(@Param("restaurantUuid") String restaurantUuid);
+
+    @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.parentRestaurant.restaurantUuid = :parentRestaurantUuid AND t.isDeleted = false")
+    List<RestaurantTable> findByParentRestaurantUuid(@Param("parentRestaurantUuid") String parentRestaurantUuid);
+
+    @Query("SELECT COUNT(t) FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.status = :status AND t.isDeleted = false")
+    Integer countByRestaurantUuidAndStatus(@Param("restaurantUuid") String restaurantUuid, @Param("status") TableStatus status);
+
+    @Query("SELECT COUNT(t) FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.isDeleted = false")
+    Integer countByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid);
+
     @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.id = :restaurantId AND t.isDeleted = false")
     List<RestaurantTable> findByRestaurantIdForFloorPlan(@Param("restaurantId") Long restaurantId);
 
@@ -44,6 +56,8 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
 
     List<RestaurantTable> findAllByIdInAndIsDeletedFalse(List<Long> ids);
 
-    @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.id = :restaurantId AND t.status = 'OCCUPIED' AND t.isDeleted = false")
-    List<RestaurantTable> findOccupiedTablesByRestaurant(@Param("restaurantId") Long restaurantId);
+    List<RestaurantTable> findAllByTableUuidInAndIsDeletedFalse(List<String> tableUuids);
+
+    @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.status = 'OCCUPIED' AND t.isDeleted = false")
+    List<RestaurantTable> findOccupiedTablesByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid);
 }

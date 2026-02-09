@@ -42,10 +42,10 @@ public class RestaurantTableService {
         log.info("Creating new table. Request: {}, User: {}", requestDto, currentUser.getUsername());
 
         // Validate restaurant exists
-        Restaurant restaurant = restaurantRepo.findById(requestDto.getRestaurantId())
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(requestDto.getRestaurantUuid())
                 .orElseThrow(() -> {
-                    log.error("Restaurant not found with ID: {}", requestDto.getRestaurantId());
-                    return new ResourceNotFoundException("Restaurant not found with ID: " + requestDto.getRestaurantId());
+                    log.error("Restaurant not found with UUID: {}", requestDto.getRestaurantUuid());
+                    return new ResourceNotFoundException("Restaurant not found with UUID: " + requestDto.getRestaurantUuid());
                 });
 
         // Validate table number uniqueness per restaurant
@@ -82,20 +82,20 @@ public class RestaurantTableService {
      * 2️⃣ Update table details (not status)
      */
     @Transactional
-    public TableResponseDto updateTable(Long tableId, UpdateTableRequestDto requestDto, UserAuthEntity currentUser) {
-        log.info("Updating table {}. Request: {}, User: {}", tableId, requestDto, currentUser.getUsername());
+    public TableResponseDto updateTable(String tableUuid, UpdateTableRequestDto requestDto, UserAuthEntity currentUser) {
+        log.info("Updating table {}. Request: {}, User: {}", tableUuid, requestDto, currentUser.getUsername());
 
-        RestaurantTable table = tableRepository.findByIdAndIsDeletedFalse(tableId)
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> {
-                    log.error("Table not found with ID: {}", tableId);
-                    return new ResourceNotFoundException("Table not found with ID: " + tableId);
+                    log.error("Table not found with UUID: {}", tableUuid);
+                    return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
         // Update fields using mapper
         tableMapper.updateTableFromDto(requestDto, table);
 
         RestaurantTable updatedTable = tableRepository.save(table);
-        log.info("Table updated successfully. ID: {}, Number: {}", updatedTable.getId(), updatedTable.getTableNumber());
+        log.info("Table updated successfully. UUID: {}, Number: {}", updatedTable.getTableUuid(), updatedTable.getTableNumber());
 
         return tableMapper.toResponseDto(updatedTable);
     }
@@ -104,14 +104,20 @@ public class RestaurantTableService {
      * 3️⃣ Update table status with lifecycle validation
      */
     @Transactional
-    public TableStatusResponseDto updateTableStatus(Long tableId, UpdateTableStatusRequestDto requestDto, UserAuthEntity currentUser) {
-        log.info("Updating table status. TableId: {}, NewStatus: {}, User: {}",
-                tableId, requestDto.getStatus(), currentUser.getUsername());
+    public TableStatusResponseDto updateTableStatus(String tableUuid, UpdateTableStatusRequestDto requestDto, UserAuthEntity currentUser) {
+        log.info("Updating table status. TableUuid: {}, NewStatus: {}, User: {}",
+                tableUuid, requestDto.getStatus(), currentUser.getUsername());
 
-        RestaurantTable table = tableRepository.findByIdAndIsDeletedFalse(tableId)
+        if(requestDto.getStatus() == null) {
+            log.error("Status is required in the request");
+            throw new BusinessException("Status is required");
+        }
+
+
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> {
-                    log.error("Table not found with ID: {}", tableId);
-                    return new ResourceNotFoundException("Table not found with ID: " + tableId);
+                    log.error("Table not found with UUID: {}", tableUuid);
+                    return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
         TableStatus currentStatus = table.getStatus();
@@ -132,13 +138,13 @@ public class RestaurantTableService {
                 table.setCurrentPax(requestDto.getCurrentPax());
 
                 // Set waiter if provided
-                if (requestDto.getWaiterId() != null) {
-                    UserAuthEntity waiter = userAuthRepository.findById(requestDto.getWaiterId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Waiter not found with ID: " + requestDto.getWaiterId()));
+                if (requestDto.getWaiterUuid() != null && !requestDto.getWaiterUuid().isEmpty()) {
+                    UserAuthEntity waiter = userAuthRepository.findByUserUuidAndIsDeletedFalse(requestDto.getWaiterUuid())
+                            .orElseThrow(() -> new ResourceNotFoundException("Waiter not found with UUID: " + requestDto.getWaiterUuid()));
                     table.setCurrentWaiter(waiter);
                 }
                 log.info("Table {} marked as OCCUPIED. Order: {}, Waiter: {}",
-                        table.getTableNumber(), requestDto.getCurrentOrderId(), requestDto.getWaiterId());
+                        table.getTableNumber(), requestDto.getCurrentOrderId(), requestDto.getWaiterUuid());
                 break;
 
             case VACANT:
@@ -146,7 +152,14 @@ public class RestaurantTableService {
                 table.setSeatedAt(null);
                 table.setCurrentPax(null);
                 table.setCurrentWaiter(null);
-                log.info("Table {} marked as VACANT", table.getTableNumber());
+
+                // Demerge tables if this table was merged
+                if (table.getIsMerged()) {
+                    demergeTable(table);
+                    log.info("Table {} demerged and marked as VACANT", table.getTableNumber());
+                } else {
+                    log.info("Table {} marked as VACANT", table.getTableNumber());
+                }
                 break;
 
             case DIRTY:
@@ -165,17 +178,17 @@ public class RestaurantTableService {
         table.setStatus(newStatus);
         RestaurantTable updatedTable = tableRepository.save(table);
 
-        log.info("Table status updated successfully. ID: {}, Status: {} -> {}",
-                tableId, currentStatus, newStatus);
+        log.info("Table status updated successfully. UUID: {}, Status: {} -> {}",
+                tableUuid, currentStatus, newStatus);
 
         return TableStatusResponseDto.builder()
-                .tableId(updatedTable.getId())
                 .tableUuid(updatedTable.getTableUuid())
                 .tableNumber(updatedTable.getTableNumber())
                 .status(updatedTable.getStatus())
-                .currentOrderId(requestDto.getCurrentOrderId())
+                .currentOrderId(updatedTable.getCurrentOrderUuid())
+                .currentPax(updatedTable.getCurrentPax())
                 .occupiedSince(updatedTable.getSeatedAt())
-                .waiterId(updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getId() : null)
+                .waiterUuid(updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getUserUuid() : null)
                 .waiterName(updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getFullName() : null)
                 .build();
     }
@@ -184,13 +197,13 @@ public class RestaurantTableService {
      * 4️⃣ Get table by ID with live status
      */
     @Transactional(readOnly = true)
-    public TableResponseDto getTableById(Long tableId) {
-        log.info("Fetching table by ID: {}", tableId);
+    public TableResponseDto getTableById(String tableUuid) {
+        log.info("Fetching table by UUID: {}", tableUuid);
 
-        RestaurantTable table = tableRepository.findByIdAndIsDeletedFalse(tableId)
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> {
-                    log.error("Table not found with ID: {}", tableId);
-                    return new ResourceNotFoundException("Table not found with ID: " + tableId);
+                    log.error("Table not found with UUID: {}", tableUuid);
+                    return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
         TableResponseDto response = tableMapper.toResponseDto(table);
@@ -209,8 +222,8 @@ public class RestaurantTableService {
             response.setCurrentOrder(orderDto);
         }
 
-        log.info("Table fetched successfully. ID: {}, Number: {}, Status: {}",
-                table.getId(), table.getTableNumber(), table.getStatus());
+        log.info("Table fetched successfully. UUID: {}, Number: {}, Status: {}",
+                table.getTableUuid(), table.getTableNumber(), table.getStatus());
 
         return response;
     }
@@ -241,16 +254,16 @@ public class RestaurantTableService {
      * 6️⃣ Get tables by restaurant for floor plan view
      */
     @Transactional(readOnly = true)
-    public List<TableFloorPlanDto> getTablesByRestaurant(Long restaurantId) {
-        log.info("Fetching tables for restaurant ID: {} (Floor plan view)", restaurantId);
+    public List<TableFloorPlanDto> getTablesByRestaurant(String restaurantUuid) {
+        log.info("Fetching tables for restaurant UUID: {} (Floor plan view)", restaurantUuid);
 
-        Restaurant restaurant = restaurantRepo.findById(restaurantId)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() -> {
-                    log.error("Restaurant not found with ID: {}", restaurantId);
-                    return new ResourceNotFoundException("Restaurant not found with ID: " + restaurantId);
+                    log.error("Restaurant not found with UUID: {}", restaurantUuid);
+                    return new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid);
                 });
 
-        List<RestaurantTable> tables = tableRepository.findByRestaurantIdForFloorPlan(restaurantId);
+        List<RestaurantTable> tables = tableRepository.findByRestaurantUuidForFloorPlan(restaurantUuid);
 
         log.info("Fetched {} tables for restaurant {}", tables.size(), restaurant.getName());
 
@@ -263,17 +276,17 @@ public class RestaurantTableService {
      * 7️⃣ Get tables by restaurant chain (franchise) - Multi-outlet summary
      */
     @Transactional(readOnly = true)
-    public List<RestaurantChainTablesSummaryDto> getTablesByRestaurantChain(Long parentRestaurantId) {
-        log.info("Fetching tables summary for restaurant chain. Parent ID: {}", parentRestaurantId);
+    public List<RestaurantChainTablesSummaryDto> getTablesByRestaurantChain(String parentRestaurantUuid) {
+        log.info("Fetching tables summary for restaurant chain. Parent UUID: {}", parentRestaurantUuid);
 
-        Restaurant parentRestaurant = restaurantRepo.findById(parentRestaurantId)
+        Restaurant parentRestaurant = restaurantRepo.findByRestaurantUuid(parentRestaurantUuid)
                 .orElseThrow(() -> {
-                    log.error("Parent restaurant not found with ID: {}", parentRestaurantId);
-                    return new ResourceNotFoundException("Parent restaurant not found with ID: " + parentRestaurantId);
+                    log.error("Parent restaurant not found with UUID: {}", parentRestaurantUuid);
+                    return new ResourceNotFoundException("Parent restaurant not found with UUID: " + parentRestaurantUuid);
                 });
 
         if (!parentRestaurant.isParentRestaurant()) {
-            log.error("Restaurant {} is not a parent restaurant", parentRestaurantId);
+            log.error("Restaurant {} is not a parent restaurant", parentRestaurantUuid);
             throw new BusinessException("Restaurant is not a parent restaurant");
         }
 
@@ -291,30 +304,28 @@ public class RestaurantTableService {
     }
 
     /**
-     * 8️⃣ Delete table (soft delete)
+     * 8️⃣ Delete table (permanent delete)
      */
     @Transactional
-    public void deleteTable(Long tableId, UserAuthEntity currentUser) {
-        log.info("Deleting table {}. User: {}", tableId, currentUser.getUsername());
+    public void deleteTable(String tableUuid, UserAuthEntity currentUser) {
+        log.info("Deleting table {}. User: {}", tableUuid, currentUser.getUsername());
 
-        RestaurantTable table = tableRepository.findByIdAndIsDeletedFalse(tableId)
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> {
-                    log.error("Table not found with ID: {}", tableId);
-                    return new ResourceNotFoundException("Table not found with ID: " + tableId);
+                    log.error("Table not found with UUID: {}", tableUuid);
+                    return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
         // Cannot delete if occupied
         if (table.getStatus() == TableStatus.OCCUPIED) {
-            log.error("Cannot delete occupied table. Table: {}, Status: {}", tableId, table.getStatus());
+            log.error("Cannot delete occupied table. Table: {}, Status: {}", tableUuid, table.getStatus());
             throw new BusinessException("Cannot delete table while it is OCCUPIED");
         }
 
-        // Soft delete
-        table.setIsDeleted(true);
-        table.setIsActive(false);
-        tableRepository.save(table);
+        // Permanent delete
+        tableRepository.delete(table);
 
-        log.info("Table soft-deleted successfully. ID: {}, Number: {}", tableId, table.getTableNumber());
+        log.info("Table permanently deleted. UUID: {}, Number: {}", tableUuid, table.getTableNumber());
     }
 
     /**
@@ -323,21 +334,21 @@ public class RestaurantTableService {
     @Transactional
     public MergeTablesResponseDto mergeTables(MergeTablesRequestDto requestDto, UserAuthEntity currentUser) {
         log.info("Merging tables. Parent: {}, Children: {}, User: {}",
-                requestDto.getParentTableId(), requestDto.getChildTableIds(), currentUser.getUsername());
+                requestDto.getParentTableUuid(), requestDto.getChildTableUuids(), currentUser.getUsername());
 
         // Fetch parent table
-        RestaurantTable parentTable = tableRepository.findByIdAndIsDeletedFalse(requestDto.getParentTableId())
+        RestaurantTable parentTable = tableRepository.findByTableUuidAndIsDeletedFalse(requestDto.getParentTableUuid())
                 .orElseThrow(() -> {
-                    log.error("Parent table not found with ID: {}", requestDto.getParentTableId());
+                    log.error("Parent table not found with UUID: {}", requestDto.getParentTableUuid());
                     return new ResourceNotFoundException("Parent table not found");
                 });
 
         // Fetch child tables
-        List<RestaurantTable> childTables = tableRepository.findAllByIdInAndIsDeletedFalse(requestDto.getChildTableIds());
+        List<RestaurantTable> childTables = tableRepository.findAllByTableUuidInAndIsDeletedFalse(requestDto.getChildTableUuids());
 
-        if (childTables.size() != requestDto.getChildTableIds().size()) {
+        if (childTables.size() != requestDto.getChildTableUuids().size()) {
             log.error("Some child tables not found. Expected: {}, Found: {}",
-                    requestDto.getChildTableIds().size(), childTables.size());
+                    requestDto.getChildTableUuids().size(), childTables.size());
             throw new ResourceNotFoundException("One or more child tables not found");
         }
 
@@ -362,21 +373,24 @@ public class RestaurantTableService {
             throw new BusinessException("All tables must be VACANT to merge");
         }
 
-        // Merge logic
-        String mergedIds = childTables.stream()
-                .map(t -> t.getId().toString())
+        // Merge logic - store UUIDs instead of IDs
+        String mergedUuids = childTables.stream()
+                .map(RestaurantTable::getTableUuid)
                 .collect(Collectors.joining(","));
 
         parentTable.setIsMerged(true);
-        parentTable.setMergedWithTableIds(mergedIds);
+        parentTable.setMergedWithTableIds(mergedUuids);
         parentTable.setCapacity(allTables.stream().mapToInt(RestaurantTable::getCapacity).sum());
         parentTable.setStatus(TableStatus.OCCUPIED);
         parentTable.setSeatedAt(LocalDateTime.now());
 
         // Mark child tables as merged
         for (RestaurantTable childTable : childTables) {
+            if(childTable.getTableUuid().equals(parentTable.getTableUuid())) {
+                continue; // Skip parent table
+            }
             childTable.setIsMerged(true);
-            childTable.setMergedWithTableIds(parentTable.getId().toString());
+            childTable.setMergedWithTableIds(parentTable.getTableUuid());
             childTable.setIsActive(false); // Temporarily inactive
         }
 
@@ -391,7 +405,7 @@ public class RestaurantTableService {
                 parentTable.getTableNumber(), mergedTableNumbers, parentTable.getCapacity());
 
         return MergeTablesResponseDto.builder()
-                .mergedTableId(parentTable.getId())
+                .mergedTableUuid(parentTable.getTableUuid())
                 .mergedTableNumber(parentTable.getTableNumber())
                 .mergedTables(mergedTableNumbers)
                 .totalCapacity(parentTable.getCapacity())
@@ -406,17 +420,17 @@ public class RestaurantTableService {
     @Transactional
     public TransferTableResponseDto transferTable(TransferTableRequestDto requestDto, UserAuthEntity currentUser) {
         log.info("Transferring table. From: {}, To: {}, User: {}",
-                requestDto.getFromTableId(), requestDto.getToTableId(), currentUser.getUsername());
+                requestDto.getFromTableUuid(), requestDto.getToTableUuid(), currentUser.getUsername());
 
-        RestaurantTable fromTable = tableRepository.findByIdAndIsDeletedFalse(requestDto.getFromTableId())
+        RestaurantTable fromTable = tableRepository.findByTableUuidAndIsDeletedFalse(requestDto.getFromTableUuid())
                 .orElseThrow(() -> {
-                    log.error("Source table not found with ID: {}", requestDto.getFromTableId());
+                    log.error("Source table not found with UUID: {}", requestDto.getFromTableUuid());
                     return new ResourceNotFoundException("Source table not found");
                 });
 
-        RestaurantTable toTable = tableRepository.findByIdAndIsDeletedFalse(requestDto.getToTableId())
+        RestaurantTable toTable = tableRepository.findByTableUuidAndIsDeletedFalse(requestDto.getToTableUuid())
                 .orElseThrow(() -> {
-                    log.error("Destination table not found with ID: {}", requestDto.getToTableId());
+                    log.error("Destination table not found with UUID: {}", requestDto.getToTableUuid());
                     return new ResourceNotFoundException("Destination table not found");
                 });
 
@@ -462,8 +476,8 @@ public class RestaurantTableService {
                 .orderId(orderUuid)
                 .fromTable(fromTable.getTableNumber())
                 .toTable(toTable.getTableNumber())
-                .fromTableId(fromTable.getId())
-                .toTableId(toTable.getId())
+                .fromTableUuid(fromTable.getTableUuid())
+                .toTableUuid(toTable.getTableUuid())
                 .transferredAt(LocalDateTime.now())
                 .build();
     }
@@ -472,17 +486,17 @@ public class RestaurantTableService {
      * 1️⃣1️⃣ Get table analytics (Optional)
      */
     @Transactional(readOnly = true)
-    public TableAnalyticsDto getTableAnalytics(Long restaurantId) {
-        log.info("Generating table analytics for restaurant ID: {}", restaurantId);
+    public TableAnalyticsDto getTableAnalytics(String restaurantUuid) {
+        log.info("Generating table analytics for restaurant UUID: {}", restaurantUuid);
 
-        Restaurant restaurant = restaurantRepo.findById(restaurantId)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
                 .orElseThrow(() -> {
-                    log.error("Restaurant not found with ID: {}", restaurantId);
-                    return new ResourceNotFoundException("Restaurant not found with ID: " + restaurantId);
+                    log.error("Restaurant not found with UUID: {}", restaurantUuid);
+                    return new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid);
                 });
 
         List<RestaurantTable> allTables = tableRepository.findAllByRestaurantAndIsDeletedFalse(restaurant);
-        List<RestaurantTable> occupiedTables = tableRepository.findOccupiedTablesByRestaurant(restaurantId);
+        List<RestaurantTable> occupiedTables = tableRepository.findOccupiedTablesByRestaurantUuid(restaurantUuid);
 
         // Calculate metrics
         double occupancyRate = allTables.isEmpty() ? 0.0 :
@@ -521,7 +535,7 @@ public class RestaurantTableService {
         Map<TableStatus, Set<TableStatus>> validTransitions = Map.of(
                 TableStatus.VACANT, Set.of(TableStatus.OCCUPIED, TableStatus.RESERVED),
                 TableStatus.OCCUPIED, Set.of(TableStatus.BILLED, TableStatus.VACANT),
-                TableStatus.BILLED, Set.of(TableStatus.DIRTY),
+                TableStatus.BILLED, Set.of(TableStatus.DIRTY, TableStatus.VACANT),
                 TableStatus.DIRTY, Set.of(TableStatus.VACANT),
                 TableStatus.RESERVED, Set.of(TableStatus.OCCUPIED, TableStatus.VACANT)
         );
@@ -536,15 +550,14 @@ public class RestaurantTableService {
     }
 
     private RestaurantChainTablesSummaryDto buildRestaurantTableSummary(Restaurant restaurant) {
-        Integer totalTables = tableRepository.countByRestaurantId(restaurant.getId());
-        Integer occupied = tableRepository.countByRestaurantIdAndStatus(restaurant.getId(), TableStatus.OCCUPIED);
-        Integer vacant = tableRepository.countByRestaurantIdAndStatus(restaurant.getId(), TableStatus.VACANT);
-        Integer billed = tableRepository.countByRestaurantIdAndStatus(restaurant.getId(), TableStatus.BILLED);
-        Integer dirty = tableRepository.countByRestaurantIdAndStatus(restaurant.getId(), TableStatus.DIRTY);
-        Integer reserved = tableRepository.countByRestaurantIdAndStatus(restaurant.getId(), TableStatus.RESERVED);
+        Integer totalTables = tableRepository.countByRestaurantUuid(restaurant.getRestaurantUuid());
+        Integer occupied = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.OCCUPIED);
+        Integer vacant = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.VACANT);
+        Integer billed = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.BILLED);
+        Integer dirty = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.DIRTY);
+        Integer reserved = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.RESERVED);
 
         return RestaurantChainTablesSummaryDto.builder()
-                .restaurantId(restaurant.getId())
                 .restaurantUuid(restaurant.getRestaurantUuid())
                 .restaurantName(restaurant.getName())
                 .totalTables(totalTables)
@@ -562,5 +575,76 @@ public class RestaurantTableService {
                 .mapToInt(RestaurantTable::getCurrentPax)
                 .average()
                 .orElse(0.0);
+    }
+
+    /**
+     * Demerge a table and restore all child tables to their original state
+     */
+    private void demergeTable(RestaurantTable table) {
+        log.info("Demerging table: {}", table.getTableNumber());
+
+        if (!table.getIsMerged()) {
+            log.warn("Table {} is not merged, skipping demerge", table.getTableNumber());
+            return;
+        }
+
+        // If this is a parent table with merged children (mergedWithTableIds contains comma-separated UUIDs)
+        if (table.getMergedWithTableIds() != null && table.getMergedWithTableIds().contains(",")) {
+            String[] childTableUuids = table.getMergedWithTableIds().split(",");
+
+            // Find and restore all child tables
+            List<RestaurantTable> childTables = tableRepository.findAllByTableUuidInAndIsDeletedFalse(
+                    Arrays.asList(childTableUuids));
+
+            for (RestaurantTable childTable : childTables) {
+                if (!childTable.getTableUuid().equals(table.getTableUuid())) {
+                    childTable.setIsMerged(false);
+                    childTable.setMergedWithTableIds(null);
+                    childTable.setIsActive(true);
+                    childTable.setStatus(TableStatus.VACANT);
+                    log.info("Restored child table: {}", childTable.getTableNumber());
+                }
+            }
+
+            tableRepository.saveAll(childTables);
+
+            // Reset parent table merge info
+            table.setIsMerged(false);
+            table.setMergedWithTableIds(null);
+
+            log.info("Parent table {} demerged successfully. Restored {} child tables",
+                    table.getTableNumber(), childTables.size());
+        }
+        // If this is a child table merged with a parent (mergedWithTableIds contains single parent UUID)
+        else if (table.getMergedWithTableIds() != null) {
+            String parentTableUuid = table.getMergedWithTableIds();
+
+            // Find the parent table
+            tableRepository.findByTableUuidAndIsDeletedFalse(parentTableUuid).ifPresent(parentTable -> {
+                // Remove this child from parent's merged list
+                if (parentTable.getMergedWithTableIds() != null) {
+                    String[] mergedUuids = parentTable.getMergedWithTableIds().split(",");
+                    String updatedMergedIds = Arrays.stream(mergedUuids)
+                            .filter(uuid -> !uuid.equals(table.getTableUuid()))
+                            .collect(Collectors.joining(","));
+
+                    parentTable.setMergedWithTableIds(updatedMergedIds.isEmpty() ? null : updatedMergedIds);
+
+                    // If no more children, unmerge parent too
+                    if (updatedMergedIds.isEmpty()) {
+                        parentTable.setIsMerged(false);
+                    }
+
+                    tableRepository.save(parentTable);
+                }
+            });
+
+            // Reset this table
+            table.setIsMerged(false);
+            table.setMergedWithTableIds(null);
+            table.setIsActive(true);
+
+            log.info("Child table {} demerged from parent successfully", table.getTableNumber());
+        }
     }
 }

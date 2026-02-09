@@ -15,8 +15,6 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Restaurant chain tables summary")
 public class RestaurantChainTablesSummaryDto {
 
-    @Schema(description = "Restaurant ID", example = "1")
-    private Long restaurantId;
 
     @Schema(description = "Restaurant UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String restaurantUuid;
