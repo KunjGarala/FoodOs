@@ -48,7 +48,7 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
     const newErrors = {};
     if (!formData.fullName.trim() || formData.fullName.length < 2) newErrors.fullName = "Name needs to be at least 2 characters";
     if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) newErrors.email = "Invalid email format";
-    if (!formData.phoneNumber.match(/^[6-9]\d{9}$/)) newErrors.phoneNumber = "Enter valid 10-digit mobile starting with 6-9";
+    if (!formData.phoneNumber.match(/^\d{10}$/)) newErrors.phoneNumber = "Phone number must be 10 digits";
     if (formData.pin && !formData.pin.match(/^\d{4,6}$/)) newErrors.pin = "PIN must be 4-6 digits";
     
     // Prevent Role escalation

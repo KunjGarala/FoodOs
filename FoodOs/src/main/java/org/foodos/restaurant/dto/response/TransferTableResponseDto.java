@@ -26,11 +26,11 @@ public class TransferTableResponseDto {
     @Schema(description = "Destination table number", example = "T15")
     private String toTable;
 
-    @Schema(description = "Source table ID", example = "10")
-    private Long fromTableId;
+    @Schema(description = "Source table UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String fromTableUuid;
 
-    @Schema(description = "Destination table ID", example = "15")
-    private Long toTableId;
+    @Schema(description = "Destination table UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String toTableUuid;
 
     @Schema(description = "Timestamp of transfer")
     private LocalDateTime transferredAt;

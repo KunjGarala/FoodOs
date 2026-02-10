@@ -16,9 +16,9 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to create a new table")
 public class CreateTableRequestDto {
 
-    @NotNull(message = "Restaurant ID is required")
-    @Schema(description = "Restaurant ID", example = "1", required = true)
-    private Long restaurantId;
+    @NotBlank(message = "Restaurant UUID is required")
+    @Schema(description = "Restaurant UUID", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
+    private String restaurantUuid;
 
     @NotBlank(message = "Section name is required")
     @Schema(description = "Section name where table is located", example = "AC Hall", required = true)

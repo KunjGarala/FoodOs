@@ -27,12 +27,13 @@ public interface RestaurantTableMapper {
     @Mapping(target = "updatedAt", ignore = true)
     RestaurantTable toEntity(CreateTableRequestDto dto);
 
-    @Mapping(target = "id", source = "id")
     @Mapping(target = "tableUuid", source = "tableUuid")
-    @Mapping(target = "restaurantId", source = "restaurant.id")
+    @Mapping(target = "restaurantUuid", source = "restaurant.restaurantUuid")
     @Mapping(target = "restaurantName", source = "restaurant.name")
-    @Mapping(target = "currentWaiterId", source = "currentWaiter.id")
+    @Mapping(target = "currentWaiterUuid", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getUserUuid() : null)")
     @Mapping(target = "currentWaiterName", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getFullName() : null)")
+    @Mapping(target = "currentPax", source = "currentPax")
+    @Mapping(target = "seatedAt", source = "seatedAt")
     @Mapping(target = "posX", source = "positionX")
     @Mapping(target = "posY", source = "positionY")
     @Mapping(target = "shape", source = "tableShape")
@@ -43,6 +44,8 @@ public interface RestaurantTableMapper {
     @Mapping(target = "posX", source = "positionX")
     @Mapping(target = "posY", source = "positionY")
     @Mapping(target = "shape", source = "tableShape")
+    @Mapping(target = "currentPax", source = "currentPax")
+    @Mapping(target = "seatedAt", source = "seatedAt")
     @Mapping(target = "currentWaiterName", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getFullName() : null)")
     TableFloorPlanDto toFloorPlanDto(RestaurantTable table);
 

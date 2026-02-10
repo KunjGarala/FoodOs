@@ -17,11 +17,11 @@ import java.util.List;
 @Schema(description = "Request to merge multiple tables")
 public class MergeTablesRequestDto {
 
-    @NotNull(message = "Parent table ID is required")
-    @Schema(description = "Parent table ID (main table)", example = "10", required = true)
-    private Long parentTableId;
+    @NotNull(message = "Parent table UUID is required")
+    @Schema(description = "Parent table UUID (main table)", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
+    private String parentTableUuid;
 
-    @NotEmpty(message = "Child table IDs are required")
-    @Schema(description = "List of child table IDs to merge", example = "[11, 12]", required = true)
-    private List<Long> childTableIds;
+    @NotEmpty(message = "Child table UUIDs are required")
+    @Schema(description = "List of child table UUIDs to merge", example = "[\"550e8400-e29b-41d4-a716-446655440001\", \"550e8400-e29b-41d4-a716-446655440002\"]", required = true)
+    private List<String> childTableUuids;
 }
