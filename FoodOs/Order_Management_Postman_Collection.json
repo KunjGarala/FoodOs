@@ -1,0 +1,405 @@
+{
+  "info": {
+    "name": "FoodOS - Order Management API",
+    "description": "Complete API collection for Order Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "orderUuid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurantId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Order Management",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": 1,\n  \"tableId\": 1,\n  \"orderType\": \"DINE_IN\",\n  \"numberOfGuests\": 4,\n  \"customerName\": \"John Doe\",\n  \"customerPhone\": \"+919876543210\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 2,\n      \"unitPrice\": 350.00,\n      \"modifiers\": [\n        {\n          \"modifierId\": 1,\n          \"quantity\": 1\n        }\n      ],\n      \"itemNotes\": \"Extra spicy\"\n    },\n    {\n      \"productId\": 2,\n      \"quantity\": 1,\n      \"unitPrice\": 150.00\n    }\n  ],\n  \"taxPercentage\": 5.0,\n  \"serviceChargePercentage\": 10.0,\n  \"orderNotes\": \"Please serve hot\",\n  \"sendKotImmediately\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order by UUID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numberOfGuests\": 5,\n  \"itemsToAdd\": [\n    {\n      \"productId\": 3,\n      \"quantity\": 1,\n      \"unitPrice\": 200.00\n    }\n  ],\n  \"discountPercentage\": 10.0,\n  \"discountReason\": \"Birthday offer\",\n  \"orderNotes\": \"Updated notes\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/cancel?cancellationReason=Customer request",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "cancel"],
+              "query": [
+                {
+                  "key": "cancellationReason",
+                  "value": "Customer request"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/restaurant/{{restaurantId}}/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "restaurant", "{{restaurantId}}", "active"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/search?restaurantId={{restaurantId}}&searchTerm=john",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "search"],
+              "query": [
+                {
+                  "key": "restaurantId",
+                  "value": "{{restaurantId}}"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": "john"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Kitchen Operations",
+      "item": [
+        {
+          "name": "Send KOT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderItemUuids\": [\n    \"item-uuid-1\",\n    \"item-uuid-2\"\n  ],\n  \"printerTarget\": \"KITCHEN_MAIN\",\n  \"kitchenStation\": \"HOT_KITCHEN\",\n  \"specialInstructions\": \"Rush order\",\n  \"isUrgent\": true,\n  \"priority\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/kot",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "kot"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send All Pending Items to Kitchen",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/kot/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "kot", "all"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Kitchen Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/restaurant/{{restaurantId}}/kitchen",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "restaurant", "{{restaurantId}}", "kitchen"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Operations",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/bill",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "bill"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Payment - Cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"CASH\",\n  \"amount\": 1000.00,\n  \"notes\": \"Cash payment received\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Payment - Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"CARD\",\n  \"amount\": 500.00,\n  \"transactionId\": \"TXN123456789\",\n  \"cardLastFour\": \"1234\",\n  \"cardType\": \"VISA\",\n  \"notes\": \"Card payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Payment - UPI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"UPI\",\n  \"amount\": 750.00,\n  \"transactionId\": \"UPI123456\",\n  \"upiId\": \"customer@paytm\",\n  \"notes\": \"UPI payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Orders with Pending Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/restaurant/{{restaurantId}}/pending-payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "restaurant", "{{restaurantId}}", "pending-payments"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Order Items",
+      "item": [
+        {
+          "name": "Add Items to Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"productId\": 4,\n    \"quantity\": 1,\n    \"unitPrice\": 180.00,\n    \"itemNotes\": \"No onions\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "items"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Order Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancellationReason\": \"Customer changed mind\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderUuid}}/items/{{itemUuid}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderUuid}}", "items", "{{itemUuid}}", "cancel"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Statistics & Reports",
+      "item": [
+        {
+          "name": "Get Total Orders Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/restaurant/{{restaurantId}}/stats/count?date=2026-02-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "restaurant", "{{restaurantId}}", "stats", "count"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Total Sales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/restaurant/{{restaurantId}}/stats/sales?date=2026-02-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "restaurant", "{{restaurantId}}", "stats", "sales"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Average Order Value",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/restaurant/{{restaurantId}}/stats/average?date=2026-02-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "restaurant", "{{restaurantId}}", "stats", "average"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-10"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+
