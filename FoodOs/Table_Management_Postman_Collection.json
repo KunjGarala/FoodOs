@@ -22,7 +22,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"restaurantId\": 1,\n  \"sectionName\": \"AC Hall\",\n  \"tableNumber\": \"T12\",\n  \"capacity\": 6,\n  \"minCapacity\": 2,\n  \"shape\": \"RECTANGLE\",\n  \"posX\": 420,\n  \"posY\": 180,\n  \"isActive\": true\n}"
+          "raw": "{\n  \"restaurantUuid\": \"{{restaurant_uuid}}\",\n  \"sectionName\": \"AC Hall\",\n  \"tableNumber\": \"T12\",\n  \"capacity\": 6,\n  \"minCapacity\": 2,\n  \"shape\": \"RECTANGLE\",\n  \"posX\": 420,\n  \"posY\": 180,\n  \"isActive\": true\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/tables",
@@ -52,9 +52,9 @@
           "raw": "{\n  \"sectionName\": \"VIP Area\",\n  \"capacity\": 8,\n  \"minCapacity\": 3,\n  \"posX\": 460,\n  \"posY\": 220,\n  \"shape\": \"OVAL\",\n  \"isActive\": true\n}"
         },
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/{{table_id}}",
+          "raw": "{{base_url}}/api/v1/tables/{{table_uuid}}",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "{{table_id}}"]
+          "path": ["api", "v1", "tables", "{{table_uuid}}"]
         },
         "description": "Updates table configuration (not status). Requires MANAGER role."
       },
@@ -76,19 +76,19 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"status\": \"OCCUPIED\",\n  \"currentOrderId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"waiterId\": 12,\n  \"currentPax\": 4\n}"
+          "raw": "{\n  \"status\": \"OCCUPIED\",\n  \"currentOrderId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"waiterUuid\": \"{{waiter_uuid}}\",\n  \"currentPax\": 4\n}"
         },
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/{{table_id}}/status",
+          "raw": "{{base_url}}/api/v1/tables/{{table_uuid}}/status",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "{{table_id}}", "status"]
+          "path": ["api", "v1", "tables", "{{table_uuid}}", "status"]
         },
         "description": "Changes table lifecycle status. Requires WAITER role."
       },
       "response": []
     },
     {
-      "name": "4️⃣ Get Table by ID",
+      "name": "4️⃣ Get Table by UUID",
       "request": {
         "method": "GET",
         "header": [
@@ -98,9 +98,9 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/{{table_id}}",
+          "raw": "{{base_url}}/api/v1/tables/{{table_uuid}}",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "{{table_id}}"]
+          "path": ["api", "v1", "tables", "{{table_uuid}}"]
         },
         "description": "Fetches single table with live status. Requires WAITER role."
       },
@@ -151,9 +151,9 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/restaurant/{{restaurant_id}}",
+          "raw": "{{base_url}}/api/v1/tables/restaurant/{{restaurant_uuid}}",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "restaurant", "{{restaurant_id}}"]
+          "path": ["api", "v1", "tables", "restaurant", "{{restaurant_uuid}}"]
         },
         "description": "Fetches tables for POS floor plan view. Requires WAITER role."
       },
@@ -170,9 +170,9 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/chain/{{parent_restaurant_id}}",
+          "raw": "{{base_url}}/api/v1/tables/chain/{{parent_restaurant_uuid}}",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "chain", "{{parent_restaurant_id}}"]
+          "path": ["api", "v1", "tables", "chain", "{{parent_restaurant_uuid}}"]
         },
         "description": "Fetches table summaries for all outlets in a franchise. Requires OWNER role."
       },
@@ -189,9 +189,9 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/{{table_id}}",
+          "raw": "{{base_url}}/api/v1/tables/{{table_uuid}}",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "{{table_id}}"]
+          "path": ["api", "v1", "tables", "{{table_uuid}}"]
         },
         "description": "Soft deletes a table. Requires MANAGER role."
       },
@@ -213,7 +213,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"parentTableId\": 10,\n  \"childTableIds\": [11, 12]\n}"
+          "raw": "{\n  \"parentTableUuid\": \"{{parent_table_uuid}}\",\n  \"childTableUuids\": [\"{{child_table_uuid_1}}\", \"{{child_table_uuid_2}}\"]\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/tables/merge",
@@ -240,7 +240,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"fromTableId\": 10,\n  \"toTableId\": 15\n}"
+          "raw": "{\n  \"fromTableUuid\": \"{{from_table_uuid}}\",\n  \"toTableUuid\": \"{{to_table_uuid}}\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/tables/transfer",
@@ -262,9 +262,9 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/api/v1/tables/analytics/{{restaurant_id}}",
+          "raw": "{{base_url}}/api/v1/tables/analytics/{{restaurant_uuid}}",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "tables", "analytics", "{{restaurant_id}}"]
+          "path": ["api", "v1", "tables", "analytics", "{{restaurant_uuid}}"]
         },
         "description": "Fetches table utilization analytics. Requires MANAGER role."
       },
@@ -283,18 +283,48 @@
       "type": "string"
     },
     {
-      "key": "table_id",
-      "value": "45",
+      "key": "table_uuid",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
       "type": "string"
     },
     {
-      "key": "restaurant_id",
-      "value": "1",
+      "key": "restaurant_uuid",
+      "value": "660e8400-e29b-41d4-a716-446655440000",
       "type": "string"
     },
     {
-      "key": "parent_restaurant_id",
-      "value": "1",
+      "key": "parent_restaurant_uuid",
+      "value": "770e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "waiter_uuid",
+      "value": "880e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "parent_table_uuid",
+      "value": "990e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "child_table_uuid_1",
+      "value": "aa0e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "child_table_uuid_2",
+      "value": "bb0e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "from_table_uuid",
+      "value": "cc0e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    },
+    {
+      "key": "to_table_uuid",
+      "value": "dd0e8400-e29b-41d4-a716-446655440000",
       "type": "string"
     }
   ]

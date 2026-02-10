@@ -54,7 +54,7 @@ public class RestaurantService {
             throw new BusinessException("Only owners can create restaurants");
         }
 
-        if (restaurantRepo.existsByOwner(owner)) {
+        if (restaurantRepo.existsByOwnerAndIsDeletedFalse(owner)) {
             throw new BusinessException(
                     "Owner already has a restaurant. Use multi-outlet feature.");
         }
@@ -303,7 +303,7 @@ public class RestaurantService {
                 throw new BusinessException("You don't have access to this restaurant");
             }
 
-            return userRepository.findByRoleAndRestaurants_IdAndIsActiveTrue(
+            return userRepository.findByRoleAndRestaurants_IdAndIsActiveTrueAndIsDeletedFalse(
                     requestedRole,
                     restaurant.getId()
             );
@@ -317,7 +317,7 @@ public class RestaurantService {
                 return Collections.emptyList();
             }
 
-            return userRepository.findByRoleAndRestaurants_IdInAndIsActiveTrue(
+            return userRepository.findByRoleAndRestaurants_IdInAndIsActiveTrueAndIsDeletedFalse(
                     requestedRole,
                     restaurantIds
             );
@@ -333,7 +333,7 @@ public class RestaurantService {
             throw new BusinessException("Manager does not have an assigned restaurant");
         }
 
-        return userRepository.findByRoleAndRestaurants_IdAndIsActiveTrue(
+        return userRepository.findByRoleAndRestaurants_IdAndIsActiveTrueAndIsDeletedFalse(
                 requestedRole,
                 currentUser.getPrimaryRestaurant().getId()
         );

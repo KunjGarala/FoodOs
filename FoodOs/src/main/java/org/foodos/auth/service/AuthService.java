@@ -39,11 +39,11 @@ public class AuthService {
 
     public UserAuthEntity signup(SignupRequest request, MultipartFile image) {
 
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsernameAndIsDeletedFalse(request.getUsername())) {
             throw new RuntimeException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
@@ -59,7 +59,7 @@ public class AuthService {
 //        user.setRestaurantId(request.getRestaurantId());
 
 
-        String emailValidationCode = java.util.UUID.randomUUID().toString();
+        String emailValidationCode = UUID.randomUUID().toString();
         user.setEmailVerificationCode(emailValidationCode);
         if(request.getRole() == null || request.getRole().isEmpty()) {
             user.setRole(UserRole.OWNER); // default role

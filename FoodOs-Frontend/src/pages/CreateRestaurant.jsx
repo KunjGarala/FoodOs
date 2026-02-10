@@ -634,7 +634,11 @@ const CreateRestaurant = () => {
                                     {activeStep < steps.length ? (
                                         <Button
                                             type="button"
-                                            onClick={() => setActiveStep(activeStep + 1)}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setActiveStep(activeStep + 1);
+                                                }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
                                         >
                                             Next Step

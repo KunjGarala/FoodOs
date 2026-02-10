@@ -3,12 +3,11 @@ package org.foodos.product.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
@@ -19,8 +18,8 @@ import java.util.*;
         condition = "is_deleted = :isDeleted"
 )
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-@Builder
-public class Modifier {
+@SuperBuilder
+public class Modifier extends BaseSoftDeleteEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,10 +54,6 @@ public class Modifier {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
-
     @Column(name = "sort_order")
     @Builder.Default
     private Integer sortOrder = 0;
@@ -67,15 +62,4 @@ public class Modifier {
 //    @OneToMany(mappedBy = "modifier", cascade = CascadeType.PERSIST)
 //    @Builder.Default
 //    private List<OrderItemModifier> orderItemModifiers = new ArrayList<>();
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (modifierUuid == null) {
-            modifierUuid = UUID.randomUUID().toString();
-        }
-    }
 }

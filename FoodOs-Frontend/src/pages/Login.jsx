@@ -31,7 +31,9 @@ const Login = () => {
             } else if (role === 'ADMIN') {
                 navigate('/admin');
             } else {
-                if (restaurantIds && restaurantIds.length > 0) {
+                // ✅ FIX: Check if restaurantIds exists AND has length > 0
+                // If restaurantIds is null, undefined, or empty array, redirect to create restaurant
+                if (restaurantIds && Array.isArray(restaurantIds) && restaurantIds.length > 0) {
                     navigate('/app');
                 } else {
                     navigate('/create-restaurant');
@@ -61,7 +63,7 @@ const Login = () => {
                 }
             }
         } catch (err) {
-            console.error("Failed to upgrade user", err);
+            console.error("Failed to upgrade user", err.response?.data?.message || err.message || err);
         }
     };
 
@@ -102,7 +104,7 @@ const Login = () => {
             
         } catch (error) {
             // ✅ Error is already set in Redux state by login.rejected
-            console.error('Login failed:', error);
+            console.error('Login failed:', error.response?.data?.message || error.message || error);
         }
     };
 
