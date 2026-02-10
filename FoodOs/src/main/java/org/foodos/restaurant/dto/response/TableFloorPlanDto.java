@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.foodos.restaurant.entity.enums.TableStatus;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -34,6 +36,9 @@ public class TableFloorPlanDto {
 
     @Schema(description = "Number of guests currently seated", example = "3")
     private Integer currentPax;
+
+    @Schema(description = "Time when guests were seated")
+    private LocalDateTime seatedAt;
 
     @Schema(description = "X-coordinate for floor plan", example = "120")
     private Integer posX;

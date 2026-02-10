@@ -20,6 +20,28 @@ import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
 
 const TABLE_SHAPES = ['RECTANGLE', 'ROUND', 'SQUARE', 'OVAL'];
 
+// Utility function to calculate occupied time from seatedAt timestamp
+const calculateOccupiedTime = (seatedAt) => {
+  if (!seatedAt) return null;
+  
+  try {
+    const seatedDate = new Date(seatedAt);
+    const now = new Date();
+    const diffMs = now - seatedDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return '<1 min';
+    if (diffMins < 60) return `${diffMins} min`;
+    
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  } catch (e) {
+    console.error('Error calculating occupied time:', e);
+    return null;
+  }
+};
+
 const TableManagement = () => {
   const dispatch = useDispatch();
   const activeRestaurantId = useSelector(selectActiveRestaurant);
@@ -56,8 +78,18 @@ const TableManagement = () => {
   const [mergeForm, setMergeForm] = useState({ parentTableUuid: '', childTableUuids: [] });
   const [transferForm, setTransferForm] = useState({ fromTableUuid: '', toTableUuid: '' });
   const [validStatuses, setValidStatuses] = useState([]);
+  const [currentTime, setCurrentTime] = useState(new Date()); // For real-time occupied time updates
 
   const sections = ['All', ...new Set(tables.map(t => t.sectionName).filter(Boolean))];
+
+  // Update time every minute for real-time occupied time display
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch tables based on user role
   useEffect(() => {
@@ -103,6 +135,18 @@ const TableManagement = () => {
   const handleCreateTable = async () => {
     try {
       await dispatch(createTable({ restaurantUuid: activeRestaurantId, ...tableForm })).unwrap();
+      
+      // Refresh tables after creation
+      if (hasManagerAccess) {
+        await dispatch(getAllTables({ 
+          page: pagination.page, 
+          size: pagination.size, 
+          status: filters.status 
+        })).unwrap();
+      } else if (activeRestaurantId) {
+        await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+      }
+      
       setShowCreateModal(false);
       resetTableForm();
     } catch (err) {
@@ -113,6 +157,18 @@ const TableManagement = () => {
   const handleUpdateTable = async () => {
     try {
       await dispatch(updateTable({ tableUuid: selectedTable.tableUuid, data: tableForm })).unwrap();
+      
+      // Refresh tables to ensure all fields are up-to-date
+      if (hasManagerAccess) {
+        await dispatch(getAllTables({ 
+          page: pagination.page, 
+          size: pagination.size, 
+          status: filters.status 
+        })).unwrap();
+      } else if (activeRestaurantId) {
+        await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+      }
+      
       setShowEditModal(false);
       setSelectedTable(null);
       resetTableForm();
@@ -131,15 +187,27 @@ const TableManagement = () => {
         console.error('No table UUID available in statusForm:', statusForm);
         alert('Error: Unable to update table status. Table ID is missing.');
         return;
+      }
 
       // Validate status transition
       if (selectedTable && !isValidStatusTransition(selectedTable.status, statusData.status)) {
         alert(`Invalid status transition from ${selectedTable.status} to ${statusData.status}`);
         return;
       }
-      }
       
       await dispatch(updateTableStatus({ tableUuid, statusData })).unwrap();
+      
+      // Refresh tables to ensure all fields (including restaurantName) are up-to-date
+      if (hasManagerAccess) {
+        await dispatch(getAllTables({ 
+          page: pagination.page, 
+          size: pagination.size, 
+          status: filters.status 
+        })).unwrap();
+      } else if (activeRestaurantId) {
+        await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+      }
+      
       setShowStatusModal(false);
       setSelectedTable(null);
       resetStatusForm();
@@ -152,6 +220,17 @@ const TableManagement = () => {
     if (window.confirm('Delete this table?')) {
       try {
         await dispatch(deleteTable(tableUuid)).unwrap();
+        
+        // Refresh tables after deletion
+        if (hasManagerAccess) {
+          await dispatch(getAllTables({ 
+            page: pagination.page, 
+            size: pagination.size, 
+            status: filters.status 
+          })).unwrap();
+        } else if (activeRestaurantId) {
+          await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+        }
       } catch (err) {
         console.error('Delete failed:', err);
       }
@@ -166,6 +245,17 @@ const TableManagement = () => {
           tableUuid: table.tableUuid, 
           data: { isActive: !table.isActive } 
         })).unwrap();
+        
+        // Refresh tables to reflect the change
+        if (hasManagerAccess) {
+          await dispatch(getAllTables({ 
+            page: pagination.page, 
+            size: pagination.size, 
+            status: filters.status 
+          })).unwrap();
+        } else if (activeRestaurantId) {
+          await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+        }
       } catch (err) {
         console.error('Toggle active status failed:', err);
       }
@@ -175,6 +265,18 @@ const TableManagement = () => {
   const handleMergeTables = async () => {
     try {
       await dispatch(mergeTables(mergeForm)).unwrap();
+      
+      // Refresh tables to ensure merged table status is up-to-date
+      if (hasManagerAccess) {
+        await dispatch(getAllTables({ 
+          page: pagination.page, 
+          size: pagination.size, 
+          status: filters.status 
+        })).unwrap();
+      } else if (activeRestaurantId) {
+        await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+      }
+      
       setShowMergeModal(false);
       resetMergeForm();
     } catch (err) {
@@ -185,6 +287,18 @@ const TableManagement = () => {
   const handleTransferTable = async () => {
     try {
       await dispatch(transferTable(transferForm)).unwrap();
+      
+      // Refresh tables to ensure transferred table status is up-to-date
+      if (hasManagerAccess) {
+        await dispatch(getAllTables({ 
+          page: pagination.page, 
+          size: pagination.size, 
+          status: filters.status 
+        })).unwrap();
+      } else if (activeRestaurantId) {
+        await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
+      }
+      
       setShowTransferModal(false);
       resetTransferForm();
     } catch (err) {
@@ -382,37 +496,33 @@ const TableManagement = () => {
                       <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
                     )}
                   </div>
-                  {hasManagerAccess && table.restaurantName && (
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <div className={`backdrop-blur-sm rounded px-2 py-1 text-xs font-medium truncate ${
-                        isInactive ? 'bg-slate-400/75 text-slate-200' : 'bg-slate-900/75 text-white'
-                      }`}>
-                        {table.restaurantName}
-                      </div>
-                    </div>
-                  )}
+                  
                   <span className={`text-2xl font-bold ${isInactive ? 'line-through' : ''}`}>{table.tableNumber}</span>
                   <div className="flex items-center gap-1 mt-2 text-sm font-medium opacity-80">
                     <Users className="h-4 w-4" />
                     <span>{table.capacity} Seats</span>
                   </div>
                   {table.sectionName && <span className="text-xs opacity-60 mt-1">{table.sectionName}</span>}
+                  
                   {isInactive && (
                     <div className="mt-2 text-xs font-medium text-slate-500">
                       Not Available
                     </div>
                   )}
+                  
+                  {/* Guest count and time info for occupied/billed tables */}
                   {!isInactive && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
-                    <div className="absolute bottom-4 left-0 right-0 px-4 text-center">
+                    <div className="absolute bottom-2 left-0 right-0 px-3 flex flex-col items-center gap-1">
                       {table.currentPax > 0 && (
-                        <div className="bg-white/90 backdrop-blur-sm rounded-lg py-1 px-2 text-xs font-semibold shadow-sm mb-1">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-lg py-1 px-2 text-xs font-semibold shadow-sm">
                           {table.currentPax} Guest{table.currentPax !== 1 ? 's' : ''}
                         </div>
                       )}
-                      {table.lastUpdated && (
-                        <div className="inline-flex items-center gap-1 text-xs font-medium bg-black/5 rounded px-2 py-0.5">
+                      {/* Show occupied time only for manager/owner/admin with seatedAt field */}
+                      {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
+                        <div className="bg-orange-100 text-orange-800 rounded-lg py-1 px-2 text-xs font-semibold inline-flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {new Date(table.lastUpdated).toLocaleTimeString()}
+                          {calculateOccupiedTime(table.seatedAt)}
                         </div>
                       )}
                     </div>
@@ -506,8 +616,12 @@ const TableManagement = () => {
                 <div>
                   <div className="text-sm font-semibold text-slate-800">{table.sectionName || 'Main Hall'}</div>
                   <div className="text-xs text-slate-500">{table.currentPax || 0} / {table.capacity} Guests</div>
-                  {console.log(table)
-                  }
+                  {/* Show occupied time in live status sidebar for manager/owner/admin */}
+                  {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
+                    <div className="text-xs text-orange-600 font-medium mt-0.5">
+                      ⏱ {calculateOccupiedTime(table.seatedAt)}
+                    </div>
+                  )}
                 </div>
               </div>
               <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
@@ -750,23 +864,42 @@ const TableManagement = () => {
       {/* Analytics Modal */}
       <Modal isOpen={showAnalyticsModal} onClose={() => setShowAnalyticsModal(false)} title="Table Analytics">
         <div className="space-y-4">
+          {console.log(analytics)}
           {analytics ? (
             <div className="grid grid-cols-2 gap-4">
               <Card className="p-4">
-                <p className="text-sm text-slate-500">Total Tables</p>
-                <p className="text-2xl font-bold text-slate-800">{analytics.totalTables || 0}</p>
+                <p className="text-sm text-slate-500">Avg Turn Time</p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {analytics.averageTurnTimeMinutes ? `${Math.round(analytics.averageTurnTimeMinutes)} min` : 'N/A'}
+                </p>
               </Card>
               <Card className="p-4">
-                <p className="text-sm text-slate-500">Avg Occupancy</p>
-                <p className="text-2xl font-bold text-slate-800">{analytics.averageOccupancy ? `${analytics.averageOccupancy}%` : 'N/A'}</p>
+                <p className="text-sm text-slate-500">Occupancy Rate</p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {analytics.occupancyRate ? `${analytics.occupancyRate.toFixed(1)}%` : 'N/A'}
+                </p>
               </Card>
               <Card className="p-4">
-                <p className="text-sm text-slate-500">Peak Hours</p>
-                <p className="text-2xl font-bold text-slate-800">{analytics.peakHours || 'N/A'}</p>
+                <p className="text-sm text-slate-500">Most Used Table</p>
+                <p className="text-2xl font-bold text-slate-800">{analytics.mostUsedTable || 'N/A'}</p>
               </Card>
               <Card className="p-4">
-                <p className="text-sm text-slate-500">Avg Turnover</p>
-                <p className="text-2xl font-bold text-slate-800">{analytics.averageTurnoverTime ? `${analytics.averageTurnoverTime} min` : 'N/A'}</p>
+                <p className="text-sm text-slate-500">Orders Today</p>
+                <p className="text-2xl font-bold text-slate-800">{analytics.totalOrdersToday || 0}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-slate-500">Peak Hour</p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {analytics.peakHour !== null && analytics.peakHour !== undefined 
+                    ? `${analytics.peakHour}:00` 
+                    : 'N/A'}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-slate-500">Avg Guests/Table</p>
+                <p className="text-2xl font-bold text-slate-800">
+                  {analytics.averageGuestsPerTable ? analytics.averageGuestsPerTable.toFixed(1) : 'N/A'}
+                </p>
               </Card>
             </div>
           ) : (

@@ -516,7 +516,8 @@ public class RestaurantTableService {
         // Find most used table (simplified - in production, use historical data)
         String mostUsedTable = activeTables.stream()
                 .filter(t -> t.getStatus() == TableStatus.OCCUPIED)
-                .findFirst()
+                .filter(t -> t.getSeatedAt() != null)
+                .min(Comparator.comparing(RestaurantTable::getSeatedAt))
                 .map(RestaurantTable::getTableNumber)
                 .orElse("N/A");
 
@@ -592,64 +593,77 @@ public class RestaurantTableService {
             return;
         }
 
-        // If this is a parent table with merged children (mergedWithTableIds contains comma-separated UUIDs)
+        // PARENT TABLE CASE
         if (table.getMergedWithTableIds() != null && table.getMergedWithTableIds().contains(",")) {
-            String[] childTableUuids = table.getMergedWithTableIds().split(",");
 
-            // Find and restore all child tables
-            List<RestaurantTable> childTables = tableRepository.findAllByTableUuidInAndIsDeletedFalse(
-                    Arrays.asList(childTableUuids));
+            String[] childUuids = table.getMergedWithTableIds().split(",");
 
-            for (RestaurantTable childTable : childTables) {
-                if (!childTable.getTableUuid().equals(table.getTableUuid())) {
-                    childTable.setIsMerged(false);
-                    childTable.setMergedWithTableIds(null);
-                    childTable.setIsActive(true);
-                    childTable.setStatus(TableStatus.VACANT);
-                    log.info("Restored child table: {}", childTable.getTableNumber());
+            List<RestaurantTable> childTables =
+                    tableRepository.findAllByTableUuidInAndIsDeletedFalse(Arrays.asList(childUuids));
+
+            int restoredCapacity = 0;
+
+            for (RestaurantTable child : childTables) {
+                if (!child.getTableUuid().equals(table.getTableUuid())) {
+                    child.setIsMerged(false);
+                    child.setMergedWithTableIds(null);
+                    child.setIsActive(true);
+                    child.setStatus(TableStatus.VACANT);
+                    restoredCapacity += child.getCapacity();
                 }
             }
 
             tableRepository.saveAll(childTables);
 
-            // Reset parent table merge info
-            table.setIsMerged(false);
-            table.setMergedWithTableIds(null);
-
-            log.info("Parent table {} demerged successfully. Restored {} child tables",
-                    table.getTableNumber(), childTables.size());
-        }
-        // If this is a child table merged with a parent (mergedWithTableIds contains single parent UUID)
-        else if (table.getMergedWithTableIds() != null) {
-            String parentTableUuid = table.getMergedWithTableIds();
-
-            // Find the parent table
-            tableRepository.findByTableUuidAndIsDeletedFalse(parentTableUuid).ifPresent(parentTable -> {
-                // Remove this child from parent's merged list
-                if (parentTable.getMergedWithTableIds() != null) {
-                    String[] mergedUuids = parentTable.getMergedWithTableIds().split(",");
-                    String updatedMergedIds = Arrays.stream(mergedUuids)
-                            .filter(uuid -> !uuid.equals(table.getTableUuid()))
-                            .collect(Collectors.joining(","));
-
-                    parentTable.setMergedWithTableIds(updatedMergedIds.isEmpty() ? null : updatedMergedIds);
-
-                    // If no more children, unmerge parent too
-                    if (updatedMergedIds.isEmpty()) {
-                        parentTable.setIsActive(true);
-                        parentTable.setIsMerged(false);
-                    }
-
-                    tableRepository.save(parentTable);
-                }
-            });
-
-            // Reset this table
+            // 🔥 Reset parent completely
             table.setIsMerged(false);
             table.setMergedWithTableIds(null);
             table.setIsActive(true);
 
-            log.info("Child table {} demerged from parent successfully", table.getTableNumber());
+            // Parent capacity = merged capacity - children capacity
+            table.setCapacity(table.getCapacity() - restoredCapacity);
+
+            log.info("Parent table {} demerged successfully", table.getTableNumber());
+        }
+
+        // CHILD TABLE CASE
+        else if (table.getMergedWithTableIds() != null) {
+
+            String parentUuid = table.getMergedWithTableIds();
+
+            tableRepository.findByTableUuidAndIsDeletedFalse(parentUuid).ifPresent(parent -> {
+
+                List<String> remainingChildren = new ArrayList<>();
+
+                if (parent.getMergedWithTableIds() != null) {
+                    remainingChildren = Arrays.stream(parent.getMergedWithTableIds().split(","))
+                            .filter(uuid -> !uuid.equals(table.getTableUuid()))
+                            .collect(Collectors.toList());
+                }
+
+                parent.setMergedWithTableIds(
+                        remainingChildren.isEmpty() ? null : String.join(",", remainingChildren)
+                );
+
+                // 🔥 Always subtract child capacity once
+                table.setCapacity(table.getCapacity() - parent.getCapacity());
+
+                if (remainingChildren.isEmpty()) {
+                    parent.setIsMerged(false);
+                    parent.setIsActive(true);
+                }
+
+                tableRepository.save(parent);
+            });
+
+            // Reset child
+            table.setIsMerged(false);
+            table.setMergedWithTableIds(null);
+            table.setIsActive(true);
+            table.setStatus(TableStatus.VACANT);
+
+            log.info("Child table {} demerged successfully", table.getTableNumber());
         }
     }
+
 }
