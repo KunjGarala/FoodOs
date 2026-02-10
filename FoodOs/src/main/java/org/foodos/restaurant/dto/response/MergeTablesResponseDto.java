@@ -19,8 +19,8 @@ import java.util.List;
 @Schema(description = "Merge tables response")
 public class MergeTablesResponseDto {
 
-    @Schema(description = "Merged table ID (parent)", example = "10")
-    private Long mergedTableId;
+    @Schema(description = "Merged table UUID (parent)", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String mergedTableUuid;
 
     @Schema(description = "Merged table number", example = "T10")
     private String mergedTableNumber;

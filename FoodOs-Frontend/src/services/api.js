@@ -246,4 +246,43 @@ export const employeeAPI = {
   update: (userId, data) => api.patch(`/api/users/employee/${userId}`, data),
 };
 
+export const tableAPI = {
+  // Create new table
+  createTable: (data) => api.post('/api/v1/tables', data),
+  
+  // Update table configuration
+  updateTable: (tableUuid, data) => api.put(`/api/v1/tables/${tableUuid}`, data),
+  
+  // Update table status (VACANT, OCCUPIED, BILLED, DIRTY, RESERVED)
+  updateTableStatus: (tableUuid, statusData) => api.patch(`/api/v1/tables/${tableUuid}/status`, statusData),
+  
+  // Get single table by UUID
+  getTableByUuid: (tableUuid) => api.get(`/api/v1/tables/${tableUuid}`),
+  
+  // Get all tables (paginated with optional status filter)
+  getAllTables: ({ page = 0, size = 20, status = null }) => {
+    const params = { page, size };
+    if (status) params.status = status;
+    return api.get('/api/v1/tables', { params });
+  },
+  
+  // Get tables by restaurant (for floor plan)
+  getTablesByRestaurant: (restaurantUuid) => api.get(`/api/v1/tables/restaurant/${restaurantUuid}`),
+  
+  // Get tables by restaurant chain
+  getTablesByChain: (parentRestaurantUuid) => api.get(`/api/v1/tables/chain/${parentRestaurantUuid}`),
+  
+  // Delete table (soft delete)
+  deleteTable: (tableUuid) => api.delete(`/api/v1/tables/${tableUuid}`),
+  
+  // Merge tables
+  mergeTables: (data) => api.post('/api/v1/tables/merge', data),
+  
+  // Transfer table order
+  transferTable: (data) => api.post('/api/v1/tables/transfer', data),
+  
+  // Get table analytics
+  getTableAnalytics: (restaurantUuid) => api.get(`/api/v1/tables/analytics/${restaurantUuid}`),
+};
+
 export default api;

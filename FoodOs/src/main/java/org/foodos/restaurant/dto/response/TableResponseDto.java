@@ -18,8 +18,6 @@ import java.time.LocalDateTime;
 @Schema(description = "Table response with full details")
 public class TableResponseDto {
 
-    @Schema(description = "Table ID", example = "45")
-    private Long id;
 
     @Schema(description = "Table UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String tableUuid;
@@ -39,8 +37,8 @@ public class TableResponseDto {
     @Schema(description = "Current table status", example = "VACANT")
     private TableStatus status;
 
-    @Schema(description = "Restaurant ID", example = "1")
-    private Long restaurantId;
+    @Schema(description = "Restaurant UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String restaurantUuid;
 
     @Schema(description = "Restaurant name", example = "FoodOs - Ahmedabad")
     private String restaurantName;
@@ -48,8 +46,8 @@ public class TableResponseDto {
     @Schema(description = "Current order details")
     private CurrentOrderDto currentOrder;
 
-    @Schema(description = "Current waiter ID", example = "12")
-    private Long currentWaiterId;
+    @Schema(description = "Current waiter UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String currentWaiterUuid;
 
     @Schema(description = "Current waiter name", example = "John Doe")
     private String currentWaiterName;

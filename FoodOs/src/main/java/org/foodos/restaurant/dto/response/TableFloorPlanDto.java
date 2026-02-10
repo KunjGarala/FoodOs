@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.foodos.restaurant.entity.enums.TableStatus;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,8 +18,6 @@ import org.foodos.restaurant.entity.enums.TableStatus;
 @Schema(description = "Simplified table response for floor plan view")
 public class TableFloorPlanDto {
 
-    @Schema(description = "Table ID", example = "1")
-    private Long id;
 
     @Schema(description = "Table UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String tableUuid;
@@ -33,6 +33,12 @@ public class TableFloorPlanDto {
 
     @Schema(description = "Seating capacity", example = "4")
     private Integer capacity;
+
+    @Schema(description = "Number of guests currently seated", example = "3")
+    private Integer currentPax;
+
+    @Schema(description = "Time when guests were seated")
+    private LocalDateTime seatedAt;
 
     @Schema(description = "X-coordinate for floor plan", example = "120")
     private Integer posX;

@@ -18,8 +18,6 @@ import java.time.LocalDateTime;
 @Schema(description = "Table status update response")
 public class TableStatusResponseDto {
 
-    @Schema(description = "Table ID", example = "45")
-    private Long tableId;
 
     @Schema(description = "Table UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String tableUuid;
@@ -33,11 +31,15 @@ public class TableStatusResponseDto {
     @Schema(description = "Current order UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String currentOrderId;
 
+    @Schema(description = "Number of guests currently seated", example = "4")
+    private Integer currentPax;
+
     @Schema(description = "Time when guests were seated")
     private LocalDateTime occupiedSince;
 
-    @Schema(description = "Waiter ID", example = "12")
-    private Long waiterId;
+    @Schema(description = "Waiter UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String waiterUuid;
+
 
     @Schema(description = "Waiter name", example = "John Doe")
     private String waiterName;

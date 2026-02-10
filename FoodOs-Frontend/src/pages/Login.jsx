@@ -31,7 +31,9 @@ const Login = () => {
             } else if (role === 'ADMIN') {
                 navigate('/admin');
             } else {
-                if (restaurantIds && restaurantIds.length > 0) {
+                // ✅ FIX: Check if restaurantIds exists AND has length > 0
+                // If restaurantIds is null, undefined, or empty array, redirect to create restaurant
+                if (restaurantIds && Array.isArray(restaurantIds) && restaurantIds.length > 0) {
                     navigate('/app');
                 } else {
                     navigate('/create-restaurant');

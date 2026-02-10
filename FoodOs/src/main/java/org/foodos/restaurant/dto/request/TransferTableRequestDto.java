@@ -14,11 +14,11 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request to transfer table order")
 public class TransferTableRequestDto {
 
-    @NotNull(message = "Source table ID is required")
-    @Schema(description = "Source table ID", example = "10", required = true)
-    private Long fromTableId;
+    @NotNull(message = "Source table UUID is required")
+    @Schema(description = "Source table UUID", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
+    private String fromTableUuid;
 
-    @NotNull(message = "Destination table ID is required")
-    @Schema(description = "Destination table ID", example = "15", required = true)
-    private Long toTableId;
+    @NotNull(message = "Destination table UUID is required")
+    @Schema(description = "Destination table UUID", example = "550e8400-e29b-41d4-a716-446655440001", required = true)
+    private String toTableUuid;
 }
