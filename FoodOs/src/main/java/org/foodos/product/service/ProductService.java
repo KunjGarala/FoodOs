@@ -39,7 +39,7 @@ public class ProductService {
     private final EntityManager entityManager;
 
     @Transactional
-    public ProductResponseDto createProduct(String restaurantUuid, CreateProductRequest dto, MultipartFile image) {
+    public ProductResponseDto createProduct(String restaurantUuid, CreateProductRequest dto) {
         log.info("Creating product for restaurant: {}", restaurantUuid);
 
         // Validate restaurant

@@ -4,10 +4,7 @@ import org.foodos.product.dto.request.CreateCategoryRequest;
 import org.foodos.product.dto.request.UpdateCategoryRequest;
 import org.foodos.product.dto.response.CategoryResponseDto;
 import org.foodos.product.entity.Category;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.Named;
+import org.mapstruct.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,6 +30,7 @@ public interface CategoryMapper {
     @Mapping(target = "productCount", expression = "java(category.getProducts() != null ? category.getProducts().size() : 0)")
     CategoryResponseDto toResponseDto(Category category);
 
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "categoryUuid", ignore = true)
     @Mapping(target = "restaurant", ignore = true)

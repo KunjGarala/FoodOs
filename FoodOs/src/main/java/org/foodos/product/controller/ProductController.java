@@ -47,11 +47,9 @@ public class ProductController {
 
             @Valid @RequestPart("product") CreateProductRequest request,
 
-            @RequestPart(value = "image", required = false) MultipartFile image,
-
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
-        ProductResponseDto product = productService.createProduct(restaurantUuid, request, image);
+        ProductResponseDto product = productService.createProduct(restaurantUuid, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(product);
     }
 
