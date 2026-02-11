@@ -8,7 +8,7 @@ import { User, Mail, Lock, Phone, Building2, IdCard, KeyRound, Shield, Upload, X
 import api from '../../services/api';
 
 const AddEmployee = ({ isOpen, onClose, onSuccess }) => {
-  const { activeRestaurantId } = useSelector((state) => state.auth);
+  const { activeRestaurantId , role: userRole } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -437,11 +437,16 @@ const AddEmployee = ({ isOpen, onClose, onSuccess }) => {
             onChange={handleChange}
             className={`flex h-10 w-full rounded-md border border-slate-300 bg-white pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.role ? 'border-red-500' : ''}`}
           >
-            {roles.map(role => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
+            {roles.map(role => {
+              if(userRole == 'MANAGER' && role.value === 'MANAGER') {
+                return null;
+              }
+              return (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              );
+            })}
           </select>
         </div>
         {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}

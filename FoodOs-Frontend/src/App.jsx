@@ -77,7 +77,7 @@ function App() {
             } />
             
             <Route path="staff" element={
-                <ProtectedRoute allowedRoles={['OWNER']}>
+                <ProtectedRoute allowedRoles={['OWNER' , "MANAGER"]}>
                     <StaffManagement />
                 </ProtectedRoute>
             } />
