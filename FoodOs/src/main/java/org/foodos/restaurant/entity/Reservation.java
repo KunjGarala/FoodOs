@@ -16,7 +16,7 @@ import java.util.*;
 @Entity
 @Table(name = "reservations", indexes = {
         @Index(name = "idx_reservation_date", columnList = "reservation_date"),
-        @Index(name = "idx_customer_phone", columnList = "customer_phone")
+        @Index(name = "idx_reservation_customer_phone", columnList = "customer_phone")
 })
 @SQLDelete(sql = "UPDATE reservations SET is_deleted = true WHERE id = ?")
 @Filter(

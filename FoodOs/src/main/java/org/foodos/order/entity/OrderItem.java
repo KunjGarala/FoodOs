@@ -8,6 +8,7 @@ import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.order.entity.enums.KotStatus;
 import org.foodos.product.entity.Product;
 import org.foodos.product.entity.ProductVariation;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
@@ -22,11 +23,11 @@ import java.util.*;
  */
 @Entity
 @Table(name = "order_items", indexes = {
-        @Index(name = "idx_order_item_uuid", columnList = "order_item_uuid"),
-        @Index(name = "idx_order_id", columnList = "order_id"),
-        @Index(name = "idx_product_id", columnList = "product_id"),
-        @Index(name = "idx_kot_status", columnList = "kot_status"),
-        @Index(name = "idx_kot_id", columnList = "kot_id")
+        @Index(name = "idx_oi_uuid", columnList = "order_item_uuid"),
+        @Index(name = "idx_oi_order_id", columnList = "order_id"),
+        @Index(name = "idx_oi_product_id", columnList = "product_id"),
+        @Index(name = "idx_oi_kot_status", columnList = "kot_status"),
+        @Index(name = "idx_oi_kot_id", columnList = "kot_id")
 })
 @SQLDelete(sql = "UPDATE order_items SET is_deleted = true, deleted_at = now() WHERE id = ?")
 @Filter(name = "deletedFilter", condition = "is_deleted = :isDeleted")
@@ -69,6 +70,7 @@ public class OrderItem extends BaseSoftDeleteEntity {
 
     // Modifiers applied to this item
     @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 25)
     @Builder.Default
     private List<OrderItemModifier> modifiers = new ArrayList<>();
 
@@ -203,9 +205,29 @@ public class OrderItem extends BaseSoftDeleteEntity {
     }
 
     /**
-     * Calculate line total including modifiers, discount, and tax
+     * Cancel the order item
+     */
+    public void cancel(String reason, String notes) {
+        if (this.isCancelled) {
+            return; // Already cancelled
+        }
+        this.isCancelled = true;
+        this.cancellationReason = reason;
+        this.itemNotes = (this.itemNotes == null ? "" : this.itemNotes) + " CANCELLED: " + notes;
+        this.cancelledAt = LocalDateTime.now();
+        // Set line total to zero if item is cancelled
+        this.lineTotal = BigDecimal.ZERO;
+    }
+
+    /**
+     * Calculate line total for this item
      */
     public void calculateLineTotal() {
+        // Initialize null values to ZERO
+        if (this.discountAmount == null) this.discountAmount = BigDecimal.ZERO;
+        if (this.taxAmount == null) this.taxAmount = BigDecimal.ZERO;
+        if (this.lineTotal == null) this.lineTotal = BigDecimal.ZERO;
+
         // Calculate modifiers total
         BigDecimal modifiersTotal = modifiers.stream()
                 .map(OrderItemModifier::getLineTotal)

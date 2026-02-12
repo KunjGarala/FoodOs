@@ -1,0 +1,233 @@
+{
+	"info": {
+		"_postman_id": "e8f3f3f3-3f3f-3f3f-3f3f-3f3f3f3f3f3f",
+		"name": "Product Variation Management",
+		"description": "APIs for managing product variations (sizes, options, etc.).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Variation",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Small\",\n    \"price\": 8.99\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Variations Bulk",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"variations\": [\n        {\n            \"name\": \"Medium\",\n            \"price\": 10.99\n        },\n        {\n            \"name\": \"Large\",\n            \"price\": 12.99\n        }\n    ]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations/bulk",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations",
+						"bulk"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Variations By Product",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations?includeInactive=true",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations"
+					],
+					"query": [
+						{
+							"key": "includeInactive",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Variation By ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations/{{variationUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations",
+						"{{variationUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Variation",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Regular\",\n    \"price\": 9.49\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations/{{variationUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations",
+						"{{variationUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Variation",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations/{{variationUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations",
+						"{{variationUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Toggle Variation Status",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations/{{variationUuid}}/toggle-status?isActive=false",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations",
+						"{{variationUuid}}",
+						"toggle-status"
+					],
+					"query": [
+						{
+							"key": "isActive",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Set Default Variation",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/variations/{{variationUuid}}/set-default",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"variations",
+						"{{variationUuid}}",
+						"set-default"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

@@ -21,11 +21,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments", indexes = {
         @Index(name = "idx_payment_uuid", columnList = "payment_uuid"),
-        @Index(name = "idx_order_id", columnList = "order_id"),
+        @Index(name = "idx_payment_order_id", columnList = "order_id"),
         @Index(name = "idx_payment_date", columnList = "payment_date"),
         @Index(name = "idx_payment_method", columnList = "payment_method"),
-        @Index(name = "idx_status", columnList = "status"),
-        @Index(name = "idx_transaction_id", columnList = "transaction_id")
+        @Index(name = "idx_payment_status", columnList = "status"),
+        @Index(name = "idx_payment_transaction_id", columnList = "transaction_id")
 })
 @SQLDelete(sql = "UPDATE payments SET is_deleted = true, deleted_at = now() WHERE id = ?")
 @Filter(name = "deletedFilter", condition = "is_deleted = :isDeleted")

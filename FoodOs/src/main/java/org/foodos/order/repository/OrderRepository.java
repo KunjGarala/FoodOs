@@ -84,15 +84,12 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     // ===== FETCH WITH ASSOCIATIONS (Solve N+1 problem) =====
 
     @Query("SELECT DISTINCT o FROM Order o " +
-           "LEFT JOIN FETCH o.items i " +
-           "LEFT JOIN FETCH i.modifiers " +
+           "LEFT JOIN FETCH o.items " +
            "WHERE o.orderUuid = :orderUuid AND o.isDeleted = false")
     Optional<Order> findByOrderUuidWithItems(@Param("orderUuid") String orderUuid);
 
     @Query("SELECT DISTINCT o FROM Order o " +
            "LEFT JOIN FETCH o.items " +
-           "LEFT JOIN FETCH o.payments " +
-           "LEFT JOIN FETCH o.kitchenOrderTickets " +
            "WHERE o.id = :orderId AND o.isDeleted = false")
     Optional<Order> findByIdWithFullDetails(@Param("orderId") Long orderId);
 

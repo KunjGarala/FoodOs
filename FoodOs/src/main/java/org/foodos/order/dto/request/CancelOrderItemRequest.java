@@ -18,5 +18,15 @@ public class CancelOrderItemRequest {
     @Size(max = 200, message = "Cancellation reason cannot exceed 200 characters")
     @Schema(description = "Reason for cancellation", example = "Customer changed mind", required = true)
     private String cancellationReason;
-}
 
+    @Schema(description = "Additional notes for cancellation", example = "Item was not prepared yet")
+    private String notes;
+
+    public String getReason() {
+        return cancellationReason;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+}

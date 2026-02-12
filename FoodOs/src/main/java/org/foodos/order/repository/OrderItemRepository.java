@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,7 +28,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     @Query("SELECT oi FROM OrderItem oi WHERE oi.order.id = :orderId AND oi.kotStatus = :kotStatus AND oi.isCancelled = false AND oi.isDeleted = false")
     List<OrderItem> findByOrderIdAndKotStatus(@Param("orderId") Long orderId, @Param("kotStatus") KotStatus kotStatus);
 
-    @Query("SELECT oi FROM OrderItem oi WHERE oi.product.id = :productId AND oi.order.orderDate >= CURRENT_DATE - 30 AND oi.isCancelled = false AND oi.isDeleted = false")
-    List<OrderItem> findRecentOrderItemsByProduct(@Param("productId") Long productId);
+    @Query("SELECT oi FROM OrderItem oi WHERE oi.product.id = :productId AND oi.order.orderDate >= :startDate AND oi.isCancelled = false AND oi.isDeleted = false")
+    List<OrderItem> findRecentOrderItemsByProduct(@Param("productId") Long productId, @Param("startDate") LocalDate startDate);
 }
 

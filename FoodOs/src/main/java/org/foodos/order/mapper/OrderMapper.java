@@ -2,266 +2,238 @@ package org.foodos.order.mapper;
 
 import org.foodos.order.dto.response.*;
 import org.foodos.order.entity.*;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Order Mapper
+ * Order Mapper using MapStruct
  * Maps between entities and DTOs
  */
-@Component
-public class OrderMapper {
+@Mapper(componentModel = "spring")
+public interface OrderMapper {
 
     // ===== ORDER MAPPING =====
 
-    public OrderResponse toOrderResponse(Order order) {
-        if (order == null) {
-            return null;
-        }
+    @Mapping(target = "restaurantId", source = "restaurant.id")
+    @Mapping(target = "restaurantName", source = "restaurant.name")
+    @Mapping(target = "tableNumber", source = "table.tableNumber")
+    @Mapping(target = "waiterName", source = "waiter.username")
+    @Mapping(target = "items", source = "items")
+    @Mapping(target = "payments", source = "payments")
+    @Mapping(target = "kotSent", expression = "java(order.hasKotSent())")
+    @Mapping(target = "kotCount", expression = "java(order.getKitchenOrderTickets() != null ? order.getKitchenOrderTickets().size() : 0)")
+    @Mapping(target = "cancelledBy", source = "cancelledBy.username")
+    OrderResponse toOrderResponse(Order order);
 
-        return OrderResponse.builder()
-                .orderUuid(order.getOrderUuid())
-                .orderNumber(order.getOrderNumber())
-                .restaurantId(order.getRestaurant() != null ? order.getRestaurant().getId() : null)
-                .restaurantName(order.getRestaurant() != null ? order.getRestaurant().getName() : null)
-                .tableNumber(order.getTable() != null ? order.getTable().getTableNumber() : null)
-                .waiterName(order.getWaiter() != null ? order.getWaiter().getUsername() : null)
-                .orderDate(order.getOrderDate())
-                .orderTime(order.getOrderTime())
-                .orderType(order.getOrderType())
-                .numberOfGuests(order.getNumberOfGuests())
-                .status(order.getStatus())
-                .customerName(order.getCustomerName())
-                .customerPhone(order.getCustomerPhone())
-                .customerEmail(order.getCustomerEmail())
-                .deliveryAddress(order.getDeliveryAddress())
-                .items(toOrderItemResponseList(order.getItems()))
-                .itemCount(order.getItemCount())
-                .subtotal(order.getSubtotal())
-                .discountAmount(order.getDiscountAmount())
-                .discountPercentage(order.getDiscountPercentage())
-                .taxAmount(order.getTaxAmount())
-                .taxPercentage(order.getTaxPercentage())
-                .serviceCharge(order.getServiceCharge())
-                .serviceChargePercentage(order.getServiceChargePercentage())
-                .deliveryCharge(order.getDeliveryCharge())
-                .packingCharge(order.getPackingCharge())
-                .tipAmount(order.getTipAmount())
-                .roundOff(order.getRoundOff())
-                .totalAmount(order.getTotalAmount())
-                .paidAmount(order.getPaidAmount())
-                .balanceAmount(order.getBalanceAmount())
-                .payments(toPaymentResponseList(order.getPayments()))
-                .kotSent(order.hasKotSent())
-                .kotCount(order.getKitchenOrderTickets() != null ? order.getKitchenOrderTickets().size() : 0)
-                .orderNotes(order.getOrderNotes())
-                .kitchenNotes(order.getKitchenNotes())
-                .discountReason(order.getDiscountReason())
-                .couponCode(order.getCouponCode())
-                .cancellationReason(order.getCancellationReason())
-                .cancelledAt(order.getCancelledAt())
-                .cancelledBy(order.getCancelledBy() != null ? order.getCancelledBy().getUsername() : null)
-                .billedAt(order.getBilledAt())
-                .paidAt(order.getPaidAt())
-                .completedAt(order.getCompletedAt())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .build();
-    }
-
-    public List<OrderResponse> toOrderResponseList(List<Order> orders) {
-        if (orders == null) {
-            return List.of();
-        }
-        return orders.stream()
-                .map(this::toOrderResponse)
-                .collect(Collectors.toList());
-    }
+    List<OrderResponse> toOrderResponseList(List<Order> orders);
 
     // ===== ORDER ITEM MAPPING =====
 
-    public OrderItemResponse toOrderItemResponse(OrderItem item) {
-        if (item == null) {
-            return null;
-        }
+    @Mapping(target = "productId", source = "product.id")
+    @Mapping(target = "modifiers", source = "modifiers")
+    OrderItemResponse toOrderItemResponse(OrderItem item);
 
-        return OrderItemResponse.builder()
-                .orderItemUuid(item.getOrderItemUuid())
-                .productId(item.getProduct() != null ? item.getProduct().getId() : null)
-                .productName(item.getProductName())
-                .variationName(item.getVariationName())
-                .sku(item.getSku())
-                .quantity(item.getQuantity())
-                .unitPrice(item.getUnitPrice())
-                .discountAmount(item.getDiscountAmount())
-                .taxAmount(item.getTaxAmount())
-                .lineTotal(item.getLineTotal())
-                .modifiers(toOrderItemModifierResponseList(item.getModifiers()))
-                .modifiersText(item.getModifiersText())
-                .itemNotes(item.getItemNotes())
-                .specialInstructions(item.getSpecialInstructions())
-                .kotStatus(item.getKotStatus())
-                .isCancelled(item.getIsCancelled())
-                .isComplimentary(item.getIsComplimentary())
-                .isHalfPortion(item.getIsHalfPortion())
-                .cancellationReason(item.getCancellationReason())
-                .cancelledAt(item.getCancelledAt())
-                .kotPrintedAt(item.getKotPrintedAt())
-                .readyAt(item.getReadyAt())
-                .servedAt(item.getServedAt())
-                .createdAt(item.getCreatedAt())
-                .build();
-    }
-
-    public List<OrderItemResponse> toOrderItemResponseList(List<OrderItem> items) {
-        if (items == null) {
-            return List.of();
-        }
-        return items.stream()
-                .map(this::toOrderItemResponse)
-                .collect(Collectors.toList());
-    }
+    List<OrderItemResponse> toOrderItemResponseList(List<OrderItem> items);
 
     // ===== ORDER ITEM MODIFIER MAPPING =====
 
-    public OrderItemModifierResponse toOrderItemModifierResponse(OrderItemModifier modifier) {
-        if (modifier == null) {
-            return null;
-        }
+    @Mapping(target = "modifierId", source = "modifier.id")
+    OrderItemModifierResponse toOrderItemModifierResponse(OrderItemModifier modifier);
 
-        return OrderItemModifierResponse.builder()
-                .orderItemModifierUuid(modifier.getOrderItemModifierUuid())
-                .modifierId(modifier.getModifier() != null ? modifier.getModifier().getId() : null)
-                .modifierName(modifier.getModifierName())
-                .modifierGroupName(modifier.getModifierGroupName())
-                .quantity(modifier.getQuantity())
-                .unitPrice(modifier.getUnitPrice())
-                .lineTotal(modifier.getLineTotal())
-                .build();
-    }
-
-    public List<OrderItemModifierResponse> toOrderItemModifierResponseList(List<OrderItemModifier> modifiers) {
-        if (modifiers == null) {
-            return List.of();
-        }
-        return modifiers.stream()
-                .map(this::toOrderItemModifierResponse)
-                .collect(Collectors.toList());
-    }
+    List<OrderItemModifierResponse> toOrderItemModifierResponseList(List<OrderItemModifier> modifiers);
 
     // ===== PAYMENT MAPPING =====
 
-    public PaymentResponse toPaymentResponse(Payment payment) {
-        if (payment == null) {
-            return null;
-        }
+    @Mapping(target = "collectedBy", source = "collectedBy.username")
+    PaymentResponse toPaymentResponse(Payment payment);
 
-        return PaymentResponse.builder()
-                .paymentUuid(payment.getPaymentUuid())
-                .paymentMethod(payment.getPaymentMethod())
-                .amount(payment.getAmount())
-                .status(payment.getStatus())
-                .transactionId(payment.getTransactionId())
-                .referenceNumber(payment.getReferenceNumber())
-                .cardLastFour(payment.getCardLastFour())
-                .cardType(payment.getCardType())
-                .upiId(payment.getUpiId())
-                .bankName(payment.getBankName())
-                .notes(payment.getNotes())
-                .collectedBy(payment.getCollectedBy() != null ? payment.getCollectedBy().getUsername() : null)
-                .isRefunded(payment.getIsRefunded())
-                .refundAmount(payment.getRefundAmount())
-                .netAmount(payment.getNetAmount())
-                .paymentDate(payment.getPaymentDate())
-                .refundDate(payment.getRefundDate())
-                .createdAt(payment.getCreatedAt())
-                .build();
-    }
-
-    public List<PaymentResponse> toPaymentResponseList(List<Payment> payments) {
-        if (payments == null) {
-            return List.of();
-        }
-        return payments.stream()
-                .map(this::toPaymentResponse)
-                .collect(Collectors.toList());
-    }
+    List<PaymentResponse> toPaymentResponseList(List<Payment> payments);
 
     // ===== KOT MAPPING =====
 
-    public KotResponse toKotResponse(KitchenOrderTicket kot) {
-        if (kot == null) {
-            return null;
-        }
+    @Mapping(target = "kotItems", source = "kotItems")
+    KotResponse toKotResponse(KitchenOrderTicket kot);
 
-        return KotResponse.builder()
-                .kotUuid(kot.getKotUuid())
-                .kotNumber(kot.getKotNumber())
-                .orderNumber(kot.getOrderNumber())
-                .tableNumber(kot.getTableNumber())
-                .waiterName(kot.getWaiterName())
-                .kotDate(kot.getKotDate())
-                .kotTime(kot.getKotTime())
-                .kotType(kot.getKotType())
-                .status(kot.getStatus())
-                .printerTarget(kot.getPrinterTarget())
-                .kitchenStation(kot.getKitchenStation())
-                .kotItems(toKotItemResponseList(kot.getKotItems()))
-                .totalItemsCount(kot.getTotalItemsCount())
-                .notes(kot.getNotes())
-                .specialInstructions(kot.getSpecialInstructions())
-                .isUrgent(kot.getIsUrgent())
-                .priority(kot.getPriority())
-                .printedAt(kot.getPrintedAt())
-                .acknowledgedAt(kot.getAcknowledgedAt())
-                .preparationStartedAt(kot.getPreparationStartedAt())
-                .readyAt(kot.getReadyAt())
-                .completedAt(kot.getCompletedAt())
-                .createdAt(kot.getCreatedAt())
-                .build();
-    }
-
-    public List<KotResponse> toKotResponseList(List<KitchenOrderTicket> kots) {
-        if (kots == null) {
-            return List.of();
-        }
-        return kots.stream()
-                .map(this::toKotResponse)
-                .collect(Collectors.toList());
-    }
+    List<KotResponse> toKotResponseList(List<KitchenOrderTicket> kots);
 
     // ===== KOT ITEM MAPPING =====
 
-    public KotItemResponse toKotItemResponse(KotItem item) {
-        if (item == null) {
-            return null;
-        }
+    KotItemResponse toKotItemResponse(KotItem item);
 
-        return KotItemResponse.builder()
-                .kotItemUuid(item.getKotItemUuid())
-                .productName(item.getProductName())
-                .variationName(item.getVariationName())
-                .quantity(item.getQuantity())
-                .modifiersText(item.getModifiersText())
-                .notes(item.getNotes())
-                .specialInstructions(item.getSpecialInstructions())
-                .isCancelled(item.getIsCancelled())
-                .isReady(item.getIsReady())
-                .isComplimentary(item.getIsComplimentary())
-                .isHighlighted(item.getIsHighlighted())
-                .sortOrder(item.getSortOrder())
-                .build();
-    }
+    List<KotItemResponse> toKotItemResponseList(List<KotItem> items);
 
-    public List<KotItemResponse> toKotItemResponseList(List<KotItem> items) {
-        if (items == null) {
-            return List.of();
-        }
-        return items.stream()
-                .map(this::toKotItemResponse)
-                .collect(Collectors.toList());
-    }
+    // ===== REQUEST TO ENTITY MAPPING =====
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "orderUuid", ignore = true)
+    @Mapping(target = "orderNumber", ignore = true)
+    @Mapping(target = "restaurant", ignore = true)
+    @Mapping(target = "table", ignore = true)
+    @Mapping(target = "waiter", ignore = true)
+    @Mapping(target = "cashier", ignore = true)
+    @Mapping(target = "items", ignore = true)
+    @Mapping(target = "kitchenOrderTickets", ignore = true)
+    @Mapping(target = "payments", ignore = true)
+    @Mapping(target = "status", constant = "DRAFT")
+    @Mapping(target = "deliveryCharge", expression = "java(request.getDeliveryCharge() != null ? request.getDeliveryCharge() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "packingCharge", expression = "java(request.getPackingCharge() != null ? request.getPackingCharge() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "discountPercentage", expression = "java(request.getDiscountPercentage() != null ? request.getDiscountPercentage() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "taxPercentage", expression = "java(request.getTaxPercentage() != null ? request.getTaxPercentage() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "serviceChargePercentage", expression = "java(request.getServiceChargePercentage() != null ? request.getServiceChargePercentage() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    @Mapping(target = "orderDate", ignore = true)
+    @Mapping(target = "orderTime", ignore = true)
+    @Mapping(target = "subtotal", ignore = true)
+    @Mapping(target = "taxAmount", ignore = true)
+    @Mapping(target = "serviceCharge", ignore = true)
+    @Mapping(target = "totalAmount", ignore = true)
+    @Mapping(target = "paidAmount", ignore = true)
+    @Mapping(target = "balanceAmount", ignore = true)
+    @Mapping(target = "tipAmount", ignore = true)
+    @Mapping(target = "roundOff", ignore = true)
+    @Mapping(target = "discountApprovedBy", ignore = true)
+    @Mapping(target = "billedAt", ignore = true)
+    @Mapping(target = "paidAt", ignore = true)
+    @Mapping(target = "completedAt", ignore = true)
+    @Mapping(target = "cancelledAt", ignore = true)
+    @Mapping(target = "cancelledBy", ignore = true)
+    @Mapping(target = "cancellationReason", ignore = true)
+    @Mapping(target = "isSynced", ignore = true)
+    @Mapping(target = "syncedAt", ignore = true)
+    @Mapping(target = "isPrinted", ignore = true)
+    @Mapping(target = "printedAt", ignore = true)
+    Order toOrder(org.foodos.order.dto.request.CreateOrderRequest request);
+
+    // ===== ORDER ITEM REQUEST TO ENTITY MAPPING =====
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "orderItemUuid", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    @Mapping(target = "order", ignore = true)
+    @Mapping(target = "product", ignore = true)
+    @Mapping(target = "variation", ignore = true)
+    @Mapping(target = "kitchenOrderTicket", ignore = true)
+    @Mapping(target = "modifiers", ignore = true)
+    @Mapping(target = "productName", ignore = true)
+    @Mapping(target = "variationName", ignore = true)
+    @Mapping(target = "sku", ignore = true)
+    @Mapping(target = "unitPrice", ignore = true)
+    @Mapping(target = "costPrice", ignore = true)
+    @Mapping(target = "discountPercentage", expression = "java(request.getDiscountPercentage() != null ? request.getDiscountPercentage() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "discountAmount", expression = "java(request.getDiscountAmount() != null ? request.getDiscountAmount() : java.math.BigDecimal.ZERO)")
+    @Mapping(target = "taxAmount", ignore = true)
+    @Mapping(target = "taxPercentage", ignore = true)
+    @Mapping(target = "lineTotal", ignore = true)
+    @Mapping(target = "kotStatus", constant = "PENDING")
+    @Mapping(target = "isComplimentary", expression = "java(request.getIsComplimentary() != null ? request.getIsComplimentary() : false)")
+    @Mapping(target = "isHalfPortion", expression = "java(request.getIsHalfPortion() != null ? request.getIsHalfPortion() : false)")
+    @Mapping(target = "isCancelled", ignore = true)
+    @Mapping(target = "cancelledAt", ignore = true)
+    @Mapping(target = "cancelledBy", ignore = true)
+    @Mapping(target = "cancellationReason", ignore = true)
+    @Mapping(target = "kotPrintedAt", ignore = true)
+    @Mapping(target = "preparationStartedAt", ignore = true)
+    @Mapping(target = "readyAt", ignore = true)
+    @Mapping(target = "servedAt", ignore = true)
+    @Mapping(target = "servedBy", ignore = true)
+    @Mapping(target = "specialInstructions", ignore = true)
+    @Mapping(target = "sortOrder", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    OrderItem toOrderItem(org.foodos.order.dto.request.OrderItemRequest request);
+
+    // ===== ORDER ITEM MODIFIER REQUEST TO ENTITY MAPPING =====
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "orderItemModifierUuid", ignore = true)
+    @Mapping(target = "orderItem", ignore = true)
+    @Mapping(target = "modifier", ignore = true)
+    @Mapping(target = "modifierName", ignore = true)
+    @Mapping(target = "modifierGroupName", ignore = true)
+    @Mapping(target = "quantity", ignore = true)
+    @Mapping(target = "unitPrice", ignore = true)
+    @Mapping(target = "lineTotal", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    OrderItemModifier toOrderItemModifier(org.foodos.order.dto.request.OrderItemModifierRequest request);
+
+    // ===== PAYMENT REQUEST TO ENTITY MAPPING =====
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "paymentUuid", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    @Mapping(target = "order", ignore = true)
+    @Mapping(target = "collectedBy", ignore = true)
+    @Mapping(target = "paymentDate", ignore = true)
+    @Mapping(target = "status", constant = "COMPLETED")
+    @Mapping(target = "isRefunded", ignore = true)
+    @Mapping(target = "refundAmount", ignore = true)
+    @Mapping(target = "refundDate", ignore = true)
+    @Mapping(target = "refundReason", ignore = true)
+    @Mapping(target = "refundedBy", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    Payment toPayment(org.foodos.order.dto.request.AddPaymentRequest request);
+
+    // ===== KOT REQUEST TO ENTITY MAPPING =====
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "kotUuid", ignore = true)
+    @Mapping(target = "restaurant", ignore = true)
+    @Mapping(target = "order", ignore = true)
+    @Mapping(target = "kotItems", ignore = true)
+    @Mapping(target = "kotNumber", ignore = true)
+    @Mapping(target = "kotDate", ignore = true)
+    @Mapping(target = "kotTime", ignore = true)
+    @Mapping(target = "kotType", constant = "NEW")
+    @Mapping(target = "status", constant = "PENDING")
+    @Mapping(target = "orderNumber", ignore = true)
+    @Mapping(target = "tableNumber", ignore = true)
+    @Mapping(target = "waiterName", ignore = true)
+    @Mapping(target = "isUrgent", expression = "java(request.getIsUrgent() != null ? request.getIsUrgent() : false)")
+    @Mapping(target = "priority", expression = "java(request.getPriority() != null ? request.getPriority() : 0)")
+    @Mapping(target = "notes", ignore = true)
+    @Mapping(target = "printedAt", ignore = true)
+    @Mapping(target = "acknowledgedAt", ignore = true)
+    @Mapping(target = "preparationStartedAt", ignore = true)
+    @Mapping(target = "readyAt", ignore = true)
+    @Mapping(target = "completedAt", ignore = true)
+    @Mapping(target = "cancelledAt", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    KitchenOrderTicket toKitchenOrderTicket(org.foodos.order.dto.request.SendKotRequest request);
+
+    // ===== ORDER ITEM TO KOT ITEM MAPPING =====
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "kotItemUuid", ignore = true)
+    @Mapping(target = "kitchenOrderTicket", ignore = true)
+    @Mapping(target = "orderItem", source = "orderItem")
+    @Mapping(target = "productName", source = "orderItem.productName")
+    @Mapping(target = "variationName", source = "orderItem.variationName")
+    @Mapping(target = "quantity", source = "orderItem.quantity")
+    @Mapping(target = "modifiersText", source = "orderItem.modifiersText")
+    @Mapping(target = "notes", source = "orderItem.itemNotes")
+    @Mapping(target = "specialInstructions", source = "orderItem.specialInstructions")
+    @Mapping(target = "isComplimentary", source = "orderItem.isComplimentary")
+    @Mapping(target = "isCancelled", ignore = true)
+    @Mapping(target = "isReady", ignore = true)
+    @Mapping(target = "sortOrder", ignore = true)
+    @Mapping(target = "isHighlighted", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "readyAt", ignore = true)
+    KotItem toKotItem(OrderItem orderItem);
 }
 

@@ -1,6 +1,5 @@
 package org.foodos.order.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -8,7 +7,6 @@ import lombok.*;
 import org.foodos.order.entity.enums.OrderType;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,6 +60,7 @@ public class CreateOrderRequest {
     @NotEmpty(message = "Order must have at least one item")
     @Valid
     @Schema(description = "List of items in the order", required = true)
+    @Builder.Default
     private List<OrderItemRequest> items = new ArrayList<>();
 
     // ===== CHARGES & DISCOUNTS =====

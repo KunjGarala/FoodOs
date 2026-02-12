@@ -15,9 +15,9 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "order_item_modifiers", indexes = {
-        @Index(name = "idx_order_item_modifier_uuid", columnList = "order_item_modifier_uuid"),
-        @Index(name = "idx_order_item_id", columnList = "order_item_id"),
-        @Index(name = "idx_modifier_id", columnList = "modifier_id")
+        @Index(name = "idx_oim_uuid", columnList = "order_item_modifier_uuid"),
+        @Index(name = "idx_oim_order_item_id", columnList = "order_item_id"),
+        @Index(name = "idx_oim_modifier_id", columnList = "modifier_id")
 })
 @Getter
 @Setter
@@ -88,8 +88,19 @@ public class OrderItemModifier {
      * Calculate line total
      */
     public void calculateLineTotal() {
+        if (this.lineTotal == null) this.lineTotal = BigDecimal.ZERO;
+        if (this.quantity == null) this.quantity = BigDecimal.ONE;
+        if (this.unitPrice == null) this.unitPrice = BigDecimal.ZERO;
+        
         this.lineTotal = unitPrice.multiply(quantity)
                 .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Get line total (defensive getter)
+     */
+    public BigDecimal getLineTotal() {
+        return lineTotal != null ? lineTotal : BigDecimal.ZERO;
     }
 }
 

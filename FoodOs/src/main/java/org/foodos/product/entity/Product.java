@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.foodos.common.entity.BaseSoftDeleteEntity;
+import org.foodos.order.entity.OrderItem;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.product.entity.enums.DietaryType;
 import org.hibernate.annotations.SQLDelete;
@@ -94,9 +95,9 @@ public class Product extends BaseSoftDeleteEntity {
 //    private List<Recipe> recipes = new ArrayList<>(); // Ingredients for the product
 //
 //    // Order items
-//    @OneToMany(mappedBy = "product", cascade = CascadeType.PERSIST)
-//    @Builder.Default
-//    private List<OrderItem> orderItems = new ArrayList<>(); // Order items containing this product
+    @OneToMany(mappedBy = "product", cascade = CascadeType.PERSIST)
+    @Builder.Default
+    private List<OrderItem> orderItems = new ArrayList<>(); // Order items containing this product
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;

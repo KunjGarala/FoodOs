@@ -15,8 +15,8 @@ import java.util.*;
 
 @Entity
 @Table(name = "restaurant_tables", indexes = {
-        @Index(name = "idx_section", columnList = "section_name"),
-        @Index(name = "idx_status", columnList = "status")
+        @Index(name = "idx_table_section", columnList = "section_name"),
+        @Index(name = "idx_table_status", columnList = "status")
 })
 @SQLDelete(sql = "UPDATE restaurant_tables SET is_deleted = true WHERE id = ?")
 @Filter(

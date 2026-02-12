@@ -1,0 +1,192 @@
+{
+	"info": {
+		"_postman_id": "c8f3f3f3-3f3f-3f3f-3f3f-3f3f3f3f3f3f",
+		"name": "Modifier Group Management",
+		"description": "APIs for managing modifier groups in a restaurant.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Modifier Group",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Burger Toppings\",\n    \"minSelection\": 0,\n    \"maxSelection\": 3\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Modifier Groups",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups?includeInactive=true",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups"
+					],
+					"query": [
+						{
+							"key": "includeInactive",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Modifier Group By ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups/{{modifierGroupUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups",
+						"{{modifierGroupUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search Modifier Groups",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups/search?searchTerm=Burger",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups",
+						"search"
+					],
+					"query": [
+						{
+							"key": "searchTerm",
+							"value": "Burger"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Modifier Group",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Deluxe Burger Toppings\",\n    \"minSelection\": 1,\n    \"maxSelection\": 5\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups/{{modifierGroupUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups",
+						"{{modifierGroupUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Modifier Group",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups/{{modifierGroupUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups",
+						"{{modifierGroupUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Toggle Modifier Group Status",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/modifier-groups/{{modifierGroupUuid}}/toggle-status?isActive=false",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"modifier-groups",
+						"{{modifierGroupUuid}}",
+						"toggle-status"
+					],
+					"query": [
+						{
+							"key": "isActive",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

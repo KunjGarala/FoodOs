@@ -14,6 +14,7 @@ import org.foodos.product.dto.response.CategoryResponseDto;
 import org.foodos.product.service.CategoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +39,7 @@ public class CategoryController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PostMapping("/create")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication , 'MANAGER')")
     public ResponseEntity<CategoryResponseDto> createCategory(
             @Parameter(description = "Restaurant ID", required = true)
             @PathVariable String restaurantUuid,
@@ -93,6 +95,7 @@ public class CategoryController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PutMapping("/{categoryUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<CategoryResponseDto> updateCategory(
             @Parameter(description = "Restaurant ID", required = true)
             @PathVariable String restaurantUuid,
@@ -119,6 +122,7 @@ public class CategoryController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @DeleteMapping("/{categoryUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> deleteCategory(
             @Parameter(description = "Restaurant ID", required = true)
             @PathVariable String restaurantUuid,

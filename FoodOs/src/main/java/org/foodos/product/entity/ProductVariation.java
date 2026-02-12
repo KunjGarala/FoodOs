@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.foodos.common.entity.BaseSoftDeleteEntity;
+import org.foodos.order.entity.OrderItem;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Filter;
 
@@ -61,7 +62,7 @@ public class ProductVariation extends BaseSoftDeleteEntity {
     private Integer sortOrder = 0; // Lower numbers appear first
 
     // Order items using this variation
-//    @OneToMany(mappedBy = "variation", cascade = CascadeType.PERSIST)
-//    @Builder.Default
-//    private List<OrderItem> orderItems = new ArrayList<>();
+    @OneToMany(mappedBy = "variation", cascade = CascadeType.PERSIST)
+    @Builder.Default
+    private List<OrderItem> orderItems = new ArrayList<>();
 }

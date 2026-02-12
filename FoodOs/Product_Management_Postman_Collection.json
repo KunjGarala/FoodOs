@@ -1,0 +1,274 @@
+{
+	"info": {
+		"_postman_id": "d8f3f3f3-3f3f-3f3f-3f3f-3f3f3f3f3f3f",
+		"name": "Product Management",
+		"description": "APIs for managing restaurant products/menu items.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Product",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "multipart/form-data"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "product",
+							"value": "{\n    \"name\": \"Classic Burger\",\n    \"description\": \"A delicious classic burger.\",\n    \"price\": 9.99,\n    \"categoryUuid\": \"{{categoryUuid}}\",\n    \"sku\": \"BURGER-001\",\n    \"isFeatured\": true\n}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/create",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Products",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products?includeInactive=true",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products"
+					],
+					"query": [
+						{
+							"key": "includeInactive",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Products By Category",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/category/{{categoryUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"category",
+						"{{categoryUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Featured Products",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/featured",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"featured"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Bestseller Products",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/bestsellers",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"bestsellers"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search Products",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/search?q=Burger",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"search"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "Burger"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Product By ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Product",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "multipart/form-data"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "product",
+							"value": "{\n    \"name\": \"Deluxe Burger\",\n    \"description\": \"A deluxe version of our classic burger.\",\n    \"price\": 12.99\n}",
+							"type": "text"
+						},
+						{
+							"key": "image",
+							"type": "file",
+							"src": "/path/to/your/image.jpg"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Product",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Toggle Product Status",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/status?isActive=false",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"status"
+					],
+					"query": [
+						{
+							"key": "isActive",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

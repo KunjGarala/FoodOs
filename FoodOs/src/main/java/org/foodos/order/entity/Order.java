@@ -9,6 +9,7 @@ import org.foodos.order.entity.enums.OrderStatus;
 import org.foodos.order.entity.enums.OrderType;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.entity.RestaurantTable;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
@@ -27,12 +28,12 @@ import java.util.*;
         @Index(name = "idx_order_uuid", columnList = "order_uuid"),
         @Index(name = "idx_order_number", columnList = "order_number"),
         @Index(name = "idx_order_date", columnList = "order_date"),
-        @Index(name = "idx_status", columnList = "status"),
+        @Index(name = "idx_order_status", columnList = "status"),
         @Index(name = "idx_order_type", columnList = "order_type"),
-        @Index(name = "idx_restaurant_id", columnList = "restaurant_id"),
-        @Index(name = "idx_table_id", columnList = "table_id"),
-        @Index(name = "idx_waiter_id", columnList = "waiter_id"),
-        @Index(name = "idx_customer_phone", columnList = "customer_phone")
+        @Index(name = "idx_order_restaurant_id", columnList = "restaurant_id"),
+        @Index(name = "idx_order_table_id", columnList = "table_id"),
+        @Index(name = "idx_order_waiter_id", columnList = "waiter_id"),
+        @Index(name = "idx_order_customer_phone", columnList = "customer_phone")
 })
 @SQLDelete(sql = "UPDATE orders SET is_deleted = true, deleted_at = now() WHERE id = ? AND version = ?")
 @Filter(name = "deletedFilter", condition = "is_deleted = :isDeleted")
@@ -75,16 +76,19 @@ public class Order extends BaseSoftDeleteEntity {
 
     // Order Items (Cascade ALL for true aggregate)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 25)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
     // Kitchen Order Tickets
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
     @Builder.Default
     private List<KitchenOrderTicket> kitchenOrderTickets = new ArrayList<>();
 
     // Payments for this order
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
 
@@ -241,7 +245,9 @@ public class Order extends BaseSoftDeleteEntity {
     // ===== LIFECYCLE CALLBACKS =====
 
     @PrePersist
+    @Override
     protected void onCreate() {
+        super.onCreate();
         if (orderUuid == null) {
             orderUuid = UUID.randomUUID().toString();
         }
@@ -251,7 +257,6 @@ public class Order extends BaseSoftDeleteEntity {
         if (orderTime == null) {
             orderTime = LocalDateTime.now();
         }
-        super.onCreate();
     }
 
     // ===== AGGREGATE PATTERN METHODS =====
@@ -293,6 +298,16 @@ public class Order extends BaseSoftDeleteEntity {
      * Calculate all order totals
      */
     public void calculateTotals() {
+        // Initialize null values to ZERO
+        if (this.discountAmount == null) this.discountAmount = BigDecimal.ZERO;
+        if (this.taxAmount == null) this.taxAmount = BigDecimal.ZERO;
+        if (this.serviceCharge == null) this.serviceCharge = BigDecimal.ZERO;
+        if (this.deliveryCharge == null) this.deliveryCharge = BigDecimal.ZERO;
+        if (this.packingCharge == null) this.packingCharge = BigDecimal.ZERO;
+        if (this.tipAmount == null) this.tipAmount = BigDecimal.ZERO;
+        if (this.roundOff == null) this.roundOff = BigDecimal.ZERO;
+        if (this.paidAmount == null) this.paidAmount = BigDecimal.ZERO;
+
         // Calculate subtotal from items
         this.subtotal = items.stream()
                 .filter(item -> !item.getIsCancelled())
@@ -409,6 +424,41 @@ public class Order extends BaseSoftDeleteEntity {
     public boolean hasKotSent() {
         return !kitchenOrderTickets.isEmpty();
     }
+
+    /**
+     * Cancel the order
+     */
+    public void cancel(String reason) {
+        if (!canBeCancelled()) {
+            throw new IllegalStateException("Order cannot be cancelled in its current state: " + status);
+        }
+        this.cancellationReason = reason;
+        transitionTo(OrderStatus.CANCELLED);
+    }
+
+    /**
+     * Check if the order can be cancelled.
+     */
+    public boolean canBeCancelled() {
+        // Example logic: Can cancel if not yet completed, paid, or already cancelled.
+        return status != OrderStatus.COMPLETED && status != OrderStatus.PAID && status != OrderStatus.CANCELLED;
+    }
+
+    /**
+     * Complete the order
+     */
+    public void complete() {
+        if (status != OrderStatus.PAID) {
+            throw new IllegalStateException("Order must be paid before it can be completed.");
+        }
+        transitionTo(OrderStatus.COMPLETED);
+    }
+
+    /**
+     * Check if the order can be deleted.
+     */
+    public boolean canBeDeleted() {
+        // Example logic: Can only delete draft or cancelled orders.
+        return status == OrderStatus.DRAFT || status == OrderStatus.CANCELLED;
+    }
 }
-
-

@@ -1,0 +1,1344 @@
+{
+  "info": {
+    "_postman_id": "b1f3c15d-b661-48be-979e-30b0a5fc8446",
+    "name": "FoodOs Product Management API",
+    "description": "Complete API collection for testing all Product module services including Categories, Products, Variations, Modifier Groups, and Modifiers",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "40972411"
+  },
+  "item": [
+    {
+      "name": "Category Management",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Beverages\",\n  \"description\": \"Hot and cold drinks\",\n  \"parentCategoryUuid\": null,\n  \"sortOrder\": 1,\n  \"imageUrl\": \"https://example.com/images/beverages.jpg\",\n  \"iconName\": \"coffee\",\n  \"colorCode\": \"#FF5733\",\n  \"isActive\": true,\n  \"isVisibleInMenu\": true,\n  \"availableForDineIn\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/categories/create",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "categories",
+                "create"
+              ]
+            },
+            "description": "Create a new product category for a restaurant. Can optionally set a parent category for hierarchical structure."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "categories"
+              ]
+            },
+            "description": "Retrieve a list of all categories for a restaurant"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category by UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/categories/{{category_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "categories",
+                "{{category_uuid}}"
+              ]
+            },
+            "description": "Retrieve a specific category by its UUID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hot beverages\",\n  \"description\": \"Hot drinks including coffee and tea\",\n  \"sortOrder\": 2,\n  \"isActive\": true,\n  \"colorCode\": \"#FF6347\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/categories/{{category_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "categories",
+                "{{category_uuid}}"
+              ]
+            },
+            "description": "Update an existing category. All fields are optional - only provided fields will be updated."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/categories/{{category_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "categories",
+                "{{category_uuid}}"
+              ]
+            },
+            "description": "Soft delete a category by setting it as inactive. The category and its data are preserved in the database."
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing product categories",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJydWRyYSIsInVzZXJuYW1lIjoicnVkcmEiLCJyb2xlIjoiT1dORVIiLCJ1c2VySWQiOiJjZDMxYzQ0MS03MmVhLTRiNDQtYmQ3ZS0zOTlkYjkwZTEwYmYiLCJyZXN0YXVyYW50SWRzIjpbImFhN2UwOWY5LWExZTYtNGMyNS04ZjA2LTE4ODUyMTg4NGNmNSJdLCJpYXQiOjE3NzA2MjIxNDAsImV4cCI6MTc3MDYyMzA0MH0.K_ENw9Z_MgZRJfv28vJOuQDa1G2yevsvgkQm7qpziTI91Y56kT-bMyeXmC9zAEP5",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product Management",
+      "item": [
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "product",
+                  "value": "{\n  \"name\": \"Espresso Coffee\",\n  \"description\": \"Strong Italian coffee\",\n  \"categoryUuid\": \"{{category_uuid}}\",\n  \"sku\": \"ESP-001\",\n  \"foodCode\": \"F001\",\n  \"basePrice\": 3.50,\n  \"costPrice\": 1.50,\n  \"takeawayPrice\": 3.00,\n  \"deliveryPrice\": 4.00,\n  \"dietaryType\": \"VEGETARIAN\",\n  \"preparationTime\": 5,\n  \"isActive\": true,\n  \"isFeatured\": false,\n  \"isBestseller\": false,\n  \"isOpenPrice\": false,\n  \"trackInventory\": false,\n  \"sortOrder\": 1,\n  \"availableFrom\": \"06:00:00\",\n  \"availableTo\": \"22:00:00\",\n  \"availableDays\": \"MON,TUE,WED,THU,FRI,SAT,SUN\"\n}",
+                  "type": "text",
+                  "contentType": "application/json"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": null,
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/create",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "create"
+              ]
+            },
+            "description": "Create a new product/menu item for a restaurant with optional image upload"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products?includeInactive=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Retrieve all products for a restaurant. Can optionally include inactive products."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Products by Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/category/{{category_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "category",
+                "{{category_uuid}}"
+              ]
+            },
+            "description": "Retrieve all active products for a specific category"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Featured Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/featured",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "featured"
+              ]
+            },
+            "description": "Retrieve all featured products for a restaurant"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bestseller Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/bestsellers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "bestsellers"
+              ]
+            },
+            "description": "Retrieve all bestseller products for a restaurant, sorted by sold count"
+          },
+          "response": []
+        },
+        {
+          "name": "Search Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/search?q=coffee",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "coffee"
+                }
+              ]
+            },
+            "description": "Search for products by name"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product by UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}"
+              ]
+            },
+            "description": "Retrieve a specific product by its UUID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "product",
+                  "value": "{\n  \"name\": \"Premium Espresso\",\n  \"description\": \"Strong Italian coffee - Premium blend\",\n  \"basePrice\": 4.50,\n  \"isActive\": true,\n  \"isFeatured\": true,\n  \"preparationTime\": 7\n}",
+                  "type": "text",
+                  "contentType": "application/json"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": null,
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}"
+              ]
+            },
+            "description": "Update an existing product. All fields are optional - only provided fields will be updated."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}"
+              ]
+            },
+            "description": "Soft delete a product. The product data is preserved in the database."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Product Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/status?isActive=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Enable or disable a product"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing restaurant products/menu items"
+    },
+    {
+      "name": "Product Variation Management",
+      "item": [
+        {
+          "name": "Create Variation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Small\",\n  \"shortCode\": \"S\",\n  \"price\": 3.00,\n  \"costPrice\": 1.20,\n  \"sku\": \"ESP-S\",\n  \"isDefault\": false,\n  \"isActive\": true,\n  \"sortOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations"
+              ]
+            },
+            "description": "Creates a new variation for a specific product (e.g., Small, Medium, Large)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Variations Bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variations\": [\n    {\n      \"name\": \"Small\",\n      \"shortCode\": \"S\",\n      \"price\": 3.00,\n      \"costPrice\": 1.20,\n      \"sku\": \"ESP-SS\",\n      \"isDefault\": false,\n      \"isActive\": true,\n      \"sortOrder\": 1\n    },\n    {\n      \"name\": \"Medium\",\n      \"shortCode\": \"M\",\n      \"price\": 4.00,\n      \"costPrice\": 1.50,\n      \"sku\": \"ESP-M\",\n      \"isDefault\": true,\n      \"isActive\": true,\n      \"sortOrder\": 2\n    },\n    {\n      \"name\": \"Large\",\n      \"shortCode\": \"L\",\n      \"price\": 5.00,\n      \"costPrice\": 2.00,\n      \"sku\": \"ESP-L\",\n      \"isDefault\": false,\n      \"isActive\": true,\n      \"sortOrder\": 3\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations/bulk",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations",
+                "bulk"
+              ]
+            },
+            "description": "Creates multiple variations at once for a specific product"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Variations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations?includeInactive=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Retrieves all variations for a specific product"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Variation by UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations/{{variation_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations",
+                "{{variation_uuid}}"
+              ]
+            },
+            "description": "Retrieves a specific product variation by its UUID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Variation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Small (8oz)\",\n  \"price\": 3.50,\n  \"isActive\": true,\n  \"sortOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations/{{variation_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations",
+                "{{variation_uuid}}"
+              ]
+            },
+            "description": "Updates an existing product variation with new information"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Variation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations/{{variation_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations",
+                "{{variation_uuid}}"
+              ]
+            },
+            "description": "Permanently deletes a product variation"
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Variation Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations/{{variation_uuid}}/toggle-status?isActive=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations",
+                "{{variation_uuid}}",
+                "toggle-status"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Activates or deactivates a product variation"
+          },
+          "response": []
+        },
+        {
+          "name": "Set Default Variation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/products/{{product_uuid}}/variations/{{variation_uuid}}/set-default",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "products",
+                "{{product_uuid}}",
+                "variations",
+                "{{variation_uuid}}",
+                "set-default"
+              ]
+            },
+            "description": "Sets a specific variation as the default for the product"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing product variations (sizes, options, etc.)"
+    },
+    {
+      "name": "Modifier Group Management",
+      "item": [
+        {
+          "name": "Create Modifier Group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Extra Shots\",\n  \"selectionType\": \"SINGLE\",\n  \"minSelection\": 0,\n  \"maxSelection\": 3,\n  \"isRequired\": false,\n  \"isActive\": true,\n  \"sortOrder\": 1,\n  \"modifiers\": [\n    {\n      \"name\": \"Single Shot\",\n      \"priceAdd\": 0.00,\n      \"costAdd\": 0.00,\n      \"sku\": \"SHOT-1\",\n      \"isDefault\": true,\n      \"isActive\": true,\n      \"sortOrder\": 1\n    },\n    {\n      \"name\": \"Double Shot\",\n      \"priceAdd\": 0.50,\n      \"costAdd\": 0.20,\n      \"sku\": \"SHOT-2\",\n      \"isDefault\": false,\n      \"isActive\": true,\n      \"sortOrder\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups"
+              ]
+            },
+            "description": "Creates a new modifier group for a specific restaurant"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Modifier Groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups?includeInactive=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Retrieves all modifier groups for a specific restaurant"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Modifier Group by UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}"
+              ]
+            },
+            "description": "Retrieves a specific modifier group by its UUID"
+          },
+          "response": []
+        },
+        {
+          "name": "Search Modifier Groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/search?searchTerm=extra",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "searchTerm",
+                  "value": "extra"
+                }
+              ]
+            },
+            "description": "Search for modifier groups by name or other criteria"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Modifier Group",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coffee Extras\",\n  \"selectionType\": \"MULTIPLE\",\n  \"minSelection\": 0,\n  \"maxSelection\": 5,\n  \"isRequired\": false,\n  \"isActive\": true,\n  \"sortOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}"
+              ]
+            },
+            "description": "Updates an existing modifier group with new information"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Modifier Group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}"
+              ]
+            },
+            "description": "Permanently deletes a modifier group from the restaurant"
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Modifier Group Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/toggle-status?isActive=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "toggle-status"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Activates or deactivates a modifier group"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing modifier groups in a restaurant"
+    },
+    {
+      "name": "Modifier Management",
+      "item": [
+        {
+          "name": "Create Modifier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Extra Whipped Cream\",\n  \"priceAdd\": 0.50,\n  \"costAdd\": 0.15,\n  \"sku\": \"MOD-WC\",\n  \"isDefault\": false,\n  \"isActive\": true,\n  \"sortOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers"
+              ]
+            },
+            "description": "Creates a new modifier within a specific modifier group"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Modifiers Bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modifiers\": [\n    {\n      \"name\": \"Extra Whipped Cream\",\n      \"priceAdd\": 0.50,\n      \"costAdd\": 0.15,\n      \"sku\": \"MOD-WC\",\n      \"isDefault\": false,\n      \"isActive\": true,\n      \"sortOrder\": 1\n    },\n    {\n      \"name\": \"Vanilla Syrup\",\n      \"priceAdd\": 0.75,\n      \"costAdd\": 0.25,\n      \"sku\": \"MOD-VAN\",\n      \"isDefault\": false,\n      \"isActive\": true,\n      \"sortOrder\": 2\n    },\n    {\n      \"name\": \"Caramel Drizzle\",\n      \"priceAdd\": 0.60,\n      \"costAdd\": 0.20,\n      \"sku\": \"MOD-CAR\",\n      \"isDefault\": false,\n      \"isActive\": true,\n      \"sortOrder\": 3\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers/bulk",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers",
+                "bulk"
+              ]
+            },
+            "description": "Creates multiple modifiers at once within a specific modifier group"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Modifiers in Group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers?includeInactive=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Retrieves all modifiers within a specific modifier group"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Modifier by UUID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers/{{modifier_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers",
+                "{{modifier_uuid}}"
+              ]
+            },
+            "description": "Retrieves a specific modifier by its UUID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Modifier",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Whipped Cream\",\n  \"priceAdd\": 0.75,\n  \"costAdd\": 0.20,\n  \"isActive\": true,\n  \"sortOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers/{{modifier_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers",
+                "{{modifier_uuid}}"
+              ]
+            },
+            "description": "Updates an existing modifier with new information"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Modifier",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers/{{modifier_uuid}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers",
+                "{{modifier_uuid}}"
+              ]
+            },
+            "description": "Permanently deletes a modifier from the modifier group"
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Modifier Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/restaurants/{{restaurant_uuid}}/modifier-groups/{{modifier_group_uuid}}/modifiers/{{modifier_uuid}}/toggle-status?isActive=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant_uuid}}",
+                "modifier-groups",
+                "{{modifier_group_uuid}}",
+                "modifiers",
+                "{{modifier_uuid}}",
+                "toggle-status"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Activates or deactivates a modifier"
+          },
+          "response": []
+        }
+      ],
+      "description": "APIs for managing individual modifiers within modifier groups"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJydWRyYSIsInVzZXJuYW1lIjoicnVkcmEiLCJyb2xlIjoiT1dORVIiLCJ1c2VySWQiOiJjZDMxYzQ0MS03MmVhLTRiNDQtYmQ3ZS0zOTlkYjkwZTEwYmYiLCJyZXN0YXVyYW50SWRzIjpbImFhN2UwOWY5LWExZTYtNGMyNS04ZjA2LTE4ODUyMTg4NGNmNSJdLCJpYXQiOjE3NzA3NDM1MzUsImV4cCI6MTc3MDc0NDQzNX0.aR1lpfAR7FK3bWF6G94na-hMSYFAsCTnKOaau9RAkpyGSBthN-LYxS9siJ5l8LtF",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "restaurant_uuid",
+      "value": ""
+    },
+    {
+      "key": "category_uuid",
+      "value": ""
+    },
+    {
+      "key": "product_uuid",
+      "value": ""
+    },
+    {
+      "key": "variation_uuid",
+      "value": ""
+    },
+    {
+      "key": "modifier_group_uuid",
+      "value": ""
+    },
+    {
+      "key": "modifier_uuid",
+      "value": ""
+    }
+  ]
+}

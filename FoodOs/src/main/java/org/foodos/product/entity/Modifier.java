@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.foodos.common.entity.BaseSoftDeleteEntity;
+import org.foodos.order.entity.OrderItemModifier;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Filter;
 
@@ -31,7 +32,7 @@ public class Modifier extends BaseSoftDeleteEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "modifier_group_id", nullable = false)
-    private ModifierGroup modifierGroup;
+    private ModifierGroup modifierGroup;  // Each modifier belongs to a group (e.g. "Size" group can have "Small", "Medium", "Large" modifiers)
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -59,7 +60,7 @@ public class Modifier extends BaseSoftDeleteEntity {
     private Integer sortOrder = 0;
 
     // Order item modifiers using this modifier
-//    @OneToMany(mappedBy = "modifier", cascade = CascadeType.PERSIST)
-//    @Builder.Default
-//    private List<OrderItemModifier> orderItemModifiers = new ArrayList<>();
+    @OneToMany(mappedBy = "modifier", cascade = CascadeType.PERSIST)
+    @Builder.Default
+    private List<OrderItemModifier> orderItemModifiers = new ArrayList<>();
 }

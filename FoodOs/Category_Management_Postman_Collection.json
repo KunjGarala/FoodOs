@@ -1,0 +1,155 @@
+{
+	"info": {
+		"_postman_id": "a8f3f3f3-3f3f-3f3f-3f3f-3f3f3f3f3f3f",
+		"name": "Category Management",
+		"description": "APIs for managing product categories.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Category",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"New Category\",\n    \"description\": \"A new category for products.\",\n    \"parentCategoryUuid\": null\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/categories/create",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"categories",
+						"create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Categories",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/categories",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"categories"
+					]
+				}
+			},
+			"response": []
+		},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				
+		{
+			"name": "Get Category By ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/categories/{{categoryUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"categories",
+						"{{categoryUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Category",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Updated Category Name\",\n    \"description\": \"Updated category description.\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/categories/{{categoryUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"categories",
+						"{{categoryUuid}}"
+					]
+				}
+			},
+			"response": []
+		},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				
+		{
+			"name": "Delete Category",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/categories/{{categoryUuid}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"categories",
+						"{{categoryUuid}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

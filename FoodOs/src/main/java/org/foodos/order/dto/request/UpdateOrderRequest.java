@@ -43,9 +43,11 @@ public class UpdateOrderRequest {
 
     @Valid
     @Schema(description = "Items to add to the order")
+    @Builder.Default
     private List<OrderItemRequest> itemsToAdd = new ArrayList<>();
 
     @Schema(description = "Order item UUIDs to remove")
+    @Builder.Default
     private List<String> itemUuidsToRemove = new ArrayList<>();
 
     @Schema(description = "Discount percentage", example = "15.00")

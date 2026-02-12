@@ -33,6 +33,8 @@ public class JwtValidationFilter extends OncePerRequestFilter {
             } catch (Exception e) {
                 // Return 401 if token is expired/invalid so frontend knows to refresh
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"" + e.getMessage() + "\"}");
                 return;
             }
         }
