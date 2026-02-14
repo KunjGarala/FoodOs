@@ -1,5 +1,6 @@
 package org.foodos.order.mapper;
 
+import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.*;
 import org.foodos.order.entity.*;
 import org.mapstruct.Mapper;
@@ -109,7 +110,7 @@ public interface OrderMapper {
     @Mapping(target = "syncedAt", ignore = true)
     @Mapping(target = "isPrinted", ignore = true)
     @Mapping(target = "printedAt", ignore = true)
-    Order toOrder(org.foodos.order.dto.request.CreateOrderRequest request);
+    Order toOrder(CreateOrderRequest request);
 
     // ===== ORDER ITEM REQUEST TO ENTITY MAPPING =====
 
@@ -149,7 +150,7 @@ public interface OrderMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    OrderItem toOrderItem(org.foodos.order.dto.request.OrderItemRequest request);
+    OrderItem toOrderItem(OrderItemRequest request);
 
     // ===== ORDER ITEM MODIFIER REQUEST TO ENTITY MAPPING =====
 
@@ -163,7 +164,7 @@ public interface OrderMapper {
     @Mapping(target = "unitPrice", ignore = true)
     @Mapping(target = "lineTotal", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
-    OrderItemModifier toOrderItemModifier(org.foodos.order.dto.request.OrderItemModifierRequest request);
+    OrderItemModifier toOrderItemModifier(OrderItemModifierRequest request);
 
     // ===== PAYMENT REQUEST TO ENTITY MAPPING =====
 
@@ -183,7 +184,7 @@ public interface OrderMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    Payment toPayment(org.foodos.order.dto.request.AddPaymentRequest request);
+    Payment toPayment(AddPaymentRequest request);
 
     // ===== KOT REQUEST TO ENTITY MAPPING =====
 
@@ -213,7 +214,7 @@ public interface OrderMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    KitchenOrderTicket toKitchenOrderTicket(org.foodos.order.dto.request.SendKotRequest request);
+    KitchenOrderTicket toKitchenOrderTicket(SendKotRequest request);
 
     // ===== ORDER ITEM TO KOT ITEM MAPPING =====
 
