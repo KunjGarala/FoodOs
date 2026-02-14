@@ -73,7 +73,7 @@ public class OrderController {
             @Valid @RequestBody CreateOrderRequest request,
             @AuthenticationPrincipal UserAuthEntity currentUser) {
 
-        log.info("REST: Creating order for restaurant: {}", request.getRestaurantId());
+        log.info("REST: Creating order for restaurant: {}", request.getRestaurantUuid());
         OrderResponse response = orderService.createOrder(request, currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -273,32 +273,32 @@ public class OrderController {
 
     @Operation(summary = "List orders by restaurant",
                description = "Gets paginated list of orders for a restaurant")
-    @GetMapping("/restaurant/{restaurantId}")
+    @GetMapping("/restaurant/{restaurantUuid}")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'CASHIER')")
     public ResponseEntity<Page<OrderResponse>> getOrdersByRestaurant(
-            @PathVariable Long restaurantId,
+            @PathVariable String restaurantUuid,
             @PageableDefault(size = 20, sort = "orderTime", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        log.info("REST: Fetching orders for restaurant: {}", restaurantId);
-        Page<OrderResponse> orders = orderService.getOrdersByRestaurant(restaurantId, pageable);
+        log.info("REST: Fetching orders for restaurant: {}", restaurantUuid);
+        Page<OrderResponse> orders = orderService.getOrdersByRestaurant(restaurantUuid, pageable);
         return ResponseEntity.ok(orders);
     }
 
     @Operation(summary = "Get active orders", description = "Gets all active orders for restaurant (dashboard)")
-    @GetMapping("/restaurant/{restaurantId}/active")
+    @GetMapping("/restaurant/{restaurantUuid}/active")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
-    public ResponseEntity<List<OrderResponse>> getActiveOrders(@PathVariable Long restaurantId) {
-        log.info("REST: Fetching active orders for restaurant: {}", restaurantId);
-        List<OrderResponse> orders = orderService.getActiveOrders(restaurantId);
+    public ResponseEntity<List<OrderResponse>> getActiveOrders(@PathVariable String restaurantUuid) {
+        log.info("REST: Fetching active orders for restaurant: {}", restaurantUuid);
+        List<OrderResponse> orders = orderService.getActiveOrders(restaurantUuid);
         return ResponseEntity.ok(orders);
     }
 
     @Operation(summary = "Get kitchen orders", description = "Gets orders in kitchen for KDS")
-    @GetMapping("/restaurant/{restaurantId}/kitchen")
+    @GetMapping("/restaurant/{restaurantUuid}/kitchen")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'CHEF')")
-    public ResponseEntity<List<OrderResponse>> getKitchenOrders(@PathVariable Long restaurantId) {
-        log.info("REST: Fetching kitchen orders for restaurant: {}", restaurantId);
-        List<OrderResponse> orders = orderService.getKitchenOrders(restaurantId);
+    public ResponseEntity<List<OrderResponse>> getKitchenOrders(@PathVariable String restaurantUuid) {
+        log.info("REST: Fetching kitchen orders for restaurant: {}", restaurantUuid);
+        List<OrderResponse> orders = orderService.getKitchenOrders(restaurantUuid);
         return ResponseEntity.ok(orders);
     }
 
@@ -306,80 +306,80 @@ public class OrderController {
     @GetMapping("/search")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
     public ResponseEntity<Page<OrderResponse>> searchOrders(
-            @RequestParam Long restaurantId,
+            @RequestParam String restaurantUuid,
             @RequestParam String searchTerm,
             @PageableDefault(size = 20) Pageable pageable) {
 
         log.info("REST: Searching orders: {}", searchTerm);
-        Page<OrderResponse> orders = orderService.searchOrders(restaurantId, searchTerm, pageable);
+        Page<OrderResponse> orders = orderService.searchOrders(restaurantUuid, searchTerm, pageable);
         return ResponseEntity.ok(orders);
     }
 
     @Operation(summary = "Get orders by date", description = "Gets all orders for a specific date")
-    @GetMapping("/restaurant/{restaurantId}/date/{date}")
+    @GetMapping("/restaurant/{restaurantUuid}/date/{date}")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'CASHIER')")
     public ResponseEntity<List<OrderResponse>> getOrdersByDate(
-            @PathVariable Long restaurantId,
+            @PathVariable String restaurantUuid,
             @PathVariable LocalDate date) {
 
         log.info("REST: Fetching orders for date: {}", date);
-        List<OrderResponse> orders = orderService.getOrdersByRestaurantAndDate(restaurantId, date);
+        List<OrderResponse> orders = orderService.getOrdersByRestaurantAndDate(restaurantUuid, date);
         return ResponseEntity.ok(orders);
     }
 
     @Operation(summary = "Get orders with pending payments",
                description = "Gets orders that have pending balance")
-    @GetMapping("/restaurant/{restaurantId}/pending-payments")
+    @GetMapping("/restaurant/{restaurantUuid}/pending-payments")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'CASHIER')")
     public ResponseEntity<List<OrderResponse>> getOrdersWithPendingPayments(
-            @PathVariable Long restaurantId) {
+            @PathVariable String restaurantUuid) {
 
         log.info("REST: Fetching orders with pending payments");
-        List<OrderResponse> orders = orderService.getOrdersWithPendingPayments(restaurantId);
+        List<OrderResponse> orders = orderService.getOrdersWithPendingPayments(restaurantUuid);
         return ResponseEntity.ok(orders);
     }
 
     @Operation(summary = "Get active order by table", description = "Gets current active order for a table")
-    @GetMapping("/table/{tableId}/active")
+    @GetMapping("/table/{tableUuid}/active")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
-    public ResponseEntity<OrderResponse> getActiveOrderByTable(@PathVariable Long tableId) {
-        log.info("REST: Fetching active order for table: {}", tableId);
-        OrderResponse order = orderService.getActiveOrderByTable(tableId);
+    public ResponseEntity<OrderResponse> getActiveOrderByTable(@PathVariable String tableUuid) {
+        log.info("REST: Fetching active order for table: {}", tableUuid);
+        OrderResponse order = orderService.getActiveOrderByTable(tableUuid);
         return ResponseEntity.ok(order);
     }
 
     // ===== STATISTICS =====
 
     @Operation(summary = "Get total orders count", description = "Gets count of orders for a date")
-    @GetMapping("/restaurant/{restaurantId}/stats/count")
+    @GetMapping("/restaurant/{restaurantUuid}/stats/count")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Long> getTotalOrdersCount(
-            @PathVariable Long restaurantId,
+            @PathVariable String restaurantUuid,
             @RequestParam LocalDate date) {
 
-        Long count = orderService.getTotalOrdersCount(restaurantId, date);
+        Long count = orderService.getTotalOrdersCount(restaurantUuid, date);
         return ResponseEntity.ok(count);
     }
 
     @Operation(summary = "Get total sales", description = "Gets total sales amount for a date")
-    @GetMapping("/restaurant/{restaurantId}/stats/sales")
+    @GetMapping("/restaurant/{restaurantUuid}/stats/sales")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<BigDecimal> getTotalSales(
-            @PathVariable Long restaurantId,
+            @PathVariable String restaurantUuid,
             @RequestParam LocalDate date) {
 
-        BigDecimal sales = orderService.getTotalSales(restaurantId, date);
+        BigDecimal sales = orderService.getTotalSales(restaurantUuid, date);
         return ResponseEntity.ok(sales);
     }
 
     @Operation(summary = "Get average order value", description = "Gets average order value for a date")
-    @GetMapping("/restaurant/{restaurantId}/stats/average")
+    @GetMapping("/restaurant/{restaurantUuid}/stats/average")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<BigDecimal> getAverageOrderValue(
-            @PathVariable Long restaurantId,
+            @PathVariable String restaurantUuid,
             @RequestParam LocalDate date) {
 
-        BigDecimal average = orderService.getAverageOrderValue(restaurantId, date);
+        BigDecimal average = orderService.getAverageOrderValue(restaurantUuid, date);
         return ResponseEntity.ok(average);
     }
 }

@@ -55,6 +55,6 @@ public class ProfileUpdateDTO {
     @Schema(description = "Commission percentage", example = "2.50")
     private BigDecimal commissionPercentage;
 
-    @Schema(description = "Primary restaurant ID", example = "1")
-    private Long primaryRestaurantId;
+    @Schema(description = "Primary restaurant UUID", example = "123e4567-e89b-12d3-a456-426614174000")
+    private String primaryRestaurantUuid;
 }

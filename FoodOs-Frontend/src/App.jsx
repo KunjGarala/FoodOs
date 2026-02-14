@@ -18,6 +18,7 @@ import TableManagement from './pages/POS/TableManagement';
 import OrderEntry from './pages/POS/OrderEntry';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
 import MenuManagement from './pages/Management/MenuManagement';
+import CategoryManagement from './pages/Management/CategoryManagement';
 import StaffManagement from './pages/Management/StaffManagement';
 import CustomerCRM from './pages/CRM/CustomerCRM';
 import { MainLayout } from './components/layout/MainLayout';
@@ -73,6 +74,12 @@ function App() {
             <Route path="menu" element={
                 <ProtectedRoute allowedRoles={['OWNER']}>
                     <MenuManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="categories" element={
+                <ProtectedRoute allowedRoles={['OWNER']}>
+                    <CategoryManagement />
                 </ProtectedRoute>
             } />
             

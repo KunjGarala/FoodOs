@@ -19,9 +19,6 @@ import java.time.LocalDateTime;
 @Schema(description = "Basic restaurant information for listings and references")
 public class RestaurantBasicDTO {
 
-    @Schema(description = "Restaurant ID", example = "1")
-    private Long id;
-
     @Schema(description = "Unique restaurant UUID", example = "123e4567-e89b-12d3-a456-426614174000")
     private String restaurantUuid;
 
@@ -58,11 +55,11 @@ public class RestaurantBasicDTO {
     @Schema(description = "Whether it's a multi-outlet restaurant", example = "false")
     private Boolean isMultiOutlet;
 
-    @Schema(description = "Parent restaurant ID (for franchises)", example = "5")
-    private Long parentRestaurantId;
+    @Schema(description = "Parent restaurant UUID (for franchises)", example = "123e4567-e89b-12d3-a456-426614174001")
+    private String parentRestaurantUuid;
 
-    @Schema(description = "Owner ID", example = "10")
-    private Long ownerId;
+    @Schema(description = "Owner UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String ownerUuid;
 
     @Schema(description = "Formatted address")
     public String getFormattedAddress() {
@@ -100,12 +97,12 @@ public class RestaurantBasicDTO {
     @Schema(description = "Whether this is a parent restaurant")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public Boolean isParent() {
-        return parentRestaurantId == null;
+        return parentRestaurantUuid == null;
     }
 
     @Schema(description = "Whether this is a child/franchise restaurant")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public Boolean isChild() {
-        return parentRestaurantId != null;
+        return parentRestaurantUuid != null;
     }
 }

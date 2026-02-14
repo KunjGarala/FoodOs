@@ -19,12 +19,12 @@ import java.util.List;
 @Schema(description = "Order item details")
 public class OrderItemRequest {
 
-    @NotNull(message = "Product ID is required")
-    @Schema(description = "Product ID", example = "15", required = true)
-    private Long productId;
+    @NotNull(message = "Product UUID is required")
+    @Schema(description = "Product UUID", example = "550e8400-e29b-41d4-a716-446655440003", required = true)
+    private String productUuid;
 
-    @Schema(description = "Product variation ID", example = "3")
-    private Long variationId;
+    @Schema(description = "Product variation UUID", example = "550e8400-e29b-41d4-a716-446655440004")
+    private String variationUuid;
 
     @NotNull(message = "Quantity is required")
     @DecimalMin(value = "0.001", message = "Quantity must be greater than 0")

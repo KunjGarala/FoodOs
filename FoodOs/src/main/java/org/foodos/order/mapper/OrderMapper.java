@@ -18,7 +18,7 @@ public interface OrderMapper {
 
     // ===== ORDER MAPPING =====
 
-    @Mapping(target = "restaurantId", source = "restaurant.id")
+    @Mapping(target = "restaurantUuid", source = "restaurant.restaurantUuid")
     @Mapping(target = "restaurantName", source = "restaurant.name")
     @Mapping(target = "tableNumber", source = "table.tableNumber")
     @Mapping(target = "waiterName", source = "waiter.username")
@@ -33,7 +33,7 @@ public interface OrderMapper {
 
     // ===== ORDER ITEM MAPPING =====
 
-    @Mapping(target = "productId", source = "product.id")
+    @Mapping(target = "productUuid", source = "product.productUuid")
     @Mapping(target = "modifiers", source = "modifiers")
     OrderItemResponse toOrderItemResponse(OrderItem item);
 
@@ -41,7 +41,7 @@ public interface OrderMapper {
 
     // ===== ORDER ITEM MODIFIER MAPPING =====
 
-    @Mapping(target = "modifierId", source = "modifier.id")
+    @Mapping(target = "modifierUuid", source = "modifier.modifierUuid")
     OrderItemModifierResponse toOrderItemModifierResponse(OrderItemModifier modifier);
 
     List<OrderItemModifierResponse> toOrderItemModifierResponseList(List<OrderItemModifier> modifiers);

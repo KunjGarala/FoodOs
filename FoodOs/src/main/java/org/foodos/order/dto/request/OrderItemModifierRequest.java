@@ -16,9 +16,9 @@ import java.math.BigDecimal;
 @Schema(description = "Modifier details for an order item")
 public class OrderItemModifierRequest {
 
-    @NotNull(message = "Modifier ID is required")
-    @Schema(description = "Modifier ID", example = "8", required = true)
-    private Long modifierId;
+    @NotNull(message = "Modifier UUID is required")
+    @Schema(description = "Modifier UUID", example = "550e8400-e29b-41d4-a716-446655440005", required = true)
+    private String modifierUuid;
 
     @NotNull(message = "Quantity is required")
     @DecimalMin(value = "0.001", message = "Quantity must be greater than 0")

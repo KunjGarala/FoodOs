@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public interface UserProfileMapper {
 
     @Mapping(target = "hasPin" , expression = "java(user.hasPin())")
-    @Mapping(target = "primaryRestaurantId", source = "primaryRestaurant.id")
+    @Mapping(target = "primaryRestaurantUuid", source = "primaryRestaurant.restaurantUuid")
     @Mapping(target = "restaurants", expression = "java(mapRestaurants(user))")
     @Mapping(target = "primaryRestaurant", expression = "java(mapPrimaryRestaurant(user))")
     ProfileResponseDTO toProfileDTO(UserAuthEntity user);
@@ -62,7 +62,7 @@ public interface UserProfileMapper {
         return toRestaurantBasicDTO(user.getPrimaryRestaurant());
     }
 
-    @Mapping(target = "id", source = "id")
+    @Mapping(target = "restaurantUuid", source = "restaurantUuid")
     @Mapping(target = "name", source = "name")
     RestaurantBasicDTO toRestaurantBasicDTO(Restaurant restaurant);
 }

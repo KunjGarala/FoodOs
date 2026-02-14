@@ -19,8 +19,8 @@ import java.util.List;
 @Schema(description = "Request to update an existing order")
 public class UpdateOrderRequest {
 
-    @Schema(description = "Waiter ID", example = "3")
-    private Long waiterId;
+    @Schema(description = "Waiter UUID", example = "550e8400-e29b-41d4-a716-446655440002")
+    private String waiterUuid;
 
     @Schema(description = "Number of guests", example = "5")
     @Min(value = 1, message = "Number of guests must be at least 1")

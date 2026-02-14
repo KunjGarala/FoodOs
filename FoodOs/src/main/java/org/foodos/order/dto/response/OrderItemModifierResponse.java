@@ -20,8 +20,8 @@ public class OrderItemModifierResponse {
     @Schema(description = "Modifier UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String orderItemModifierUuid;
 
-    @Schema(description = "Modifier ID", example = "8")
-    private Long modifierId;
+    @Schema(description = "Modifier UUID", example = "550e8400-e29b-41d4-a716-446655440005")
+    private String modifierUuid;
 
     @Schema(description = "Modifier name", example = "Extra Cheese")
     private String modifierName;

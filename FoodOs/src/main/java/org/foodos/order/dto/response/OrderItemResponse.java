@@ -25,8 +25,8 @@ public class OrderItemResponse {
     @Schema(description = "Order item UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String orderItemUuid;
 
-    @Schema(description = "Product ID", example = "15")
-    private Long productId;
+    @Schema(description = "Product UUID", example = "550e8400-e29b-41d4-a716-446655440003")
+    private String productUuid;
 
     @Schema(description = "Product name", example = "Margherita Pizza")
     private String productName;

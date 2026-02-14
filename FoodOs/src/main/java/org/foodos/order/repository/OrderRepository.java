@@ -40,8 +40,14 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.isDeleted = false")
     Page<Order> findByRestaurant(@Param("restaurantId") Long restaurantId, Pageable pageable);
 
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.isDeleted = false")
+    Page<Order> findByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid, Pageable pageable);
+
     @Query("SELECT o FROM Order o WHERE o.table.id = :tableId AND o.status NOT IN :excludeStatuses AND o.isDeleted = false")
     Optional<Order> findActiveOrderByTable(@Param("tableId") Long tableId, @Param("excludeStatuses") List<OrderStatus> excludeStatuses);
+
+    @Query("SELECT o FROM Order o WHERE o.table.tableUuid = :tableUuid AND o.status NOT IN :excludeStatuses AND o.isDeleted = false")
+    Optional<Order> findActiveOrderByTableUuid(@Param("tableUuid") String tableUuid, @Param("excludeStatuses") List<OrderStatus> excludeStatuses);
 
     @Query("SELECT o FROM Order o WHERE o.table.id = :tableId AND o.status = :status AND o.isDeleted = false")
     Optional<Order> findByTableAndStatus(@Param("tableId") Long tableId, @Param("status") OrderStatus status);
@@ -54,10 +60,16 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.status IN :statuses AND o.isDeleted = false ORDER BY o.orderTime DESC")
     Page<Order> findByRestaurantAndStatusIn(@Param("restaurantId") Long restaurantId, @Param("statuses") List<OrderStatus> statuses, Pageable pageable);
 
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.status IN :statuses AND o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> findByRestaurantUuidAndStatusIn(@Param("restaurantUuid") String restaurantUuid, @Param("statuses") List<OrderStatus> statuses, Pageable pageable);
+
     // ===== DATE RANGE QUERIES =====
 
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderDate = :orderDate AND o.isDeleted = false ORDER BY o.orderTime DESC")
     List<Order> findByRestaurantAndOrderDate(@Param("restaurantId") Long restaurantId, @Param("orderDate") LocalDate orderDate);
+
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderDate = :orderDate AND o.isDeleted = false ORDER BY o.orderTime DESC")
+    List<Order> findByRestaurantUuidAndOrderDate(@Param("restaurantUuid") String restaurantUuid, @Param("orderDate") LocalDate orderDate);
 
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderDate BETWEEN :startDate AND :endDate AND o.isDeleted = false ORDER BY o.orderTime DESC")
     Page<Order> findByRestaurantAndOrderDateBetween(@Param("restaurantId") Long restaurantId,
@@ -72,6 +84,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                                                            @Param("orderType") OrderType orderType,
                                                            @Param("orderDate") LocalDate orderDate);
 
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderType = :orderType AND o.orderDate = :orderDate AND o.isDeleted = false")
+    List<Order> findByRestaurantUuidAndOrderTypeAndOrderDate(@Param("restaurantUuid") String restaurantUuid,
+                                                           @Param("orderType") OrderType orderType,
+                                                           @Param("orderDate") LocalDate orderDate);
+
     // ===== SEARCH QUERIES =====
 
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND " +
@@ -80,6 +97,13 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
            "LOWER(o.customerPhone) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
            "o.isDeleted = false ORDER BY o.orderTime DESC")
     Page<Order> searchOrders(@Param("restaurantId") Long restaurantId, @Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND " +
+           "(LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.customerName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.customerPhone) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
+           "o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> searchOrdersByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid, @Param("searchTerm") String searchTerm, Pageable pageable);
 
     // ===== FETCH WITH ASSOCIATIONS (Solve N+1 problem) =====
 
@@ -98,8 +122,14 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @Query("SELECT COUNT(o) FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderDate = :orderDate AND o.status <> 'CANCELLED' AND o.isDeleted = false")
     Long countOrdersByRestaurantAndDate(@Param("restaurantId") Long restaurantId, @Param("orderDate") LocalDate orderDate);
 
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderDate = :orderDate AND o.status <> 'CANCELLED' AND o.isDeleted = false")
+    Long countOrdersByRestaurantUuidAndDate(@Param("restaurantUuid") String restaurantUuid, @Param("orderDate") LocalDate orderDate);
+
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderDate = :orderDate AND o.status IN ('PAID', 'COMPLETED') AND o.isDeleted = false")
     BigDecimal calculateTotalSalesByRestaurantAndDate(@Param("restaurantId") Long restaurantId, @Param("orderDate") LocalDate orderDate);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderDate = :orderDate AND o.status IN ('PAID', 'COMPLETED') AND o.isDeleted = false")
+    BigDecimal calculateTotalSalesByRestaurantUuidAndDate(@Param("restaurantUuid") String restaurantUuid, @Param("orderDate") LocalDate orderDate);
 
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderTime BETWEEN :startTime AND :endTime AND o.status IN ('PAID', 'COMPLETED') AND o.isDeleted = false")
     BigDecimal calculateTotalSalesByRestaurantAndDateTimeRange(@Param("restaurantId") Long restaurantId,
@@ -108,6 +138,9 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderDate = :orderDate AND o.status IN ('PAID', 'COMPLETED') AND o.isDeleted = false")
     BigDecimal calculateAverageOrderValue(@Param("restaurantId") Long restaurantId, @Param("orderDate") LocalDate orderDate);
+
+    @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderDate = :orderDate AND o.status IN ('PAID', 'COMPLETED') AND o.isDeleted = false")
+    BigDecimal calculateAverageOrderValueByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid, @Param("orderDate") LocalDate orderDate);
 
     // ===== ORDER NUMBER GENERATION =====
 
@@ -119,15 +152,24 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.balanceAmount > 0 AND o.status NOT IN ('CANCELLED', 'VOID') AND o.isDeleted = false ORDER BY o.orderTime DESC")
     List<Order> findOrdersWithPendingPayments(@Param("restaurantId") Long restaurantId);
 
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.balanceAmount > 0 AND o.status NOT IN ('CANCELLED', 'VOID') AND o.isDeleted = false ORDER BY o.orderTime DESC")
+    List<Order> findOrdersWithPendingPaymentsByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid);
+
     // ===== ACTIVE ORDERS (Dashboard) =====
 
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.status IN ('OPEN', 'KOT_SENT', 'IN_PROGRESS', 'READY', 'SERVED', 'BILLED') AND o.isDeleted = false ORDER BY o.orderTime ASC")
     List<Order> findActiveOrders(@Param("restaurantId") Long restaurantId);
 
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.status IN ('OPEN', 'KOT_SENT', 'IN_PROGRESS', 'READY', 'SERVED', 'BILLED') AND o.isDeleted = false ORDER BY o.orderTime ASC")
+    List<Order> findActiveOrdersByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid);
+
     // ===== KITCHEN ORDERS =====
 
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.status IN ('KOT_SENT', 'IN_PROGRESS', 'READY') AND o.isDeleted = false ORDER BY o.orderTime ASC")
     List<Order> findKitchenOrders(@Param("restaurantId") Long restaurantId);
+
+    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.status IN ('KOT_SENT', 'IN_PROGRESS', 'READY') AND o.isDeleted = false ORDER BY o.orderTime ASC")
+    List<Order> findKitchenOrdersByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid);
 
     // ===== WAITER ORDERS =====
 

@@ -23,9 +23,6 @@ import java.util.Set;
 public class ProfileResponseDTO {
 
     // ===================== IDENTIFIERS =====================
-    @Schema(description = "Unique user identifier", example = "1")
-    private Long id;
-
     @Schema(description = "Unique UUID for user", example = "550e8400-e29b-41d4-a716-446655440000")
     private String userUuid;
 
@@ -60,9 +57,9 @@ public class ProfileResponseDTO {
     @Schema(description = "Primary restaurant details")
     private RestaurantBasicDTO primaryRestaurant;
 
-    @Schema(description = "Primary restaurant ID")
-    @JsonProperty("primaryRestaurantId")
-    private Long primaryRestaurantId;
+    @Schema(description = "Primary restaurant UUID")
+    @JsonProperty("primaryRestaurantUuid")
+    private String primaryRestaurantUuid;
 
     // ===================== SECURITY STATUS =====================
     @Schema(description = "Whether account is active", example = "true")

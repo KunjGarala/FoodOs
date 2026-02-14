@@ -30,8 +30,8 @@ public class OrderResponse {
     @Schema(description = "Order number", example = "ORD-001")
     private String orderNumber;
 
-    @Schema(description = "Restaurant ID", example = "1")
-    private Long restaurantId;
+    @Schema(description = "Restaurant UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String restaurantUuid;
 
     @Schema(description = "Restaurant name", example = "The Food Plaza")
     private String restaurantName;

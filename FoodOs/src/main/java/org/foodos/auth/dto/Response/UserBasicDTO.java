@@ -15,9 +15,6 @@ import org.foodos.auth.entity.UserRole;
 @Schema(description = "Basic user information")
 public class UserBasicDTO {
 
-    @Schema(description = "User ID", example = "1")
-    private Long id;
-
     @Schema(description = "User UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String userUuid;
 
@@ -36,8 +33,8 @@ public class UserBasicDTO {
     @Schema(description = "Employee code", example = "EMP001")
     private String employeeCode;
 
-    @Schema(description = "Primary restaurant ID", example = "1")
-    private Long primaryRestaurantId;
+    @Schema(description = "Primary restaurant UUID", example = "123e4567-e89b-12d3-a456-426614174000")
+    private String primaryRestaurantUuid;
 
     @Schema(description = "Whether user is active", example = "true")
     private Boolean isActive;

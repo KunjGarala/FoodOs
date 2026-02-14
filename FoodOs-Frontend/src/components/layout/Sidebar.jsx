@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { LayoutDashboard, Armchair, UtensilsCrossed, ChefHat, Receipt, Users, Settings, LogOut, Store } from 'lucide-react';
+import { LayoutDashboard, Armchair, UtensilsCrossed, ChefHat, Receipt, Users, Settings, LogOut, Store, Layers } from 'lucide-react';
 import { logout } from '../../store/authSlice';
 
 export const Sidebar = () => {
@@ -29,6 +29,7 @@ export const Sidebar = () => {
           { icon: UtensilsCrossed, label: 'Orders', path: '/app/order' },
           { icon: ChefHat, label: 'Kitchen', path: '/app/kitchen' },
           { icon: Receipt, label: 'Menu', path: '/app/menu' },
+          { icon: Layers, label: 'Categories', path: '/app/categories' },
           { icon: Users, label: 'Staff', path: '/app/staff' },
           { icon: Users, label: 'CRM', path: '/app/crm' },
         ];

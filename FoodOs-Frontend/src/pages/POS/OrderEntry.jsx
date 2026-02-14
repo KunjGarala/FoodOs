@@ -75,7 +75,7 @@ const OrderEntry = () => {
       if (category) {
         dispatch(fetchProductsByCategory({ 
           restaurantUuid: activeRestaurantId, 
-          categoryUuid: category.uuid 
+          categoryUuid: category.categoryUuid 
         }));
       }
     } else if (activeRestaurantId && activeCategory === 'all') {
@@ -101,8 +101,7 @@ const OrderEntry = () => {
   const displayProducts = searchQuery.trim() ? searchResults : products;
 
   // Get available tables for selection (only VACANT tables)
-  const availableTables = tables.filter(table => table.isActive && table.status === 'VACANT');
-  const allActiveTables = tables.filter(table => table.isActive);
+  const availableTables = tables.filter(table => table.status === 'VACANT');
 
   const getStatusColor = (status) => {
     const colors = {
@@ -121,23 +120,24 @@ const OrderEntry = () => {
   };
 
   const handleAddToCart = (product) => {
+    console.log('Adding to cart:', product);
     dispatch(addToCart(product));
   };
 
-  const handleUpdateQuantity = (uuid, delta) => {
-    const item = cart.find(item => item.uuid === uuid);
+  const handleUpdateQuantity = (productUuid, delta) => {
+    const item = cart.find(item => item.productUuid === productUuid);
     if (item) {
       const newQuantity = item.quantity + delta;
       if (newQuantity > 0) {
-        dispatch(updateCartQuantity({ uuid, quantity: newQuantity }));
+        dispatch(updateCartQuantity({ productUuid, quantity: newQuantity }));
       } else {
-        dispatch(removeFromCart(uuid));
+        dispatch(removeFromCart(productUuid));
       }
     }
   };
 
-  const handleRemoveFromCart = (uuid) => {
-    dispatch(removeFromCart(uuid));
+  const handleRemoveFromCart = (productUuid) => {
+    dispatch(removeFromCart(productUuid));
   };
 
   const handleSendKOT = async () => {
@@ -146,22 +146,24 @@ const OrderEntry = () => {
     }
 
     const orderData = {
-      restaurantId: activeRestaurantId,
-      tableId: selectedTable.uuid,
+      restaurantUuid: activeRestaurantId,
+      tableUuid: selectedTable.tableUuid,
       customerName: customerName || 'Guest',
       orderType: 'DINE_IN',
-      notes: notes || '',
+      orderNotes: notes || '',
       items: cart.map(item => ({
-        productId: item.uuid,
-        productVariationId: item.variations?.[0]?.uuid || null,
+        productUuid: item.productUuid,
+        variationUuid: item.variations?.[0]?.variationUuid || null,
         quantity: item.quantity,
-        specialInstructions: '',
+        itemNotes: '',
         modifiers: []
       })),
       sendKotImmediately: true
     };
 
     try {
+      console.log('Order Data:', orderData);
+      
       const result = await dispatch(createOrder(orderData)).unwrap();
       if (result) {
         setCustomerName('');
@@ -241,7 +243,7 @@ const OrderEntry = () => {
             ) : (
               categories.map(cat => (
                 <button
-                  key={cat.uuid}
+                  key={cat.categoryUuid}
                   onClick={() => setActiveCategory(cat.name)}
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                     activeCategory === cat.name 
@@ -271,11 +273,11 @@ const OrderEntry = () => {
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
               {displayProducts.map(product => {
                 const price = product.variations?.[0]?.price || product.basePrice || 0;
-                const isAvailable = product.isAvailable !== false;
+                const isAvailable = product.isActive !== false;
                 
                 return (
                   <div 
-                    key={product.uuid}
+                    key={product.productUuid}
                     onClick={() => isAvailable && handleAddToCart(product)}
                     className={`bg-white p-4 rounded-xl border border-slate-200 flex flex-col justify-between group h-32 transition-all ${
                       isAvailable 
@@ -286,10 +288,10 @@ const OrderEntry = () => {
                     <div className="flex justify-between items-start">
                       <h3 className="font-semibold text-slate-800 line-clamp-2 text-sm">{product.name}</h3>
                       <div className={`h-4 w-4 rounded-sm border flex items-center justify-center flex-shrink-0 ${
-                        product.isVeg ? 'border-green-600' : 'border-red-600'
+                        ['VEG', 'VEGAN', 'JAIN'].includes(product.dietaryType) ? 'border-green-600' : 'border-red-600'
                       }`}>
                         <div className={`h-2 w-2 rounded-full ${
-                          product.isVeg ? 'bg-green-600' : 'bg-red-600'
+                          ['VEG', 'VEGAN', 'JAIN'].includes(product.dietaryType) ? 'bg-green-600' : 'bg-red-600'
                         }`} />
                       </div>
                     </div>
@@ -395,7 +397,7 @@ const OrderEntry = () => {
               {cart.map(item => {
                 const price = item.variations?.[0]?.price || item.basePrice || 0;
                 return (
-                  <div key={item.uuid} className="flex gap-3 group">
+                  <div key={item.productUuid} className="flex gap-3 group">
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
                         <p className="font-medium text-slate-800 text-sm">{item.name}</p>
@@ -407,21 +409,21 @@ const OrderEntry = () => {
                       <div className="flex items-center gap-3 mt-2">
                         <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-1">
                           <button 
-                            onClick={() => handleUpdateQuantity(item.uuid, -1)} 
+                            onClick={() => handleUpdateQuantity(item.productUuid, -1)} 
                             className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
                           <span className="text-sm font-semibold w-4 text-center">{item.quantity}</span>
                           <button 
-                            onClick={() => handleUpdateQuantity(item.uuid, 1)} 
+                            onClick={() => handleUpdateQuantity(item.productUuid, 1)} 
                             className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
                         <button
-                          onClick={() => handleRemoveFromCart(item.uuid)}
+                          onClick={() => handleRemoveFromCart(item.productUuid)}
                           className="p-1 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
@@ -521,7 +523,7 @@ const OrderEntry = () => {
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-slate-900">
-                {allActiveTables.length}
+                {tables.length}
               </div>
               <div className="text-xs text-slate-700 mt-1">Total Active</div>
             </div>
@@ -532,7 +534,7 @@ const OrderEntry = () => {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             </div>
-          ) : allActiveTables.length === 0 ? (
+          ) : tables.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <MapPin className="h-12 w-12 mx-auto mb-3 text-slate-300" />
               <p className="font-medium">No tables found</p>
@@ -541,7 +543,7 @@ const OrderEntry = () => {
           ) : (
             <div className="max-h-96 overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
-                {allActiveTables.map((table) => {
+                {tables.map((table) => {
                   const isAvailable = table.status === 'VACANT';
                   const statusColor = getStatusColor(table.status);
                   

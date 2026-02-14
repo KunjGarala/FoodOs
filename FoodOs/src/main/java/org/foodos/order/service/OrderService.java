@@ -107,47 +107,47 @@ public interface OrderService {
     /**
      * Get all orders for a restaurant with pagination
      */
-    Page<OrderResponse> getOrdersByRestaurant(Long restaurantId, Pageable pageable);
+    Page<OrderResponse> getOrdersByRestaurant(String restaurantUuid, Pageable pageable);
 
     /**
      * Get orders by restaurant and status
      */
-    Page<OrderResponse> getOrdersByRestaurantAndStatus(Long restaurantId, OrderStatus status, Pageable pageable);
+    Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status, Pageable pageable);
 
     /**
      * Get orders by restaurant and date
      */
-    List<OrderResponse> getOrdersByRestaurantAndDate(Long restaurantId, LocalDate orderDate);
+    List<OrderResponse> getOrdersByRestaurantAndDate(String restaurantUuid, LocalDate orderDate);
 
     /**
      * Get orders by restaurant, date, and order type
      */
-    List<OrderResponse> getOrdersByRestaurantDateAndType(Long restaurantId, LocalDate orderDate, OrderType orderType);
+    List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate, OrderType orderType);
 
     /**
      * Search orders
      */
-    Page<OrderResponse> searchOrders(Long restaurantId, String searchTerm, Pageable pageable);
+    Page<OrderResponse> searchOrders(String restaurantUuid, String searchTerm, Pageable pageable);
 
     /**
      * Get active orders (for dashboard)
      */
-    List<OrderResponse> getActiveOrders(Long restaurantId);
+    List<OrderResponse> getActiveOrders(String restaurantUuid);
 
     /**
      * Get kitchen orders (for kitchen display)
      */
-    List<OrderResponse> getKitchenOrders(Long restaurantId);
+    List<OrderResponse> getKitchenOrders(String restaurantUuid);
 
     /**
      * Get orders with pending payments
      */
-    List<OrderResponse> getOrdersWithPendingPayments(Long restaurantId);
+    List<OrderResponse> getOrdersWithPendingPayments(String restaurantUuid);
 
     /**
      * Get active order for a table
      */
-    OrderResponse getActiveOrderByTable(Long tableId);
+    OrderResponse getActiveOrderByTable(String tableUuid);
 
     /**
      * Get waiter's active orders
@@ -159,16 +159,16 @@ public interface OrderService {
     /**
      * Get total orders count for a date
      */
-    Long getTotalOrdersCount(Long restaurantId, LocalDate orderDate);
+    Long getTotalOrdersCount(String restaurantUuid, LocalDate orderDate);
 
     /**
      * Get total sales for a date
      */
-    BigDecimal getTotalSales(Long restaurantId, LocalDate orderDate);
+    BigDecimal getTotalSales(String restaurantUuid, LocalDate orderDate);
 
     /**
      * Get average order value
      */
-    BigDecimal getAverageOrderValue(Long restaurantId, LocalDate orderDate);
+    BigDecimal getAverageOrderValue(String restaurantUuid, LocalDate orderDate);
 }
 

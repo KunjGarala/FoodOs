@@ -223,7 +223,7 @@ export const fetchKitchenOrders = createAsyncThunk(
   async (restaurantUuid, { rejectWithValue }) => {
     try {
       const response = await api.get(
-        `/api/v1/orders/kitchen/restaurant/${restaurantUuid}`
+        `/api/v1/orders/restaurant/${restaurantUuid}/kitchen`
       );
       return response.data;
     } catch (error) {
@@ -286,23 +286,27 @@ const orderSlice = createSlice({
     },
     // Cart Management
     addToCart: (state, action) => {
-      const existing = state.cart.find(item => item.uuid === action.payload.uuid);
+      const existing = state.cart.find(item => item.productUuid === action.payload.productUuid);
+      console.log('Adding to cart - Product:', action.payload);
+      console.log('Existing item:', existing);
+      
       if (existing) {
         existing.quantity += 1;
       } else {
         state.cart.push({ ...action.payload, quantity: 1 });
+        console.log('Cart after adding:', state.cart);
       }
     },
     removeFromCart: (state, action) => {
-      state.cart = state.cart.filter(item => item.uuid !== action.payload);
+      state.cart = state.cart.filter(item => item.productUuid !== action.payload);
     },
     updateCartQuantity: (state, action) => {
-      const { uuid, quantity } = action.payload;
-      const item = state.cart.find(item => item.uuid === uuid);
+      const { productUuid, quantity } = action.payload;
+      const item = state.cart.find(item => item.productUuid === productUuid);
       if (item) {
         item.quantity = quantity;
         if (item.quantity <= 0) {
-          state.cart = state.cart.filter(item => item.uuid !== uuid);
+          state.cart = state.cart.filter(item => item.productUuid !== productUuid);
         }
       }
     },

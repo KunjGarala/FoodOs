@@ -20,15 +20,15 @@ import java.util.List;
 @Schema(description = "Request to create a new order")
 public class CreateOrderRequest {
 
-    @NotNull(message = "Restaurant ID is required")
-    @Schema(description = "Restaurant ID", example = "1", required = true)
-    private Long restaurantId;
+    @NotNull(message = "Restaurant UUID is required")
+    @Schema(description = "Restaurant UUID", example = "550e8400-e29b-41d4-a716-446655440000", required = true)
+    private String restaurantUuid;
 
-    @Schema(description = "Table ID (for dine-in orders)", example = "5")
-    private Long tableId;
+    @Schema(description = "Table UUID (for dine-in orders)", example = "550e8400-e29b-41d4-a716-446655440001")
+    private String tableUuid;
 
-    @Schema(description = "Waiter ID", example = "3")
-    private Long waiterId;
+    @Schema(description = "Waiter UUID", example = "550e8400-e29b-41d4-a716-446655440002")
+    private String waiterUuid;
 
     @NotNull(message = "Order type is required")
     @Schema(description = "Type of order", example = "DINE_IN", required = true)

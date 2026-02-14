@@ -71,10 +71,10 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     public OrderResponse createOrder(CreateOrderRequest request, Long currentUserId) {
-        log.info("Creating order for restaurant: {}", request.getRestaurantId());
+        log.info("Creating order for restaurant: {}", request.getRestaurantUuid());
 
         // 1. Validate and fetch restaurant
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findByRestaurantUuid(request.getRestaurantUuid())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
         // 2. Create order entity using mapper
@@ -82,15 +82,15 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         order.setRestaurant(restaurant);
 
         // 3. Handle table assignment (for dine-in)
-        if (request.getTableId() != null) {
-            RestaurantTable table = tableRepository.findById(request.getTableId())
+        if (request.getTableUuid() != null) {
+            RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(request.getTableUuid())
                     .orElseThrow(() -> new RuntimeException("Table not found"));
             order.setTable(table);
         }
 
         // 4. Handle waiter assignment
-        if (request.getWaiterId() != null) {
-            UserAuthEntity waiter = userRepository.findById(request.getWaiterId())
+        if (request.getWaiterUuid() != null) {
+            UserAuthEntity waiter = userRepository.findByUserUuidAndIsDeletedFalse(request.getWaiterUuid())
                     .orElseThrow(() -> new RuntimeException("Waiter not found"));
             order.setWaiter(waiter);
         }
@@ -362,22 +362,22 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrdersByRestaurant(Long restaurantId, Pageable pageable) {
-        Page<Order> orders = orderRepository.findByRestaurant(restaurantId, pageable);
+    public Page<OrderResponse> getOrdersByRestaurant(String restaurantUuid, Pageable pageable) {
+        Page<Order> orders = orderRepository.findByRestaurantUuid(restaurantUuid, pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrdersByRestaurantAndStatus(Long restaurantId, OrderStatus status, Pageable pageable) {
-        Page<Order> orders = orderRepository.findByRestaurantAndStatusIn(restaurantId, List.of(status), pageable);
+    public Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status, Pageable pageable) {
+        Page<Order> orders = orderRepository.findByRestaurantUuidAndStatusIn(restaurantUuid, List.of(status), pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getActiveOrders(Long restaurantId) {
-        List<Order> orders = orderRepository.findActiveOrders(restaurantId);
+    public List<OrderResponse> getActiveOrders(String restaurantUuid) {
+        List<Order> orders = orderRepository.findActiveOrdersByRestaurantUuid(restaurantUuid);
         return orderMapper.toOrderResponseList(orders);
     }
 
@@ -385,13 +385,13 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     private OrderItem createOrderItem(OrderItemRequest request, Order order) {
         // Fetch product
-        Product product = productRepository.findById(request.getProductId())
+        Product product = productRepository.findByProductUuid(request.getProductUuid())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         // Fetch variation if specified
         ProductVariation variation = null;
-        if (request.getVariationId() != null) {
-            variation = variationRepository.findById(request.getVariationId())
+        if (request.getVariationUuid() != null) {
+            variation = variationRepository.findByVariationUuid(request.getVariationUuid())
                     .orElseThrow(() -> new RuntimeException("Product variation not found"));
         }
 
@@ -413,7 +413,7 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         // Add modifiers
         if (request.getModifiers() != null) {
             for (OrderItemModifierRequest modRequest : request.getModifiers()) {
-                Modifier modifier = modifierRepository.findById(modRequest.getModifierId())
+                Modifier modifier = modifierRepository.findByModifierUuid(modRequest.getModifierUuid())
                         .orElseThrow(() -> new RuntimeException("Modifier not found"));
 
                 OrderItemModifier itemModifier = orderMapper.toOrderItemModifier(modRequest);
@@ -592,44 +592,44 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersByRestaurantAndDate(Long restaurantId, LocalDate orderDate) {
-        List<Order> orders = orderRepository.findByRestaurantAndOrderDate(restaurantId, orderDate);
+    public List<OrderResponse> getOrdersByRestaurantAndDate(String restaurantUuid, LocalDate orderDate) {
+        List<Order> orders = orderRepository.findByRestaurantUuidAndOrderDate(restaurantUuid, orderDate);
         return orderMapper.toOrderResponseList(orders);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersByRestaurantDateAndType(Long restaurantId, LocalDate orderDate, OrderType orderType) {
-        List<Order> orders = orderRepository.findByRestaurantAndOrderTypeAndOrderDate(restaurantId, orderType, orderDate);
+    public List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate, OrderType orderType) {
+        List<Order> orders = orderRepository.findByRestaurantUuidAndOrderTypeAndOrderDate(restaurantUuid, orderType, orderDate);
         return orderMapper.toOrderResponseList(orders);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> searchOrders(Long restaurantId, String searchTerm, Pageable pageable) {
-        Page<Order> orders = orderRepository.searchOrders(restaurantId, searchTerm, pageable);
+    public Page<OrderResponse> searchOrders(String restaurantUuid, String searchTerm, Pageable pageable) {
+        Page<Order> orders = orderRepository.searchOrdersByRestaurantUuid(restaurantUuid, searchTerm, pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getKitchenOrders(Long restaurantId) {
-        List<Order> orders = orderRepository.findKitchenOrders(restaurantId);
+    public List<OrderResponse> getKitchenOrders(String restaurantUuid) {
+        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid);
         return orderMapper.toOrderResponseList(orders);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersWithPendingPayments(Long restaurantId) {
-        List<Order> orders = orderRepository.findOrdersWithPendingPayments(restaurantId);
+    public List<OrderResponse> getOrdersWithPendingPayments(String restaurantUuid) {
+        List<Order> orders = orderRepository.findOrdersWithPendingPaymentsByRestaurantUuid(restaurantUuid);
         return orderMapper.toOrderResponseList(orders);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponse getActiveOrderByTable(Long tableId) {
+    public OrderResponse getActiveOrderByTable(String tableUuid) {
         List<OrderStatus> excludeStatuses = List.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.VOID);
-        Order order = orderRepository.findActiveOrderByTable(tableId, excludeStatuses)
+        Order order = orderRepository.findActiveOrderByTableUuid(tableUuid, excludeStatuses)
                 .orElseThrow(() -> new RuntimeException("No active order found for table"));
         return orderMapper.toOrderResponse(order);
     }
@@ -643,20 +643,20 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Long getTotalOrdersCount(Long restaurantId, LocalDate orderDate) {
-        return orderRepository.countOrdersByRestaurantAndDate(restaurantId, orderDate);
+    public Long getTotalOrdersCount(String restaurantUuid, LocalDate orderDate) {
+        return orderRepository.countOrdersByRestaurantUuidAndDate(restaurantUuid, orderDate);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getTotalSales(Long restaurantId, LocalDate orderDate) {
-        return orderRepository.calculateTotalSalesByRestaurantAndDate(restaurantId, orderDate);
+    public BigDecimal getTotalSales(String restaurantUuid, LocalDate orderDate) {
+        return orderRepository.calculateTotalSalesByRestaurantUuidAndDate(restaurantUuid, orderDate);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal getAverageOrderValue(Long restaurantId, LocalDate orderDate) {
-        return orderRepository.calculateAverageOrderValue(restaurantId, orderDate);
+    public BigDecimal getAverageOrderValue(String restaurantUuid, LocalDate orderDate) {
+        return orderRepository.calculateAverageOrderValueByRestaurantUuid(restaurantUuid, orderDate);
     }
 }
 

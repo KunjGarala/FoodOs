@@ -135,8 +135,8 @@ public class UserManagementService {
         userProfileMapper.updateUserFromDto(request, user);
 
         // Handle Primary Restaurant
-        if (request.getPrimaryRestaurantId() != null) {
-            Restaurant restaurant = restaurantRepository.findById(request.getPrimaryRestaurantId())
+        if (request.getPrimaryRestaurantUuid() != null) {
+            Restaurant restaurant = restaurantRepository.findByRestaurantUuid(request.getPrimaryRestaurantUuid())
                     .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
 
             // Validate user has access to this restaurant
