@@ -17,7 +17,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app' },
     { icon: Armchair, label: 'Tables', path: '/app/tables' },
-    { icon: UtensilsCrossed, label: 'Orders', path: '/app/orders' },
+    { icon: UtensilsCrossed, label: 'Orders', path: '/app/order' },
     { icon: ChefHat, label: 'Kitchen', path: '/app/kitchen' },
     { icon: Layers, label: 'Categories', path: '/app/categories' },
     { icon: Receipt, label: 'Menu', path: '/app/menu' },
