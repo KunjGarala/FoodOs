@@ -102,16 +102,17 @@ api.interceptors.request.use((config) => {
 // ─────────────────────────────────────────────────────────
 api.interceptors.response.use(
   // ── Success path ─────────────────────────────────────
-  (response) => {
+  async (response) => {
     // Some backends rotate the access token on every response.
     // If a new one arrives, persist it silently.
     const newToken = extractToken(response);
     if (newToken && newToken !== localStorage.getItem('token')) {
       localStorage.setItem('token', newToken);
       if (_store) {
-        const { updateTokenAndRole } = require('../store/authSlice');
+        const { updateTokenAndRole } = await import('../store/authSlice');
         _store.dispatch(updateTokenAndRole(newToken));
       }
+      console.log('[api] Access token updated from response');
     }
     return response;
   },
@@ -283,6 +284,32 @@ export const tableAPI = {
   
   // Get table analytics
   getTableAnalytics: (restaurantUuid) => api.get(`/api/v1/tables/analytics/${restaurantUuid}`),
+};
+
+export const variationAPI = {
+  create:       (restaurantUuid, productUuid, data) =>
+    api.post(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations`, data),
+
+  createBulk:   (restaurantUuid, productUuid, data) =>
+    api.post(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/bulk`, data),
+
+  getAll:       (restaurantUuid, productUuid, includeInactive = false) =>
+    api.get(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations?includeInactive=${includeInactive}`),
+
+  getById:      (restaurantUuid, productUuid, variationUuid) =>
+    api.get(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/${variationUuid}`),
+
+  update:       (restaurantUuid, productUuid, variationUuid, data) =>
+    api.put(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/${variationUuid}`, data),
+
+  remove:       (restaurantUuid, productUuid, variationUuid) =>
+    api.delete(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/${variationUuid}`),
+
+  toggleStatus: (restaurantUuid, productUuid, variationUuid, isActive) =>
+    api.patch(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/${variationUuid}/toggle-status?isActive=${isActive}`),
+
+  setDefault:   (restaurantUuid, productUuid, variationUuid) =>
+    api.patch(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/${variationUuid}/set-default`),
 };
 
 export default api;

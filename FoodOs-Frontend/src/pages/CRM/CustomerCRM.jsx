@@ -8,12 +8,12 @@ import { CUSTOMERS } from '../../data/mockData';
 const CustomerCRM = () => {
   return (
     <div className="flex flex-col h-full">
-       <div className="flex justify-between items-center mb-6">
+       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-           <h1 className="text-2xl font-bold text-slate-800">Customer CRM</h1>
-           <p className="text-slate-500">Loyalty program and customer insights</p>
+           <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Customer CRM</h1>
+           <p className="text-sm text-slate-500">Loyalty program and customer insights</p>
         </div>
-        <Button>
+        <Button className="self-start sm:self-auto">
            <Gift className="h-4 w-4 mr-2" />
            New Campaign
         </Button>
@@ -21,14 +21,41 @@ const CustomerCRM = () => {
 
       <Card className="flex-1 flex flex-col">
          <div className="p-4 border-b border-slate-100">
-            <div className="relative max-w-md">
+            <div className="relative sm:max-w-md">
                <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
-               <Input className="pl-10" placeholder="Search by name or phone number..." />
+               <Input className="pl-10" placeholder="Search by name or phone..." />
             </div>
          </div>
          
          <div className="flex-1 overflow-auto">
-            <table className="w-full text-left text-sm">
+            {/* Mobile card view */}
+            <div className="md:hidden divide-y divide-slate-100">
+               {CUSTOMERS.map(customer => (
+                  <div key={customer.id} className="p-4">
+                     <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                           <p className="font-medium text-slate-900 truncate">{customer.name}</p>
+                           <div className="flex items-center gap-1.5 text-sm text-slate-600 mt-0.5">
+                              <Phone className="h-3 w-3" />
+                              {customer.phone}
+                           </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="shrink-0 text-xs">View</Button>
+                     </div>
+                     <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="text-sm font-semibold text-slate-900">{customer.visits} visits</span>
+                        <span className="text-slate-300">·</span>
+                        <span className="text-xs text-slate-500">{customer.lastVisit}</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium border border-blue-100">
+                           {customer.favorite}
+                        </span>
+                     </div>
+                  </div>
+               ))}
+            </div>
+
+            {/* Desktop table view */}
+            <table className="hidden md:table w-full text-left text-sm">
                <thead className="bg-slate-50 text-slate-500 font-medium">
                   <tr>
                      <th className="px-6 py-3">Customer Name</th>

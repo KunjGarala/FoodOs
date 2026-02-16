@@ -97,10 +97,25 @@ const Login = () => {
         
         try {
             // ✅ Use .unwrap() to get the actual result or throw on rejection
-            await dispatch(login(formData)).unwrap();
+            const result = await dispatch(login(formData)).unwrap();
             
-            // ✅ Success! Redux state is updated, useEffect will handle navigation
-            console.log('Login successful');
+            console.log('Login successful', result);
+            
+            // ✅ Explicitly redirect after successful login
+            const { role: userRole, restaurantIds: userRestaurantIds } = result;
+            
+            if (userRole === 'GUEST') {
+                setShowGuestModal(true);
+            } else if (userRole === 'ADMIN') {
+                navigate('/admin', { replace: true });
+            } else {
+                // For OWNER, MANAGER, CHEF, WAITER roles
+                if (userRestaurantIds && Array.isArray(userRestaurantIds) && userRestaurantIds.length > 0) {
+                    navigate('/app', { replace: true });
+                } else {
+                    navigate('/create-restaurant', { replace: true });
+                }
+            }
             
         } catch (error) {
             // ✅ Error is already set in Redux state by login.rejected

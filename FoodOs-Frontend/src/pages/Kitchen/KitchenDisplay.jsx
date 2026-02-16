@@ -125,13 +125,13 @@ const KitchenDisplay = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Kitchen Display System</h1>
-          <p className="text-slate-500">Live feed of incoming orders</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Kitchen Display System</h1>
+          <p className="text-sm text-slate-500">Live feed of incoming orders</p>
         </div>
-        <div className="flex gap-3 items-center">
-          <Badge variant="primary" className="text-lg px-4 py-1">
+        <div className="flex flex-wrap gap-3 items-center">
+          <Badge variant="primary" className="text-sm sm:text-lg px-3 sm:px-4 py-1">
             Avg Time: {calculateAverageTime()}
           </Badge>
           <button

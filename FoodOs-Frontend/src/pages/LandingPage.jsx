@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
-import { CheckCircle, ChefHat, LayoutGrid, Smartphone, TrendingUp, Users, Shield, Star, Menu, ArrowRight } from 'lucide-react';
+import { CheckCircle, ChefHat, LayoutGrid, Smartphone, TrendingUp, Users, Shield, Star, Menu, ArrowRight, X } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const features = [
     {
@@ -99,34 +102,83 @@ const LandingPage = () => {
               <a href="#how-it-works" className="text-slate-600 hover:text-blue-600 font-medium">How it Works</a>
               <a href="#pricing" className="text-slate-600 hover:text-blue-600 font-medium">Pricing</a>
             </div>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" className="hidden md:flex" onClick={() => navigate('/login')}>
-                Sign In
-              </Button>
-              <Button onClick={() => navigate('/signup')}>
-                Get Started
-              </Button>
+            <div className="hidden md:flex items-center gap-4">
+              {isAuthenticated ? (
+                <Button onClick={() => navigate('/app')}>
+                  Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" onClick={() => navigate('/login')}>
+                    Sign In
+                  </Button>
+                  <Button onClick={() => navigate('/signup')}>
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-slate-100 px-4 py-4 space-y-3 shadow-lg">
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-600 hover:text-blue-600 font-medium">Features</a>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-600 hover:text-blue-600 font-medium">How it Works</a>
+            <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-600 hover:text-blue-600 font-medium">Pricing</a>
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              {isAuthenticated ? (
+                <Button className="w-full" onClick={() => navigate('/app')}>
+                  Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
+                    Sign In
+                  </Button>
+                  <Button className="w-full" onClick={() => navigate('/signup')}>
+                    Get Started
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-6">
-          The <span className="text-blue-600">Operating System</span> for <br /> Modern Restaurants.
+      <section className="pt-28 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-6">
+          The <span className="text-blue-600">Operating System</span> for <br className="hidden sm:block" /> Modern Restaurants.
         </h1>
-        <p className="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto mb-10">
+        <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto mb-10">
           Manage tables, orders, KOTs, billing, and customers from one simple, beautiful dashboard. 
           Designed for speed and reliability.
         </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-          <Button size="lg" className="rounded-full px-8 text-lg" onClick={() => navigate('/signup')}>
-            Book Free Demo
-          </Button>
-          <Button size="lg" variant="outline" className="rounded-full px-8 text-lg">
-            View Live Menu
-          </Button>
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12 sm:mb-16">
+          {isAuthenticated ? (
+            <Button size="lg" className="rounded-full px-8 text-lg" onClick={() => navigate('/app')}>
+              Go to Dashboard <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          ) : (
+            <>
+              <Button size="lg" className="rounded-full px-8 text-lg" onClick={() => navigate('/signup')}>
+                Book Free Demo
+              </Button>
+              <Button size="lg" variant="outline" className="rounded-full px-8 text-lg">
+                View Live Menu
+              </Button>
+            </>
+          )}
         </div>
         
         {/* Mockup Image Placeholder */}
@@ -147,32 +199,32 @@ const LandingPage = () => {
       <section className="py-10 bg-slate-50 border-y border-slate-100">
          <div className="max-w-7xl mx-auto px-4 text-center">
              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-6">Trusted by 500+ Top Restaurants</p>
-             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale">
+             <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 md:gap-16 opacity-50 grayscale">
                  {/* Placeholder Logos */}
                  <div className="h-8 w-24 bg-slate-300 rounded"></div>
                  <div className="h-8 w-24 bg-slate-300 rounded"></div>
-                 <div className="h-8 w-24 bg-slate-300 rounded"></div>
-                 <div className="h-8 w-24 bg-slate-300 rounded"></div>
-                 <div className="h-8 w-24 bg-slate-300 rounded"></div>
+                 <div className="h-8 w-24 bg-slate-300 rounded hidden sm:block"></div>
+                 <div className="h-8 w-24 bg-slate-300 rounded hidden sm:block"></div>
+                 <div className="h-8 w-24 bg-slate-300 rounded hidden md:block"></div>
              </div>
          </div>
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-slate-900">Everything you need to run a restaurant</h2>
-          <p className="mt-4 text-lg text-slate-600">Powerful features packed in a simple interface.</p>
+      <section id="features" className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Everything you need to run a restaurant</h2>
+          <p className="mt-4 text-base sm:text-lg text-slate-600">Powerful features packed in a simple interface.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {features.map((feature, idx) => (
             <Card key={idx} className="border-0 shadow-lg shadow-slate-200/50 hover:shadow-xl transition-shadow">
-              <CardContent className="p-8">
+              <CardContent className="p-6 sm:p-8">
                 <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6">
                   <feature.icon className="h-6 w-6 text-blue-600" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                <p className="text-slate-600 leading-relaxed">{feature.description}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
+                <p className="text-slate-600 leading-relaxed text-sm sm:text-base">{feature.description}</p>
               </CardContent>
             </Card>
           ))}
@@ -180,30 +232,30 @@ const LandingPage = () => {
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="py-20 bg-slate-900 text-white">
+      <section id="how-it-works" className="py-16 sm:py-20 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex flex-col md:flex-row gap-12 items-center">
-              <div className="flex-1 space-y-12">
+              <div className="flex-1 space-y-10 sm:space-y-12">
                  <div>
-                    <h2 className="text-3xl font-bold mb-4">Simplifying Operations from Day 1</h2>
-                    <p className="text-slate-400 text-lg">Setup takes less than 15 minutes. Train your staff in minutes, not days.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4">Simplifying Operations from Day 1</h2>
+                    <p className="text-slate-400 text-base sm:text-lg">Setup takes less than 15 minutes. Train your staff in minutes, not days.</p>
                  </div>
-                 <div className="space-y-8">
+                 <div className="space-y-6 sm:space-y-8">
                     {steps.map((step, idx) => (
                        <div key={idx} className="flex gap-4">
                           <span className="text-2xl font-bold text-blue-500 opacity-60">{step.num}</span>
                           <div>
-                             <h4 className="text-xl font-bold mb-1">{step.title}</h4>
-                             <p className="text-slate-400">{step.desc}</p>
+                             <h4 className="text-lg sm:text-xl font-bold mb-1">{step.title}</h4>
+                             <p className="text-slate-400 text-sm sm:text-base">{step.desc}</p>
                           </div>
                        </div>
                     ))}
                  </div>
               </div>
-              <div className="flex-1 flex justify-center">
-                 <div className="relative w-full max-w-md aspect-square bg-slate-800 rounded-2xl p-8 border border-slate-700">
+              <div className="flex-1 flex justify-center w-full">
+                 <div className="relative w-full max-w-md aspect-square bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-700">
                     <div className="h-full w-full bg-slate-700/50 rounded-xl flex items-center justify-center">
-                        <span className="text-slate-500 font-mono">Workflow Animation</span>
+                        <span className="text-slate-500 font-mono text-sm">Workflow Animation</span>
                     </div>
                  </div>
               </div>
@@ -212,23 +264,23 @@ const LandingPage = () => {
       </section>
 
       {/* Benefits */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-         <div className="bg-blue-600 rounded-3xl p-12 overflow-hidden relative">
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
+      <section className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div className="bg-blue-600 rounded-2xl sm:rounded-3xl p-8 sm:p-12 overflow-hidden relative">
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 sm:gap-12">
                <div className="text-white">
-                  <h2 className="text-3xl font-bold mb-6">Why switch to FoodOS?</h2>
-                  <ul className="space-y-4">
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-6">Why switch to FoodOS?</h2>
+                  <ul className="space-y-3 sm:space-y-4">
                      {benefits.map((benefit, i) => (
                         <li key={i} className="flex items-center gap-3">
-                           <CheckCircle className="h-6 w-6 text-blue-200" />
-                           <span className="text-lg font-medium">{benefit}</span>
+                           <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-blue-200 shrink-0" />
+                           <span className="text-base sm:text-lg font-medium">{benefit}</span>
                         </li>
                      ))}
                   </ul>
                </div>
-               <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
+               <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-md w-full">
                   <div className="flex items-center gap-4 mb-6">
-                     <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700 text-xl">
+                     <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700 text-xl shrink-0">
                         R
                      </div>
                      <div>
@@ -236,7 +288,7 @@ const LandingPage = () => {
                         <p className="text-sm text-slate-500">Owner, Spicy Wok</p>
                      </div>
                   </div>
-                  <p className="text-slate-600 italic">"FoodOS changed how we manage our weekends. The KOT system is a lifesaver, and the billing is super fast. Highly recommended!"</p>
+                  <p className="text-slate-600 italic text-sm sm:text-base">"FoodOS changed how we manage our weekends. The KOT system is a lifesaver, and the billing is super fast. Highly recommended!"</p>
                   <div className="flex gap-1 mt-4 text-yellow-400">
                      {[1,2,3,4,5].map(s => <Star key={s} className="h-4 w-4 fill-current" />)}
                   </div>
@@ -246,15 +298,15 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 bg-slate-50">
+      <section id="pricing" className="py-16 sm:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900">Simple, Transparent Pricing</h2>
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Simple, Transparent Pricing</h2>
             <p className="mt-4 text-slate-600">No hidden fees. Cancel anytime.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {pricing.map((plan, idx) => (
-               <Card key={idx} className={`relative p-8 ${plan.popular ? 'border-blue-500 shadow-xl scale-105 z-10' : ''}`}>
+               <Card key={idx} className={`relative p-6 sm:p-8 ${plan.popular ? 'border-blue-500 shadow-xl md:scale-105 z-10' : ''}`}>
                   {plan.popular && (
                      <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">
                         Most Popular
@@ -262,19 +314,19 @@ const LandingPage = () => {
                   )}
                   <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
                   <div className="mt-4 flex items-baseline">
-                     <span className="text-4xl font-extrabold text-slate-900">{plan.price}</span>
+                     <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">{plan.price}</span>
                      <span className="ml-2 text-slate-500">{plan.period}</span>
                   </div>
-                  <ul className="mt-8 space-y-4 mb-8">
+                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4 mb-6 sm:mb-8">
                      {plan.features.map((feat, i) => (
-                        <li key={i} className="flex items-center text-slate-600">
-                           <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+                        <li key={i} className="flex items-center text-slate-600 text-sm sm:text-base">
+                           <CheckCircle className="h-5 w-5 text-green-500 mr-3 shrink-0" />
                            {feat}
                         </li>
                      ))}
                   </ul>
-                  <Button variant={plan.variant} className="w-full h-12" onClick={() => navigate('/signup')}>
-                     {plan.cta}
+                  <Button variant={plan.variant} className="w-full h-12" onClick={() => navigate(isAuthenticated ? '/app' : '/signup')}>
+                     {isAuthenticated ? 'Go to Dashboard' : plan.cta}
                   </Button>
                </Card>
             ))}
@@ -283,18 +335,24 @@ const LandingPage = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-24 text-center px-4">
-         <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-8">Ready to modernize your restaurant?</h2>
-         <Button size="lg" className="rounded-full px-12 h-16 text-xl shadow-xl shadow-blue-200" onClick={() => navigate('/signup')}>
-            Get Started for Free <ArrowRight className="ml-2 h-6 w-6" />
-         </Button>
+      <section className="py-16 sm:py-24 text-center px-4">
+         <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-slate-900 mb-8">Ready to modernize your restaurant?</h2>
+         {isAuthenticated ? (
+           <Button size="lg" className="rounded-full px-8 sm:px-12 h-14 sm:h-16 text-lg sm:text-xl shadow-xl shadow-blue-200" onClick={() => navigate('/app')}>
+             Go to Dashboard <ArrowRight className="ml-2 h-5 w-5 sm:h-6 sm:w-6" />
+           </Button>
+         ) : (
+           <Button size="lg" className="rounded-full px-8 sm:px-12 h-14 sm:h-16 text-lg sm:text-xl shadow-xl shadow-blue-200" onClick={() => navigate('/signup')}>
+             Get Started for Free <ArrowRight className="ml-2 h-5 w-5 sm:h-6 sm:w-6" />
+           </Button>
+         )}
       </section>
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-100 py-12">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-               <div>
+               <div className="col-span-2 md:col-span-1">
                   <div className="flex items-center gap-2 mb-4">
                      <ChefHat className="text-blue-600 h-6 w-6" />
                      <span className="font-bold text-xl text-slate-900">FoodOS</span>

@@ -4,6 +4,7 @@ import tableReducer       from './tableSlice';
 import productReducer     from './productSlice';
 import categoryReducer    from './categorySlice';
 import orderReducer       from './orderSlice';
+import variationReducer   from './variationSlice';
 import { setupInterceptors } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ export const store = configureStore({
     products: productReducer,
     categories: categoryReducer,
     orders: orderReducer,
+    variations: variationReducer,
   },
   middleware: (getDefault) => getDefault().concat(interceptorSyncMiddleware),
 });

@@ -120,9 +120,17 @@ export const updateProduct = createAsyncThunk(
   'products/update',
   async ({ restaurantUuid, productUuid, productData }, { rejectWithValue }) => {
     try {
+      const formData = new FormData();
+      formData.append('product', new Blob([JSON.stringify(productData)], { type: 'application/json' }));
+
       const response = await api.put(
         `/api/restaurants/${restaurantUuid}/products/${productUuid}`,
-        productData
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
       );
       return response.data;
     } catch (error) {
@@ -220,6 +228,21 @@ const productSlice = createSlice({
     },
     clearCurrentProduct: (state) => {
       state.currentProduct = null;
+    },
+    // Optimistic updates - immediately reflect in UI
+    optimisticToggleFeatured: (state, action) => {
+      const productUuid = action.payload;
+      const index = state.products.findIndex(p => p.productUuid === productUuid);
+      if (index !== -1) {
+        state.products[index].isFeatured = !state.products[index].isFeatured;
+      }
+    },
+    optimisticToggleAvailability: (state, action) => {
+      const productUuid = action.payload;
+      const index = state.products.findIndex(p => p.productUuid === productUuid);
+      if (index !== -1) {
+        state.products[index].isActive = !state.products[index].isActive;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -330,7 +353,7 @@ const productSlice = createSlice({
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const index = state.products.findIndex(p => p.uuid === action.payload.uuid);
+        const index = state.products.findIndex(p => p.productUuid === action.payload.productUuid);
         if (index !== -1) {
           state.products[index] = action.payload;
         }
@@ -348,7 +371,7 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.products = state.products.filter(p => p.uuid !== action.payload);
+        state.products = state.products.filter(p => p.productUuid !== action.payload);
         state.success = 'Product deleted successfully';
       })
       .addCase(deleteProduct.rejected, (state, action) => {
@@ -357,36 +380,40 @@ const productSlice = createSlice({
       })
       
       // Toggle Availability
-      .addCase(toggleProductAvailability.pending, (state) => {
-        state.actionLoading = true;
-      })
       .addCase(toggleProductAvailability.fulfilled, (state, action) => {
-        state.actionLoading = false;
-        const index = state.products.findIndex(p => p.uuid === action.payload.uuid);
+        // Sync with server response to ensure consistency
+        const index = state.products.findIndex(p => p.productUuid === action.payload.productUuid);
         if (index !== -1) {
           state.products[index] = action.payload;
         }
         state.success = 'Product availability updated';
       })
       .addCase(toggleProductAvailability.rejected, (state, action) => {
-        state.actionLoading = false;
+        // Revert optimistic update on failure
+        const productUuid = action.meta.arg.productUuid;
+        const index = state.products.findIndex(p => p.productUuid === productUuid);
+        if (index !== -1) {
+          state.products[index].isActive = !state.products[index].isActive;
+        }
         state.error = action.payload;
       })
       
       // Toggle Featured
-      .addCase(toggleFeaturedStatus.pending, (state) => {
-        state.actionLoading = true;
-      })
       .addCase(toggleFeaturedStatus.fulfilled, (state, action) => {
-        state.actionLoading = false;
-        const index = state.products.findIndex(p => p.uuid === action.payload.uuid);
+        // Sync with server response to ensure consistency
+        const index = state.products.findIndex(p => p.productUuid === action.payload.productUuid);
         if (index !== -1) {
           state.products[index] = action.payload;
         }
         state.success = 'Featured status updated';
       })
       .addCase(toggleFeaturedStatus.rejected, (state, action) => {
-        state.actionLoading = false;
+        // Revert optimistic update on failure
+        const productUuid = action.meta.arg.productUuid;
+        const index = state.products.findIndex(p => p.productUuid === productUuid);
+        if (index !== -1) {
+          state.products[index].isFeatured = !state.products[index].isFeatured;
+        }
         state.error = action.payload;
       });
   },
@@ -399,6 +426,8 @@ export const {
   resetFilters,
   clearSearchResults,
   clearCurrentProduct,
+  optimisticToggleFeatured,
+  optimisticToggleAvailability,
 } = productSlice.actions;
 
 export default productSlice.reducer;

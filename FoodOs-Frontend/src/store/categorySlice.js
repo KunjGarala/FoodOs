@@ -163,7 +163,8 @@ const categorySlice = createSlice({
       })
       .addCase(updateCategory.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const index = state.categories.findIndex(c => c.uuid === action.payload.uuid);
+        const uuid = action.payload.categoryUuid || action.payload.uuid;
+        const index = state.categories.findIndex(c => (c.categoryUuid || c.uuid) === uuid);
         if (index !== -1) {
           state.categories[index] = action.payload;
         }
@@ -181,7 +182,7 @@ const categorySlice = createSlice({
       })
       .addCase(deleteCategory.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.categories = state.categories.filter(c => c.uuid !== action.payload);
+        state.categories = state.categories.filter(c => (c.categoryUuid || c.uuid) !== action.payload);
         state.success = 'Category deleted successfully';
       })
       .addCase(deleteCategory.rejected, (state, action) => {

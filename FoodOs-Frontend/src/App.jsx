@@ -18,6 +18,7 @@ import TableManagement from './pages/POS/TableManagement';
 import OrderEntry from './pages/POS/OrderEntry';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
 import MenuManagement from './pages/Management/MenuManagement';
+import ProductForm from './pages/Management/ProductForm';
 import CategoryManagement from './pages/Management/CategoryManagement';
 import StaffManagement from './pages/Management/StaffManagement';
 import CustomerCRM from './pages/CRM/CustomerCRM';
@@ -74,6 +75,18 @@ function App() {
             <Route path="menu" element={
                 <ProtectedRoute allowedRoles={['OWNER']}>
                     <MenuManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="menu/new" element={
+                <ProtectedRoute allowedRoles={['OWNER']}>
+                    <ProductForm />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="menu/:productUuid/edit" element={
+                <ProtectedRoute allowedRoles={['OWNER']}>
+                    <ProductForm />
                 </ProtectedRoute>
             } />
             
