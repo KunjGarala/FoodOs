@@ -21,8 +21,15 @@
 					"formdata": [
 						{
 							"key": "product",
-							"value": "{\n    \"name\": \"Classic Burger\",\n    \"description\": \"A delicious classic burger.\",\n    \"price\": 9.99,\n    \"categoryUuid\": \"{{categoryUuid}}\",\n    \"sku\": \"BURGER-001\",\n    \"isFeatured\": true\n}",
-							"type": "text"
+							"value": "{\n    \"name\": \"Classic Burger\",\n    \"description\": \"A delicious classic burger with fresh ingredients\",\n    \"categoryUuid\": \"{{categoryUuid}}\",\n    \"sku\": \"BURGER-001\",\n    \"foodCode\": \"FB001\",\n    \"basePrice\": 9.99,\n    \"costPrice\": 5.00,\n    \"takeawayPrice\": 10.99,\n    \"deliveryPrice\": 11.99,\n    \"dietaryType\": \"NON_VEG\",\n    \"preparationTime\": 15,\n    \"spiceLevel\": 2,\n    \"isActive\": true,\n    \"isFeatured\": true,\n    \"isBestseller\": false,\n    \"isOpenPrice\": false,\n    \"trackInventory\": true,\n    \"sortOrder\": 0\n}",
+							"type": "text",
+							"contentType": "application/json"
+						},
+						{
+							"key": "image",
+							"type": "file",
+							"src": "",
+							"disabled": true
 						}
 					]
 				},
@@ -195,8 +202,9 @@
 					"formdata": [
 						{
 							"key": "product",
-							"value": "{\n    \"name\": \"Deluxe Burger\",\n    \"description\": \"A deluxe version of our classic burger.\",\n    \"price\": 12.99\n}",
-							"type": "text"
+							"value": "{\n    \"name\": \"Deluxe Burger\",\n    \"description\": \"A deluxe version of our classic burger.\",\n    \"basePrice\": 12.99\n}",
+							"type": "text",
+							"contentType": "application/json"
 						},
 						{
 							"key": "image",

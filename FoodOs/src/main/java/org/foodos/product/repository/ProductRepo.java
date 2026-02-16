@@ -12,9 +12,9 @@ import java.util.Optional;
 @Repository
 public interface ProductRepo extends JpaRepository<Product, Long> {
 
-    Optional<Product> findByProductUuid(String productUuid);
+    Optional<Product> findByProductUuidAndIsDeletedFalse(String productUuid);
 
-    Optional<Product> findBySku(String sku);
+    Optional<Product> findBySkuAndIsDeletedFalse(String sku);
 
     List<Product> findByRestaurant_RestaurantUuidAndIsActiveTrueAndIsDeletedFalseOrderBySortOrderAsc(String restaurantUuid);
 

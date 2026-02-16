@@ -74,7 +74,7 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         log.info("Creating order for restaurant: {}", request.getRestaurantUuid());
 
         // 1. Validate and fetch restaurant
-        Restaurant restaurant = restaurantRepository.findByRestaurantUuid(request.getRestaurantUuid())
+        Restaurant restaurant = restaurantRepository.findByRestaurantUuidAndIsDeletedFalse(request.getRestaurantUuid())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
         // 2. Create order entity using mapper
@@ -385,13 +385,13 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     private OrderItem createOrderItem(OrderItemRequest request, Order order) {
         // Fetch product
-        Product product = productRepository.findByProductUuid(request.getProductUuid())
+        Product product = productRepository.findByProductUuidAndIsDeletedFalse(request.getProductUuid())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         // Fetch variation if specified
         ProductVariation variation = null;
         if (request.getVariationUuid() != null) {
-            variation = variationRepository.findByVariationUuid(request.getVariationUuid())
+            variation = variationRepository.findByVariationUuidAndIsDeletedFalse(request.getVariationUuid())
                     .orElseThrow(() -> new RuntimeException("Product variation not found"));
         }
 
@@ -413,7 +413,7 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         // Add modifiers
         if (request.getModifiers() != null) {
             for (OrderItemModifierRequest modRequest : request.getModifiers()) {
-                Modifier modifier = modifierRepository.findByModifierUuid(modRequest.getModifierUuid())
+                Modifier modifier = modifierRepository.findByModifierUuidAndIsDeletedFalse(modRequest.getModifierUuid())
                         .orElseThrow(() -> new RuntimeException("Modifier not found"));
 
                 OrderItemModifier itemModifier = orderMapper.toOrderItemModifier(modRequest);

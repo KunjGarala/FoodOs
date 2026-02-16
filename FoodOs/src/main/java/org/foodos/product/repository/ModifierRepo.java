@@ -12,7 +12,7 @@ import java.util.Optional;
 @Repository
 public interface ModifierRepo extends JpaRepository<Modifier, Long> {
 
-    Optional<Modifier> findByModifierUuid(String modifierUuid);
+    Optional<Modifier> findByModifierUuidAndIsDeletedFalse(String modifierUuid);
 
     List<Modifier> findByModifierGroup_ModifierGroupUuidAndIsActiveTrueAndIsDeletedFalseOrderBySortOrderAsc(
             String modifierGroupUuid);
