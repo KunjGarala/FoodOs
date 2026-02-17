@@ -296,9 +296,9 @@ public class OrderController {
     @Operation(summary = "Get kitchen orders", description = "Gets orders in kitchen for KDS")
     @GetMapping("/restaurant/{restaurantUuid}/kitchen")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'CHEF')")
-    public ResponseEntity<List<OrderResponse>> getKitchenOrders(@PathVariable String restaurantUuid) {
+    public ResponseEntity<List<OrderResponse>> getKitchenOrders(@PathVariable String restaurantUuid , @AuthenticationPrincipal UserAuthEntity user) {
         log.info("REST: Fetching kitchen orders for restaurant: {}", restaurantUuid);
-        List<OrderResponse> orders = orderService.getKitchenOrders(restaurantUuid);
+        List<OrderResponse> orders = orderService.getKitchenOrders(restaurantUuid , user);
         return ResponseEntity.ok(orders);
     }
 

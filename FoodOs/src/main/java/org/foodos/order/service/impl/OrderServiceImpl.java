@@ -3,6 +3,7 @@ package org.foodos.order.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.OrderResponse;
@@ -13,6 +14,7 @@ import org.foodos.order.entity.enums.OrderType;
 import org.foodos.order.entity.enums.PaymentStatus;
 import org.foodos.order.mapper.OrderMapper;
 import org.foodos.order.repository.*;
+import org.foodos.order.service.OrderService;
 import org.foodos.product.entity.Modifier;
 import org.foodos.product.entity.Product;
 import org.foodos.product.entity.ProductVariation;
@@ -50,7 +52,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class OrderServiceImpl implements org.foodos.order.service.OrderService {
+public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -613,8 +615,20 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getKitchenOrders(String restaurantUuid) {
-        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid);
+    public List<OrderResponse> getKitchenOrders(String restaurantUuid , UserAuthEntity user) {
+        UserRole role = user.getRole();
+
+        if(role.equals(UserRole.CHEF)){
+            List<OrderStatus> status = List.of(OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS);
+            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid ,  status);
+            return orderMapper.toOrderResponseList(orders);
+        }
+        else if(role.equals(UserRole.WAITER)){
+            List<OrderStatus> status = List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS, OrderStatus.READY);
+            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid ,  status);
+            return orderMapper.toOrderResponseList(orders);
+        }
+        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid ,  List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS, OrderStatus.READY));
         return orderMapper.toOrderResponseList(orders);
     }
 
@@ -657,6 +671,46 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
     @Transactional(readOnly = true)
     public BigDecimal getAverageOrderValue(String restaurantUuid, LocalDate orderDate) {
         return orderRepository.calculateAverageOrderValueByRestaurantUuid(restaurantUuid, orderDate);
+    }
+
+    @Override
+    public Order createEmptyOrder(CreateOrderRequest orderRequest, Long userId) {
+        log.info("Creating empty order for restaurant: {}", orderRequest.getRestaurantUuid());
+
+        // 1. Validate and fetch restaurant
+        Restaurant restaurant = restaurantRepository.findByRestaurantUuidAndIsDeletedFalse(orderRequest.getRestaurantUuid())
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        // 2. Create order entity using mapper
+        Order order = orderMapper.toOrder(orderRequest);
+        order.setRestaurant(restaurant);
+
+        // 3. Handle table assignment (for dine-in)
+        if (orderRequest.getTableUuid() != null) {
+            RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(orderRequest.getTableUuid())
+                    .orElseThrow(() -> new RuntimeException("Table not found"));
+            order.setTable(table);
+        }
+
+        // 4. Handle waiter assignment
+        if (orderRequest.getWaiterUuid() != null) {
+            UserAuthEntity waiter = userRepository.findByUserUuidAndIsDeletedFalse(orderRequest.getWaiterUuid())
+                    .orElseThrow(() -> new RuntimeException("Waiter not found"));
+            order.setWaiter(waiter);
+        }
+
+        // 5. Generate order number
+        String orderNumber = generateOrderNumber(restaurant.getId(), LocalDate.now());
+        order.setOrderNumber(orderNumber);
+
+        // 6. Set status to DRAFT
+        order.setStatus(OrderStatus.DRAFT);
+
+        // 7. Save order
+        order = orderRepository.save(order);
+        log.info("Empty order created successfully: {}", order.getOrderUuid());
+
+        return order;
     }
 }
 

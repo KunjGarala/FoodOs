@@ -168,8 +168,16 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId AND o.status IN ('KOT_SENT', 'IN_PROGRESS', 'READY') AND o.isDeleted = false ORDER BY o.orderTime ASC")
     List<Order> findKitchenOrders(@Param("restaurantId") Long restaurantId);
 
-    @Query("SELECT o FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.status IN ('KOT_SENT', 'IN_PROGRESS', 'READY') AND o.isDeleted = false ORDER BY o.orderTime ASC")
-    List<Order> findKitchenOrdersByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid);
+    @Query("SELECT o FROM Order o " +
+            "WHERE o.restaurant.restaurantUuid = :restaurantUuid " +
+            "AND o.status IN :status " +
+            "AND o.isDeleted = false " +
+            "ORDER BY o.orderTime ASC")
+    List<Order> findKitchenOrdersByRestaurantUuid(
+            @Param("restaurantUuid") String restaurantUuid,
+            @Param("status") List<OrderStatus> status
+    );
+
 
     // ===== WAITER ORDERS =====
 
