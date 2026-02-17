@@ -510,11 +510,11 @@ const CreateRestaurant = () => {
                     <div className="text-center mb-10">
                         <div className="inline-flex items-center gap-3 mb-4">
                             <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl">
-                                <Crown className="h-8 w-8 text-white" />
+                                <Crown className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-4xl font-bold text-slate-900">Create Your Main Restaurant</h1>
-                                <p className="mt-2 text-lg text-slate-600">This will be your primary restaurant that manages all outlets</p>
+                                <h1 className="text-2xl sm:text-4xl font-bold text-slate-900">Create Your Main Restaurant</h1>
+                                <p className="mt-2 text-sm sm:text-lg text-slate-600">This will be your primary restaurant that manages all outlets</p>
                             </div>
                         </div>
                     </div>
@@ -572,19 +572,22 @@ const CreateRestaurant = () => {
                                     }`}
                                 >
                                     <div className={`
-                                        w-12 h-12 rounded-full flex items-center justify-center mb-2 border-2
+                                        w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mb-1 sm:mb-2 border-2
                                         ${activeStep === step.id ? 'bg-blue-600 text-white border-blue-600' : 
                                           activeStep > step.id ? 'bg-blue-100 text-blue-600 border-blue-600' : 
                                           'bg-white text-slate-400 border-slate-300'}
                                     `}>
-                                        <step.icon className="h-5 w-5" />
+                                        <step.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                                     </div>
-                                    <span className={`text-sm font-medium ${activeStep >= step.id ? 'text-blue-600' : 'text-slate-500'}`}>
+                                    <span className={`text-xs sm:text-sm font-medium hidden sm:block ${activeStep >= step.id ? 'text-blue-600' : 'text-slate-500'}`}>
                                         {step.name}
+                                    </span>
+                                    <span className={`text-[10px] font-medium sm:hidden ${activeStep >= step.id ? 'text-blue-600' : 'text-slate-500'}`}>
+                                        {step.id}
                                     </span>
                                 </button>
                                 {index < steps.length - 1 && (
-                                    <div className={`flex-1 h-1 mx-2 ${activeStep > step.id ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                                    <div className={`flex-1 h-1 mx-1 sm:mx-2 ${activeStep > step.id ? 'bg-blue-600' : 'bg-slate-200'}`} />
                                 )}
                             </React.Fragment>
                         ))}
@@ -604,7 +607,7 @@ const CreateRestaurant = () => {
                 <Card className="border-slate-200 shadow-xl overflow-hidden">
                     <CardContent className="p-0">
                         <form onSubmit={handleSubmit}>
-                            <div className="p-8">
+                            <div className="p-4 sm:p-8">
                                 {renderBasicInfoStep()}
                                 {renderAddressStep()}
                                 {renderLegalLicenseStep()}

@@ -36,7 +36,7 @@ public class ModifierGroupService {
         log.info("Creating modifier group for restaurant: {}", restaurantUuid);
 
         // Validate restaurant
-        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid));
 
         // Validate name uniqueness
@@ -93,7 +93,7 @@ public class ModifierGroupService {
     public ModifierGroupResponseDto getModifierGroupById(String restaurantUuid, String modifierGroupUuid) {
         log.info("Fetching modifier group: {} for restaurant: {}", modifierGroupUuid, restaurantUuid);
 
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         // Validate modifier group belongs to restaurant
@@ -121,7 +121,7 @@ public class ModifierGroupService {
         log.info("Updating modifier group: {} for restaurant: {}", modifierGroupUuid, restaurantUuid);
 
         // Find modifier group
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         // Validate modifier group belongs to restaurant
@@ -158,7 +158,7 @@ public class ModifierGroupService {
     public void deleteModifierGroup(String restaurantUuid, String modifierGroupUuid) {
         log.info("Deleting modifier group: {} for restaurant: {}", modifierGroupUuid, restaurantUuid);
 
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         // Validate modifier group belongs to restaurant
@@ -182,7 +182,7 @@ public class ModifierGroupService {
         log.info("Toggling modifier group status: {} to {} for restaurant: {}",
                 modifierGroupUuid, isActive, restaurantUuid);
 
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         // Validate modifier group belongs to restaurant

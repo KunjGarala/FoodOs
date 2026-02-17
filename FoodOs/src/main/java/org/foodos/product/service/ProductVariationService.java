@@ -35,7 +35,7 @@ public class ProductVariationService {
         log.info("Creating variation for product: {}", productUuid);
 
         // Validate product
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -87,7 +87,7 @@ public class ProductVariationService {
         log.info("Creating {} variations in bulk for product: {}", request.getVariations().size(), productUuid);
 
         // Validate product
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -156,7 +156,7 @@ public class ProductVariationService {
         log.info("Fetching variations for product: {}", productUuid);
 
         // Validate product exists and belongs to restaurant
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         if (!product.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -179,7 +179,7 @@ public class ProductVariationService {
     public ProductVariationResponseDto getVariationById(String restaurantUuid, String variationUuid) {
         log.info("Fetching variation: {}", variationUuid);
 
-        ProductVariation variation = variationRepo.findByVariationUuid(variationUuid)
+        ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Variation not found with UUID: " + variationUuid));
 
         // Validate variation belongs to restaurant
@@ -196,7 +196,7 @@ public class ProductVariationService {
         log.info("Updating variation: {}", variationUuid);
 
         // Find variation
-        ProductVariation variation = variationRepo.findByVariationUuid(variationUuid)
+        ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Variation not found with UUID: " + variationUuid));
 
         // Validate variation belongs to restaurant
@@ -229,7 +229,7 @@ public class ProductVariationService {
     public void deleteVariation(String restaurantUuid, String variationUuid) {
         log.info("Deleting variation: {}", variationUuid);
 
-        ProductVariation variation = variationRepo.findByVariationUuid(variationUuid)
+        ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Variation not found with UUID: " + variationUuid));
 
         // Validate variation belongs to restaurant
@@ -270,7 +270,7 @@ public class ProductVariationService {
     public void toggleVariationStatus(String restaurantUuid, String variationUuid, boolean isActive) {
         log.info("Toggling variation status: {} to {}", variationUuid, isActive);
 
-        ProductVariation variation = variationRepo.findByVariationUuid(variationUuid)
+        ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Variation not found with UUID: " + variationUuid));
 
         // Validate variation belongs to restaurant
@@ -288,7 +288,7 @@ public class ProductVariationService {
         log.info("Setting variation {} as default for product: {}", variationUuid, productUuid);
 
         // Validate variation
-        ProductVariation variation = variationRepo.findByVariationUuid(variationUuid)
+        ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Variation not found with UUID: " + variationUuid));
 
         // Validate variation belongs to restaurant

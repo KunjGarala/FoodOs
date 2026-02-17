@@ -124,8 +124,10 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const { authAPI } = await import('../services/api');
+      console.log("asidgash");
+      debugger;
       const response    = await authAPI.login(credentials);
-
+      
       // Extract access token from the Authorization header.
       const authHeader = response.headers?.['authorization'] || '';
       const token      = authHeader.startsWith('Bearer ')

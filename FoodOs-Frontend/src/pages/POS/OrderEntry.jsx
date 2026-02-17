@@ -198,7 +198,7 @@ const OrderEntry = () => {
   const totals = calculateTotal();
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-8rem)] gap-4 lg:gap-6">
       {/* Notification Toast */}
       {(error || success) && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in ${
@@ -315,7 +315,7 @@ const OrderEntry = () => {
       </div>
 
       {/* Right: Cart Summary */}
-      <Card className="w-96 flex flex-col h-full border-0 shadow-lg ring-1 ring-slate-200">
+      <Card className="w-full lg:w-96 flex flex-col lg:h-full border-0 shadow-lg ring-1 ring-slate-200">
         <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl space-y-3">
           <div className="flex items-center justify-between">
             <input

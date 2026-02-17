@@ -42,7 +42,7 @@ public class RestaurantTableService {
         log.info("Creating new table. Request: {}, User: {}", requestDto, currentUser.getUsername());
 
         // Validate restaurant exists
-        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(requestDto.getRestaurantUuid())
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(requestDto.getRestaurantUuid())
                 .orElseThrow(() -> {
                     log.error("Restaurant not found with UUID: {}", requestDto.getRestaurantUuid());
                     return new ResourceNotFoundException("Restaurant not found with UUID: " + requestDto.getRestaurantUuid());
@@ -257,7 +257,7 @@ public class RestaurantTableService {
     public List<TableFloorPlanDto> getTablesByRestaurant(String restaurantUuid) {
         log.info("Fetching active tables for restaurant UUID: {} (Floor plan view)", restaurantUuid);
 
-        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> {
                     log.error("Restaurant not found with UUID: {}", restaurantUuid);
                     return new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid);
@@ -279,7 +279,7 @@ public class RestaurantTableService {
     public List<RestaurantChainTablesSummaryDto> getTablesByRestaurantChain(String parentRestaurantUuid) {
         log.info("Fetching tables summary for restaurant chain. Parent UUID: {}", parentRestaurantUuid);
 
-        Restaurant parentRestaurant = restaurantRepo.findByRestaurantUuid(parentRestaurantUuid)
+        Restaurant parentRestaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(parentRestaurantUuid)
                 .orElseThrow(() -> {
                     log.error("Parent restaurant not found with UUID: {}", parentRestaurantUuid);
                     return new ResourceNotFoundException("Parent restaurant not found with UUID: " + parentRestaurantUuid);
@@ -489,7 +489,7 @@ public class RestaurantTableService {
     public TableAnalyticsDto getTableAnalytics(String restaurantUuid) {
         log.info("Generating table analytics for restaurant UUID: {}", restaurantUuid);
 
-        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> {
                     log.error("Restaurant not found with UUID: {}", restaurantUuid);
                     return new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid);

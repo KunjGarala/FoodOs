@@ -35,7 +35,7 @@ public class ModifierService {
         log.info("Creating modifier for modifier group: {}", modifierGroupUuid);
 
         // Validate modifier group
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         // Validate modifier group belongs to restaurant
@@ -66,7 +66,7 @@ public class ModifierService {
         log.info("Creating {} modifiers in bulk for modifier group: {}", request.getModifiers().size(), modifierGroupUuid);
 
         // Validate modifier group
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         // Validate modifier group belongs to restaurant
@@ -103,7 +103,7 @@ public class ModifierService {
         log.info("Fetching modifiers for modifier group: {}", modifierGroupUuid);
 
         // Validate modifier group exists and belongs to restaurant
-        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuid(modifierGroupUuid)
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
 
         if (!modifierGroup.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -126,7 +126,7 @@ public class ModifierService {
     public ModifierResponseDto getModifierById(String restaurantUuid, String modifierUuid) {
         log.info("Fetching modifier: {}", modifierUuid);
 
-        Modifier modifier = modifierRepo.findByModifierUuid(modifierUuid)
+        Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier not found with UUID: " + modifierUuid));
 
         // Validate modifier belongs to restaurant
@@ -143,7 +143,7 @@ public class ModifierService {
         log.info("Updating modifier: {}", modifierUuid);
 
         // Find modifier
-        Modifier modifier = modifierRepo.findByModifierUuid(modifierUuid)
+        Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier not found with UUID: " + modifierUuid));
 
         // Validate modifier belongs to restaurant
@@ -171,7 +171,7 @@ public class ModifierService {
     public void deleteModifier(String restaurantUuid, String modifierUuid) {
         log.info("Deleting modifier: {}", modifierUuid);
 
-        Modifier modifier = modifierRepo.findByModifierUuid(modifierUuid)
+        Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier not found with UUID: " + modifierUuid));
 
         // Validate modifier belongs to restaurant
@@ -188,7 +188,7 @@ public class ModifierService {
     public void toggleModifierStatus(String restaurantUuid, String modifierUuid, boolean isActive) {
         log.info("Toggling modifier status: {} to {}", modifierUuid, isActive);
 
-        Modifier modifier = modifierRepo.findByModifierUuid(modifierUuid)
+        Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Modifier not found with UUID: " + modifierUuid));
 
         // Validate modifier belongs to restaurant

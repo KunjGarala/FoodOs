@@ -18,6 +18,7 @@ import org.foodos.product.repository.ProductRepo;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.repository.RestaurantRepo;
 import org.hibernate.Filter;
+import org.springframework.web.multipart.MultipartFile;
 import org.hibernate.Session;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,15 +40,15 @@ public class ProductService {
     private final EntityManager entityManager;
 
     @Transactional
-    public ProductResponseDto createProduct(String restaurantUuid, CreateProductRequest dto) {
+    public ProductResponseDto createProduct(String restaurantUuid, CreateProductRequest dto, MultipartFile image) {
         log.info("Creating product for restaurant: {}", restaurantUuid);
 
         // Validate restaurant
-        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid));
 
         // Validate category
-        Category category = categoryRepo.findByCategoryUuid(dto.getCategoryUuid())
+        Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(dto.getCategoryUuid())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with UUID: " + dto.getCategoryUuid()));
 
         // Validate category belongs to restaurant
@@ -107,7 +108,7 @@ public class ProductService {
         log.info("Fetching products for restaurant: {}, category: {}", restaurantUuid, categoryUuid);
 
         // Validate category exists and belongs to restaurant
-        Category category = categoryRepo.findByCategoryUuid(categoryUuid)
+        Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with UUID: " + categoryUuid));
 
         if (!category.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -162,7 +163,7 @@ public class ProductService {
     public ProductResponseDto getProductById(String restaurantUuid, String productUuid) {
         log.info("Fetching product: {} for restaurant: {}", productUuid, restaurantUuid);
 
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -179,7 +180,7 @@ public class ProductService {
         log.info("Updating product: {} for restaurant: {}", productUuid, restaurantUuid);
 
         // Find product
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -189,7 +190,7 @@ public class ProductService {
 
         // Update category if provided
         if (dto.getCategoryUuid() != null && !dto.getCategoryUuid().isEmpty()) {
-            Category category = categoryRepo.findByCategoryUuid(dto.getCategoryUuid())
+            Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(dto.getCategoryUuid())
                     .orElseThrow(() -> new ResourceNotFoundException("Category not found with UUID: " + dto.getCategoryUuid()));
 
             if (!category.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -238,7 +239,7 @@ public class ProductService {
     public void deleteProduct(String restaurantUuid, String productUuid) {
         log.info("Deleting product: {} for restaurant: {}", productUuid, restaurantUuid);
 
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -255,7 +256,7 @@ public class ProductService {
     public void toggleProductStatus(String restaurantUuid, String productUuid, boolean isActive) {
         log.info("Toggling product status: {} to {} for restaurant: {}", productUuid, isActive, restaurantUuid);
 
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -273,7 +274,7 @@ public class ProductService {
     public void updateProductStock(String restaurantUuid, String productUuid, java.math.BigDecimal stockQuantity) {
         log.info("Updating product stock: {} to {} for restaurant: {}", productUuid, stockQuantity, restaurantUuid);
 
-        Product product = productRepo.findByProductUuid(productUuid)
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
 
         // Validate product belongs to restaurant
@@ -288,5 +289,24 @@ public class ProductService {
 //        product.setCurrentStock(stockQuantity);
         productRepo.save(product);
         log.info("Updated product stock: {} to {} for restaurant: {}", productUuid, stockQuantity, restaurantUuid);
+    }
+
+    public void toggleFeaturedStatus(String restaurantUuid, String productUuid) {
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid));
+
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID:" + productUuid));
+
+        if (!product.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("Product does not belong to this restaurant");
+        }
+
+
+        product.setIsFeatured(!product.getIsFeatured());
+        productRepo.save(product);
+        log.info("Toggled featured status for product: {} to {} for restaurant: {}", product
+                .getProductUuid(), product.getIsFeatured(), restaurantUuid);
+
     }
 }

@@ -18,6 +18,7 @@ import {
   CheckCircle, 
   Lock,
   Building2,
+  Loader2,
 } from 'lucide-react';
 import { employeeAPI } from '../../services/api';
 import AddEmployee from './AddEmployee';
@@ -125,8 +126,8 @@ const StaffManagement = () => {
             {/* 1️⃣ Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Staff Management</h1>
-                    <p className="text-slate-500">View and manage restaurant employees</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Staff Management</h1>
+                    <p className="text-sm text-slate-500">View and manage restaurant employees</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button 
@@ -213,7 +214,68 @@ const StaffManagement = () => {
 
             {/* 3️⃣ Staff List Table */}
              <Card>
-                <div className="overflow-x-auto">
+                {/* Mobile card view */}
+                <div className="md:hidden divide-y divide-slate-100">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-32">
+                            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                        </div>
+                    ) : error ? (
+                        <div className="px-4 py-8 text-center text-red-500">{error}</div>
+                    ) : filteredEmployees.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                            <div className="bg-slate-50 p-4 rounded-full mb-2"><User className="h-8 w-8 text-slate-300" /></div>
+                            <p className="font-medium">No staff found</p>
+                            <p className="text-sm">Try changing filters</p>
+                        </div>
+                    ) : (
+                        filteredEmployees.map((emp) => (
+                            <div key={emp.uuid || emp.id} className="p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-slate-800 truncate">{emp.fullName}</p>
+                                        <Badge variant="outline" className="mt-1 text-xs">
+                                            {FILTER_ROLES.find(r => r.value === emp.role)?.label || emp.role}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <button onClick={() => handleViewProfile(emp)} className="p-1.5 hover:bg-slate-100 rounded" title="View">
+                                            <Eye className="h-4 w-4 text-slate-500" />
+                                        </button>
+                                        {hasManagePermission && (
+                                            <button onClick={() => handleEditProfile(emp)} className="p-1.5 hover:bg-slate-100 rounded" title="Edit">
+                                                <Edit className="h-4 w-4 text-blue-600" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-slate-600">
+                                    <div className="flex items-center gap-1">
+                                        <Phone className="h-3 w-3" /> {emp.phoneNumber || '--'}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-xs">
+                                        <Mail className="h-3 w-3" /> {emp.email || '--'}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    {emp.employeeCode && (
+                                        <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-mono">{emp.employeeCode}</span>
+                                    )}
+                                    {emp.isLocked ? (
+                                        <Badge variant="danger" className="gap-1 text-xs"><Lock className="h-3 w-3"/> Locked</Badge>
+                                    ) : emp.isActive ? (
+                                        <Badge variant="success" className="gap-1 text-xs"><CheckCircle className="h-3 w-3"/> Active</Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="gap-1 text-xs"><Ban className="h-3 w-3"/> Inactive</Badge>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop table view */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-600">
                         <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
                             <tr>

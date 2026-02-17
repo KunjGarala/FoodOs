@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { Edit2, Trash2, Plus, Filter, MoreHorizontal, Loader2, AlertCircle, CheckCircle, Star, Eye, EyeOff } from 'lucide-react';
+import { 
+  Edit2, Trash2, Plus, Loader2, AlertCircle, CheckCircle, 
+  Star, ChevronDown, ChevronRight, Clock, Thermometer, 
+  Calendar, Info, Tag, Hash, 
+  DollarSign, Package, Search, TrendingUp, Grid
+} from 'lucide-react';
 import {
   fetchProducts,
-  createProduct,
-  updateProduct,
   deleteProduct,
   toggleProductAvailability,
   toggleFeaturedStatus,
   clearError,
   clearSuccess,
+  optimisticToggleFeatured,
+  optimisticToggleAvailability,
 } from '../../store/productSlice';
 import {
   fetchCategories,
@@ -22,22 +27,20 @@ import {
 
 const MenuManagement = () => {
   const dispatch = useDispatch();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    sku: '',
-    basePrice: '',
-    categoryId: '',
-    isVeg: true,
-    isFeatured: false,
-    isAvailable: true,
-  });
+  const [expandedProductIds, setExpandedProductIds] = useState(new Set());
+
+  const toggleProductExpansion = (productUuid) => {
+    const newExpanded = new Set(expandedProductIds);
+    if (newExpanded.has(productUuid)) {
+      newExpanded.delete(productUuid);
+    } else {
+      newExpanded.add(productUuid);
+    }
+    setExpandedProductIds(newExpanded);
+  };
 
   // Redux state
   const { activeRestaurantId } = useSelector((state) => state.auth);
@@ -74,11 +77,20 @@ const MenuManagement = () => {
         name: product.name,
         description: product.description || '',
         sku: product.sku || '',
+        foodCode: product.foodCode || '',
         basePrice: product.basePrice || '',
-        categoryId: product.category?.uuid || '',
-        isVeg: product.isVeg,
+        costPrice: product.costPrice || '',
+        categoryUuid: product.categoryUuid || '',
+        dietaryType: product.dietaryType || 'VEG',
+        preparationTime: product.preparationTime || '',
+        spiceLevel: product.spiceLevel || '',
         isFeatured: product.isFeatured || false,
-        isAvailable: product.isAvailable !== false,
+        isBestseller: product.isBestseller || false,
+        isActive: product.isActive !== false,
+        sortOrder: product.sortOrder || 0,
+        availableFrom: product.availableFrom || '',
+        availableTo: product.availableTo || '',
+        availableDays: product.availableDays ? product.availableDays.split(',') : [],
       });
     } else {
       setEditingProduct(null);
@@ -86,11 +98,20 @@ const MenuManagement = () => {
         name: '',
         description: '',
         sku: '',
+        foodCode: '',
         basePrice: '',
-        categoryId: '',
-        isVeg: true,
+        costPrice: '',
+        categoryUuid: '',
+        dietaryType: 'VEG',
+        preparationTime: '',
+        spiceLevel: '',
         isFeatured: false,
-        isAvailable: true,
+        isBestseller: false,
+        isActive: true,
+        sortOrder: 0,
+        availableFrom: '',
+        availableTo: '',
+        availableDays: [],
       });
     }
     setIsModalOpen(true);
@@ -103,11 +124,20 @@ const MenuManagement = () => {
       name: '',
       description: '',
       sku: '',
+      foodCode: '',
       basePrice: '',
-      categoryId: '',
-      isVeg: true,
+      costPrice: '',
+      categoryUuid: '',
+      dietaryType: 'VEG',
+      preparationTime: '',
+      spiceLevel: '',
       isFeatured: false,
-      isAvailable: true,
+      isBestseller: false,
+      isActive: true,
+      sortOrder: 0,
+      availableFrom: '',
+      availableTo: '',
+      availableDays: [],
     });
   };
 
@@ -116,20 +146,29 @@ const MenuManagement = () => {
     
     const productData = {
       name: formData.name,
-      description: formData.description,
-      sku: formData.sku,
+      description: formData.description || undefined,
+      sku: formData.sku || undefined,
+      foodCode: formData.foodCode || undefined,
       basePrice: parseFloat(formData.basePrice),
-      categoryId: formData.categoryId,
-      isVeg: formData.isVeg,
+      costPrice: formData.costPrice ? parseFloat(formData.costPrice) : undefined,
+      categoryUuid: formData.categoryUuid,
+      dietaryType: formData.dietaryType,
+      preparationTime: formData.preparationTime ? parseInt(formData.preparationTime) : undefined,
+      spiceLevel: formData.spiceLevel ? parseInt(formData.spiceLevel) : undefined,
       isFeatured: formData.isFeatured,
-      isAvailable: formData.isAvailable,
+      isBestseller: formData.isBestseller,
+      isActive: formData.isActive,
+      sortOrder: formData.sortOrder ? parseInt(formData.sortOrder) : 0,
+      availableFrom: formData.availableFrom || undefined,
+      availableTo: formData.availableTo || undefined,
+      availableDays: formData.availableDays.length > 0 ? formData.availableDays.join(',') : undefined,
     };
 
     try {
       if (editingProduct) {
         await dispatch(updateProduct({
           restaurantUuid: activeRestaurantId,
-          productUuid: editingProduct.uuid,
+          productUuid: editingProduct.productUuid,
           productData,
         })).unwrap();
       } else {
@@ -157,40 +196,79 @@ const MenuManagement = () => {
     }
   };
 
-  const handleToggleAvailability = async (productUuid) => {
-    try {
-      await dispatch(toggleProductAvailability({
-        restaurantUuid: activeRestaurantId,
-        productUuid,
-      })).unwrap();
-    } catch (error) {
-      console.error('Failed to toggle availability:', error);
-    }
+  const handleToggleAvailability = (productUuid) => {
+    // Optimistic update - instantly reflect in UI
+    dispatch(optimisticToggleAvailability(productUuid));
+    // Fire backend call - on success it syncs, on failure it reverts
+    dispatch(toggleProductAvailability({
+      restaurantUuid: activeRestaurantId,
+      productUuid,
+    }));
   };
 
-  const handleToggleFeatured = async (productUuid) => {
-    try {
-      await dispatch(toggleFeaturedStatus({
-        restaurantUuid: activeRestaurantId,
-        productUuid,
-      })).unwrap();
-    } catch (error) {
-      console.error('Failed to toggle featured:', error);
-    }
+  const handleToggleFeatured = (productUuid) => {
+    // Optimistic update - instantly reflect in UI
+    dispatch(optimisticToggleFeatured(productUuid));
+    // Fire backend call - on success it syncs, on failure it reverts
+    dispatch(toggleFeaturedStatus({
+      restaurantUuid: activeRestaurantId,
+      productUuid,
+    }));
   };
 
   // Filter products
   const filteredProducts = products.filter(product => {
     const matchesSearch = 
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
+      (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = 
       categoryFilter === 'all' || 
-      product.category?.uuid === categoryFilter;
+      product.categoryUuid === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
+
+  // Helper to format dietary type
+  const getDietaryLabel = (type) => {
+    const map = {
+      'VEG': 'Veg',
+      'NON_VEG': 'Non-Veg',
+      'VEGAN': 'Vegan',
+      'GLUTEN_FREE': 'Gluten Free',
+      'DAIRY_FREE': 'Dairy Free'
+    };
+    return map[type] || type;
+  };
+
+  // Helper to render availability schedule
+  const renderAvailability = (product) => {
+    const days = product.availableDays ? product.availableDays.split(',') : [];
+    const from = product.availableFrom;
+    const to = product.availableTo;
+    
+    if (days.length === 0 && !from && !to) {
+      return <span className="text-slate-400 italic">Always available</span>;
+    }
+    
+    return (
+      <div className="space-y-1">
+        {days.length > 0 && (
+          <div className="flex items-center gap-1 text-xs">
+            <Calendar className="h-3 w-3 text-slate-400" />
+            <span>{days.map(d => d.substring(0,3)).join(', ')}</span>
+          </div>
+        )}
+        {(from || to) && (
+          <div className="flex items-center gap-1 text-xs">
+            <Clock className="h-3 w-3 text-slate-400" />
+            <span>{from || '00:00'} - {to || '23:59'}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -204,25 +282,27 @@ const MenuManagement = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Menu Management</h1>
-          <p className="text-slate-500">Manage your items, categories and pricing</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Menu Management</h1>
+          <p className="text-sm text-slate-500">Manage your items, categories and pricing</p>
         </div>
-        <Button onClick={() => handleOpenModal()} disabled={actionLoading}>
+        <Button onClick={() => navigate('/app/menu/new')} disabled={actionLoading} className="self-start sm:self-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Item
         </Button>
       </div>
 
       <Card className="flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-100 flex gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+          <div className="relative flex-1 sm:max-w-sm">
             <Input 
-              placeholder="Search items..." 
+              placeholder="Search by name, SKU..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
             />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           </div>
           <select
             className="px-4 py-2 rounded-md border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -231,7 +311,9 @@ const MenuManagement = () => {
           >
             <option value="all">All Categories</option>
             {categories.map(cat => (
-              <option key={cat.uuid} value={cat.uuid}>{cat.name}</option>
+              <option key={cat.categoryUuid || cat.uuid} value={cat.categoryUuid || cat.uuid}>
+                {cat.name}
+              </option>
             ))}
           </select>
         </div>
@@ -247,9 +329,109 @@ const MenuManagement = () => {
               <p>No products found</p>
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
+            <>
+              {/* Mobile card view */}
+              <div className="md:hidden divide-y divide-slate-100">
+                {filteredProducts.map(product => {
+                  const price = product.basePrice || 0;
+                  const isActive = product.isActive !== false;
+                  const isExpanded = expandedProductIds.has(product.productUuid);
+
+                  return (
+                    <div key={product.productUuid} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <button
+                            onClick={() => toggleProductExpansion(product.productUuid)}
+                            className="p-1 hover:bg-slate-200 rounded text-slate-500 mt-0.5 shrink-0"
+                          >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </button>
+                          <div className="min-w-0">
+                            <span className="font-medium text-slate-900 block truncate">{product.name}</span>
+                            {product.sku && <span className="text-xs text-slate-400 font-mono">{product.sku}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleToggleFeatured(product.productUuid)}
+                            disabled={actionLoading}
+                            className="p-1.5 hover:bg-slate-100 rounded"
+                          >
+                            <Star className={`h-4 w-4 ${product.isFeatured ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product.productUuid)}
+                            disabled={actionLoading}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 ml-7">
+                        <span className="font-semibold text-slate-900">₹{price}</span>
+                        <span className="text-slate-300">·</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          product.dietaryType === 'VEG' || product.dietaryType === 'VEGAN'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                          {getDietaryLabel(product.dietaryType)}
+                        </span>
+                        <button onClick={() => handleToggleAvailability(product.productUuid)} disabled={actionLoading}>
+                          <Badge variant={isActive ? 'success' : 'danger'} className="text-xs">
+                            {isActive ? 'Available' : 'Unavailable'}
+                          </Badge>
+                        </button>
+                        {product.categoryName && <Badge variant="outline" className="text-xs">{product.categoryName}</Badge>}
+                      </div>
+
+                      {/* Mobile expanded details */}
+                      {isExpanded && (
+                        <div className="mt-3 ml-7 space-y-3 bg-slate-50 rounded-lg p-3">
+                          {product.description && <p className="text-sm text-slate-600">{product.description}</p>}
+                          <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                            {product.preparationTime && <span>Prep: {product.preparationTime}min</span>}
+                            {product.spiceLevel && <span>Spice: {product.spiceLevel}/5</span>}
+                            {product.costPrice && <span>Cost: ₹{product.costPrice}</span>}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {product.isBestseller && <Badge variant="success" className="text-xs">Bestseller</Badge>}
+                            {product.hasVariations && <Badge variant="info" className="text-xs">Variations</Badge>}
+                            {product.hasModifiers && <Badge variant="info" className="text-xs">Modifiers</Badge>}
+                          </div>
+                          {product.variations && product.variations.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-slate-700 mb-1">Variations</p>
+                              <div className="space-y-1">
+                                {product.variations.map(v => (
+                                  <div key={v.variationUuid} className="flex justify-between bg-white rounded px-2 py-1 text-xs">
+                                    <span>{v.name}{v.isDefault && ' ★'}</span>
+                                    <span className="font-medium">₹{v.price}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table view */}
+              <table className="hidden md:table w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0">
                 <tr>
+                  <th className="px-6 py-3 w-10"></th>
                   <th className="px-6 py-3">Item Name</th>
                   <th className="px-6 py-3">Category</th>
                   <th className="px-6 py-3">Price</th>
@@ -261,204 +443,298 @@ const MenuManagement = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.map(product => {
-                  const price = product.variations?.[0]?.price || product.basePrice || 0;
-                  const isAvailable = product.isAvailable !== false;
+                  const price = product.basePrice || 0;
+                  const isActive = product.isActive !== false;
                   
                   return (
-                    <tr key={product.uuid} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-3 font-medium text-slate-900">
-                        <div className="flex flex-col">
-                          <span>{product.name}</span>
-                          {product.sku && (
-                            <span className="text-xs text-slate-400 font-mono">{product.sku}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-slate-600">
-                        {product.category?.name || 'Uncategorized'}
-                      </td>
-                      <td className="px-6 py-3 font-semibold">₹{price}</td>
-                      <td className="px-6 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                          product.isVeg 
-                            ? 'bg-green-50 text-green-700 border-green-200' 
-                            : 'bg-red-50 text-red-700 border-red-200'
-                        }`}>
-                          {product.isVeg ? 'Veg' : 'Non-Veg'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3">
-                        <button
-                          onClick={() => handleToggleAvailability(product.uuid)}
-                          disabled={actionLoading}
-                        >
-                          <Badge variant={isAvailable ? 'success' : 'danger'}>
-                            {isAvailable ? 'Available' : 'Unavailable'}
-                          </Badge>
-                        </button>
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <button
-                          onClick={() => handleToggleFeatured(product.uuid)}
-                          disabled={actionLoading}
-                          className="p-1 hover:bg-slate-100 rounded transition-colors"
-                        >
-                          <Star 
-                            className={`h-5 w-5 ${
-                              product.isFeatured 
-                                ? 'fill-yellow-400 text-yellow-400' 
-                                : 'text-slate-300'
-                            }`}
-                          />
-                        </button>
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-8 w-8 text-slate-400 hover:text-blue-600"
-                            onClick={() => handleOpenModal(product)}
+                    <React.Fragment key={product.productUuid}>
+                      <tr className={`hover:bg-slate-50 transition-colors ${expandedProductIds.has(product.productUuid) ? 'bg-slate-50' : ''}`}>
+                        <td className="px-6 py-3">
+                          <button 
+                            onClick={() => toggleProductExpansion(product.productUuid)}
+                            className="p-1 hover:bg-slate-200 rounded text-slate-500"
+                          >
+                            {expandedProductIds.has(product.productUuid) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-6 py-3 font-medium text-slate-900">
+                          <div className="flex flex-col">
+                            <span>{product.name}</span>
+                            {product.sku && (
+                              <span className="text-xs text-slate-400 font-mono">{product.sku}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 text-slate-600">
+                          {product.categoryName || 'Uncategorized'}
+                        </td>
+                        <td className="px-6 py-3 font-semibold">₹{price}</td>
+                        <td className="px-6 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                            product.dietaryType === 'VEG' || product.dietaryType === 'VEGAN'
+                              ? 'bg-green-50 text-green-700 border-green-200' 
+                              : 'bg-red-50 text-red-700 border-red-200'
+                          }`}>
+                            {getDietaryLabel(product.dietaryType)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3">
+                          <button
+                            onClick={() => handleToggleAvailability(product.productUuid)}
                             disabled={actionLoading}
                           >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-8 w-8 text-slate-400 hover:text-red-600"
-                            onClick={() => handleDelete(product.uuid)}
+                            <Badge variant={isActive ? 'success' : 'danger'}>
+                              {isActive ? 'Available' : 'Unavailable'}
+                            </Badge>
+                          </button>
+                        </td>
+                        <td className="px-6 py-3 text-center">
+                          <button
+                            onClick={() => handleToggleFeatured(product.productUuid)}
                             disabled={actionLoading}
+                            className="p-1 hover:bg-slate-100 rounded transition-colors"
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                            <Star 
+                              className={`h-5 w-5 ${
+                                product.isFeatured 
+                                  ? 'fill-yellow-400 text-yellow-400' 
+                                  : 'text-slate-300'
+                              }`}
+                            />
+                          </button>
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                              onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                              disabled={actionLoading}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-slate-400 hover:text-red-600"
+                              onClick={() => handleDelete(product.productUuid)}
+                              disabled={actionLoading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedProductIds.has(product.productUuid) && (
+                        <tr className="bg-slate-50/50">
+                          <td colSpan="8" className="px-6 py-4 border-t border-slate-100">
+                            <div className="space-y-6">
+                              {/* Product Details Section */}
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Left column: Basic info */}
+                                <div className="space-y-3">
+                                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-1">
+                                    <Info className="h-4 w-4" /> Product Details
+                                  </h4>
+                                  
+                                  {product.description ? (
+                                    <div className="text-sm text-slate-600 bg-white p-3 rounded border border-slate-200">
+                                      {product.description}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-slate-400 italic">No description</p>
+                                  )}
+
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {product.foodCode && (
+                                      <div className="flex items-center gap-1 text-slate-600">
+                                        <Hash className="h-3 w-3 text-slate-400" />
+                                        <span className="text-xs">Food Code: {product.foodCode}</span>
+                                      </div>
+                                    )}
+                                    {product.costPrice && (
+                                      <div className="flex items-center gap-1 text-slate-600">
+                                        <DollarSign className="h-3 w-3 text-slate-400" />
+                                        <span className="text-xs">Cost: ₹{product.costPrice}</span>
+                                      </div>
+                                    )}
+                                    {product.sortOrder !== undefined && (
+                                      <div className="flex items-center gap-1 text-slate-600">
+                                        <Tag className="h-3 w-3 text-slate-400" />
+                                        <span className="text-xs">Sort Order: {product.sortOrder}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Middle column: Time & Availability */}
+                                <div className="space-y-3">
+                                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-1">
+                                    <Clock className="h-4 w-4" /> Time & Availability
+                                  </h4>
+                                  
+                                  <div className="space-y-2 text-sm">
+                                    {product.preparationTime && (
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-slate-400" />
+                                        <span>Prep time: {product.preparationTime} min</span>
+                                      </div>
+                                    )}
+                                    {product.spiceLevel && (
+                                      <div className="flex items-center gap-2">
+                                        <Thermometer className="h-4 w-4 text-slate-400" />
+                                        <span>Spice level: {product.spiceLevel}/5</span>
+                                      </div>
+                                    )}
+                                    <div className="border-t border-slate-200 my-2"></div>
+                                    {renderAvailability(product)}
+                                  </div>
+                                </div>
+
+                                {/* Right column: Status badges */}
+                                <div className="space-y-3">
+                                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-1">
+                                    <CheckCircle className="h-4 w-4" /> Status
+                                  </h4>
+                                  
+                                  <div className="flex flex-wrap gap-2">
+                                    {product.isFeatured && (
+                                      <Badge variant="warning" className="flex items-center gap-1">
+                                        <Star className="h-3 w-3" /> Featured
+                                      </Badge>
+                                    )}
+                                    {product.isBestseller && (
+                                      <Badge variant="success" className="flex items-center gap-1">
+                                        <TrendingUp className="h-3 w-3" /> Bestseller
+                                      </Badge>
+                                    )}
+                                    {product.hasVariations && (
+                                      <Badge variant="info">Has Variations</Badge>
+                                    )}
+                                    {product.hasModifiers && (
+                                      <Badge variant="info">Has Modifiers</Badge>
+                                    )}
+                                    {product.isOpenPrice && (
+                                      <Badge variant="info">Open Price</Badge>
+                                    )}
+                                    {product.trackInventory && (
+                                      <Badge variant="info">Track Inventory</Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Variations and Modifiers Section */}
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Variations */}
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                                    <Package className="h-4 w-4" /> Variations
+                                  </h4>
+                                  {product.variations && product.variations.length > 0 ? (
+                                    <div className="bg-white rounded border border-slate-200 overflow-hidden">
+                                      <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-slate-500 text-xs">
+                                          <tr>
+                                            <th className="px-3 py-2 text-left">Name</th>
+                                            <th className="px-3 py-2 text-right">Price</th>
+                                            <th className="px-3 py-2 text-center">Default</th>
+                                            <th className="px-3 py-2 text-center">Active</th>
+                                            <th className="px-3 py-2 text-right">Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                          {product.variations.map((variation) => (
+                                            <tr key={variation.variationUuid}>
+                                              <td className="px-3 py-2">{variation.name}</td>
+                                              <td className="px-3 py-2 text-right">₹{variation.price}</td>
+                                              <td className="px-3 py-2 text-center">
+                                                {variation.isDefault && <CheckCircle className="h-3 w-3 text-green-500 inline" />}
+                                              </td>
+                                              <td className="px-3 py-2 text-center">
+                                                <span className={`inline-block w-2 h-2 rounded-full ${variation.isActive ? 'bg-green-500' : 'bg-red-400'}`}></span>
+                                              </td>
+                                              <td className="px-3 py-2 text-right">
+                                                <button
+                                                  onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                                                  className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
+                                                  title="Edit variations"
+                                                >
+                                                  <Edit2 className="h-3 w-3" />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-slate-400 italic">No variations</p>
+                                  )}
+                                  <button
+                                    onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
+                                  >
+                                    <Plus className="h-3 w-3" /> Manage Variations
+                                  </button>
+                                </div>
+
+                                {/* Modifiers */}
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                                    <Grid className="h-4 w-4" /> Modifier Groups
+                                  </h4>
+                                  {product.modifierGroups && product.modifierGroups.length > 0 ? (
+                                    <div className="bg-white rounded border border-slate-200 overflow-hidden">
+                                      <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-slate-500 text-xs">
+                                          <tr>
+                                            <th className="px-3 py-2 text-left">Group Name</th>
+                                            <th className="px-3 py-2 text-center">Required</th>
+                                            <th className="px-3 py-2 text-center">Selection</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                          {product.modifierGroups.map((group) => (
+                                            <tr key={group.modifierGroupUuid}>
+                                              <td className="px-3 py-2">{group.name}</td>
+                                              <td className="px-3 py-2 text-center">
+                                                {group.isRequired ? (
+                                                  <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Required</span>
+                                                ) : (
+                                                  <span className="text-slate-400 text-xs">Optional</span>
+                                                )}
+                                              </td>
+                                              <td className="px-3 py-2 text-center text-xs text-slate-600">
+                                                Min: {group.minSelection} / Max: {group.maxSelection}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-slate-400 italic">No modifier groups</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
             </table>
-          )}
-        </div>
+            </>
+          )}</div>
       </Card>
-
-      {/* Add/Edit Product Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        title={editingProduct ? 'Edit Menu Item' : 'Add New Menu Item'}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={handleCloseModal} disabled={actionLoading}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={actionLoading}>
-              {actionLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
-                </>
-              ) : (
-                editingProduct ? 'Update Item' : 'Save Item'
-              )}
-            </Button>
-          </div>
-        }
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Item Name *</label>
-              <Input 
-                placeholder="e.g. Butter Chicken" 
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Item Code (SKU)</label>
-              <Input 
-                placeholder="e.g. M001" 
-                value={formData.sku}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Category *</label>
-              <select 
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                required
-              >
-                <option value="">Select category</option>
-                {categories.map(cat => (
-                  <option key={cat.uuid} value={cat.uuid}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Base Price (₹) *</label>
-              <Input 
-                type="number" 
-                step="0.01"
-                placeholder="0.00" 
-                value={formData.basePrice}
-                onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Description</label>
-            <textarea 
-              className="flex w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" 
-              placeholder="Item description..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isVeg"
-                checked={formData.isVeg}
-                onChange={(e) => setFormData({ ...formData, isVeg: e.target.checked })}
-                className="rounded border-slate-300"
-              />
-              <label htmlFor="isVeg" className="text-sm text-slate-700">Vegetarian</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isFeatured"
-                checked={formData.isFeatured}
-                onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                className="rounded border-slate-300"
-              />
-              <label htmlFor="isFeatured" className="text-sm text-slate-700">Featured</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isAvailable"
-                checked={formData.isAvailable}
-                onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
-                className="rounded border-slate-300"
-              />
-              <label htmlFor="isAvailable" className="text-sm text-slate-700">Available</label>
-            </div>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

@@ -379,14 +379,14 @@ const TableManagement = () => {
   const resetTransferForm = () => setTransferForm({ fromTableUuid: '', toTableUuid: '' });
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
+    <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-8rem)] gap-4 lg:gap-6">
       <div className="flex-1 flex flex-col">
         <div className="mb-6">
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">Floor Plan</h1>
-              <div className="flex items-center gap-2">
-                <p className="text-slate-500">Manage tables and seating</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Floor Plan</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm text-slate-500">Manage tables and seating</p>
                 {hasManagerAccess && (
                   <Badge variant="info" size="sm">
                     {userRole} View - All Restaurants
@@ -394,7 +394,7 @@ const TableManagement = () => {
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleViewAnalytics} disabled={loading}>
                 <BarChart3 className="h-4 w-4 mr-2" />Analytics
               </Button>
@@ -410,7 +410,7 @@ const TableManagement = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             {Object.entries(tablesByStatus).map(([status, count]) => (
               <Badge key={status} variant={filters.status === status.toUpperCase() ? 'default' : 'outline'}
                 className="cursor-pointer capitalize" onClick={() => dispatch(setStatusFilter(status === filters.status ? null : status.toUpperCase()))}>
@@ -419,10 +419,10 @@ const TableManagement = () => {
             ))}
           </div>
 
-          <div className="flex bg-white p-1 rounded-lg border border-slate-200">
+          <div className="flex overflow-x-auto bg-white p-1 rounded-lg border border-slate-200">
             {sections.map(section => (
               <button key={section} onClick={() => dispatch(setSectionFilter(section))}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   filters.section === section ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
                 }`}>
                 {section}

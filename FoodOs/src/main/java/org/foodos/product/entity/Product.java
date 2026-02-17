@@ -56,10 +56,10 @@ public class Product extends BaseSoftDeleteEntity {
     private String foodCode;
 
     @Column(name = "base_price", nullable = false, precision = 10, scale = 2)
-    private java.math.BigDecimal basePrice;
+    private java.math.BigDecimal basePrice; //price for the default variation (e.g., medium pizza price) - used for reporting and as fallback if variations are not defined
 
     @Column(name = "cost_price", precision = 10, scale = 2)
-    private java.math.BigDecimal costPrice;
+    private java.math.BigDecimal costPrice; //
 
     @Column(name = "takeaway_price", precision = 10, scale = 2)
     private java.math.BigDecimal takeawayPrice;

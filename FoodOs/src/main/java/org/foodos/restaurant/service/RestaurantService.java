@@ -89,7 +89,7 @@ public class RestaurantService {
                 userRepository.getReferenceById(requestingUser.getId());
 
         Restaurant parent = restaurantRepo
-                .findByRestaurantUuid(parentRestaurantUuid)
+                .findByRestaurantUuidAndIsDeletedFalse(parentRestaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Parent restaurant not found"));
 
@@ -127,7 +127,7 @@ public class RestaurantService {
     @Transactional
     public RestaurantResponseDto updateRestaurant(String restaurantUuid, UpdateRestaurantRequestDto requestDto, UserAuthEntity currentUser, MultipartFile image) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuid(restaurantUuid)
+                .findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -154,7 +154,7 @@ public class RestaurantService {
 
     public RestaurantHierarchyResponseDto getRestaurantHierarchy(String restaurantUuid) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuid(restaurantUuid)
+                .findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -163,7 +163,7 @@ public class RestaurantService {
 
     public void deleteRestaurant(String restaurantUuid, UserAuthEntity currentUser) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuid(restaurantUuid)
+                .findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -183,7 +183,7 @@ public class RestaurantService {
 
     public RestaurantResponseDto getRestaurantDetail(String restaurantUuid) {
         Restaurant restaurant = restaurantRepo
-                .findByRestaurantUuid(restaurantUuid)
+                .findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Restaurant not found"));
 
@@ -295,7 +295,7 @@ public class RestaurantService {
     ) {
         if (restaurantUuid != null && !restaurantUuid.isBlank()) {
             // Specific restaurant
-            Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+            Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                     .orElseThrow(() -> new BusinessException("Restaurant not found: " + restaurantUuid));
 
             // Verify owner has access to this restaurant

@@ -7,10 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CategoryRepo extends JpaRepository<Category, Long> {
-    Optional<Category> findByCategoryUuid(String categoryUuid);
+    Optional<Category> findByCategoryUuidAndIsDeletedFalse(String categoryUuid);
 
-    List<Category> findByRestaurant_RestaurantUuidAndParentCategoryIsNullAndIsActiveTrueOrderBySortOrderAsc(
-            String restaurantUuid
-    );
-
+    List<Category> findByRestaurant_RestaurantUuidAndParentCategoryIsNullAndIsDeletedFalseOrderBySortOrderAsc(String restaurantUuid);
 }

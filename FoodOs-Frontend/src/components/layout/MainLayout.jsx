@@ -8,7 +8,15 @@ export const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-background text-slate-900 font-sans">
-      <Sidebar />
+      {/* Mobile backdrop overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm lg:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <Topbar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
       
       <main className="lg:pl-64 pt-16 min-h-screen">

@@ -27,14 +27,14 @@ public class CategoryService {
 
 
     public CategoryResponseDto createCategory(String restaurantUuid, CreateCategoryRequest dto) {
-        Restaurant restaurant = restaurantRepo.findByRestaurantUuid(restaurantUuid)
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with id" ));
 
         Category category = categoryMapper.toEntity(dto);
         category.setRestaurant(restaurant);
 
         if(dto.getParentCategoryUuid() != null){
-            Category parentCategory = categoryRepo.findByCategoryUuid(dto.getParentCategoryUuid())
+            Category parentCategory = categoryRepo.findByCategoryUuidAndIsDeletedFalse(dto.getParentCategoryUuid())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent Category not found with id" ));
 
             if (!parentCategory.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -52,7 +52,7 @@ public class CategoryService {
 
 
     public List<CategoryResponseDto> getAllCategories(String restaurantUuid){
-        List<Category> categories = categoryRepo.findByRestaurant_RestaurantUuidAndParentCategoryIsNullAndIsActiveTrueOrderBySortOrderAsc(
+        List<Category> categories = categoryRepo.findByRestaurant_RestaurantUuidAndParentCategoryIsNullAndIsDeletedFalseOrderBySortOrderAsc(
                 restaurantUuid
         );
 
@@ -62,7 +62,7 @@ public class CategoryService {
     }
 
     public CategoryResponseDto getCategoryById(String restaurantUuid, String categoryUuid) {
-        Category category = categoryRepo.findByCategoryUuid(categoryUuid)
+        Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryUuid));
 
         if (!category.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -73,7 +73,7 @@ public class CategoryService {
     }
 
     public CategoryResponseDto updateCategory(String restaurantUuid, String categoryUuid, UpdateCategoryRequest dto) {
-        Category category = categoryRepo.findByCategoryUuid(categoryUuid)
+        Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryUuid));
 
         if (!category.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -81,7 +81,7 @@ public class CategoryService {
         }
 
         if (dto.getParentCategoryUuid() != null && !dto.getParentCategoryUuid().isEmpty()) {
-            Category parentCategory = categoryRepo.findByCategoryUuid(dto.getParentCategoryUuid())
+            Category parentCategory = categoryRepo.findByCategoryUuidAndIsDeletedFalse(dto.getParentCategoryUuid())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent Category not found with id: " + dto.getParentCategoryUuid()));
 
             if (!parentCategory.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
@@ -104,16 +104,18 @@ public class CategoryService {
     }
 
     public void deleteCategory(String restaurantUuid, String categoryUuid) {
-        Category category = categoryRepo.findByCategoryUuid(categoryUuid)
+        Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryUuid));
 
         if (!category.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
             throw new IllegalArgumentException("Category does not belong to this restaurant");
         }
 
-        // Soft delete - set isActive to false
-        category.setIsActive(false);
+        // Manually set soft delete fields to ensure they are updated
+        category.setIsDeleted(true);
+        category.setDeletedAt(java.time.LocalDateTime.now());
         categoryRepo.save(category);
+
         log.info("Deleted (soft) category with id: {} for restaurant id: {}", categoryUuid, restaurantUuid);
     }
 

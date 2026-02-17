@@ -7,6 +7,7 @@ import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.restaurant.entity.Restaurant;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.Where;
 
 import java.util.*;
 
@@ -14,11 +15,12 @@ import java.util.*;
 @Table(name = "categories", indexes = {
         @Index(name = "idx_sort_order", columnList = "sort_order")
 })
-@SQLDelete(sql = "UPDATE categories SET is_deleted = true WHERE id = ?")
-@Filter(
-        name = "deletedFilter",
-        condition = "is_deleted = :isDeleted"
-)
+@SQLDelete(sql = "UPDATE categories SET is_deleted = true, deleted_at = now() WHERE id = ?")
+//@Filter(
+//        name = "deletedFilter",
+//        condition = "is_deleted = :isDeleted"
+//)
+@Where(clause = "is_deleted = false")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @SuperBuilder
 public class Category extends BaseSoftDeleteEntity {

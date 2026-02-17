@@ -12,7 +12,7 @@ import java.util.Optional;
 @Repository
 public interface ProductVariationRepo extends JpaRepository<ProductVariation, Long> {
 
-    Optional<ProductVariation> findByVariationUuid(String variationUuid);
+    Optional<ProductVariation> findByVariationUuidAndIsDeletedFalse(String variationUuid);
 
     List<ProductVariation> findByProduct_ProductUuidAndIsActiveTrueAndIsDeletedFalseOrderBySortOrderAsc(String productUuid);
 

@@ -45,7 +45,7 @@ public class UserManagementService {
 
         // 2️⃣ Fetch restaurant
         Restaurant restaurant = restaurantRepository
-                .findByRestaurantUuid(request.getRestaurantId())
+                .findByRestaurantUuidAndIsDeletedFalse(request.getRestaurantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
 
         // 3️⃣ Verify creator has access to this restaurant
@@ -136,7 +136,7 @@ public class UserManagementService {
 
         // Handle Primary Restaurant
         if (request.getPrimaryRestaurantUuid() != null) {
-            Restaurant restaurant = restaurantRepository.findByRestaurantUuid(request.getPrimaryRestaurantUuid())
+            Restaurant restaurant = restaurantRepository.findByRestaurantUuidAndIsDeletedFalse(request.getPrimaryRestaurantUuid())
                     .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
 
             // Validate user has access to this restaurant

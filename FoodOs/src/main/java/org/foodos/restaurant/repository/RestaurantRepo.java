@@ -12,5 +12,5 @@ public interface RestaurantRepo extends JpaRepository<Restaurant , Long> {
 
     boolean existsByOwnerAndIsDeletedFalse(UserAuthEntity owner);
 
-    Optional<Restaurant> findByRestaurantUuid(String restaurantUuid);
+    Optional<Restaurant> findByRestaurantUuidAndIsDeletedFalse(String restaurantUuid);
 }
