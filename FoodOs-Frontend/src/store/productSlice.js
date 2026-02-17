@@ -160,7 +160,7 @@ export const toggleProductAvailability = createAsyncThunk(
   async ({ restaurantUuid, productUuid }, { rejectWithValue }) => {
     try {
       const response = await api.patch(
-        `/api/restaurants/${restaurantUuid}/products/${productUuid}/availability`
+        `/api/restaurants/${restaurantUuid}/products/${productUuid}/status`
       );
       return response.data;
     } catch (error) {

@@ -50,6 +50,8 @@ public class CreateProductRequest {
 
     private Boolean isActive = true;
     private Boolean isFeatured = false;
+    private Boolean hasVariations = false;
+    private Boolean hasModifiers = false;
     private Boolean isBestseller = false;
     private Boolean isOpenPrice = false;
     private Boolean trackInventory = true;
