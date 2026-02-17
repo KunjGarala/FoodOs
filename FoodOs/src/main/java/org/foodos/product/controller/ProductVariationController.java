@@ -17,6 +17,7 @@ import org.foodos.product.dto.response.ProductVariationResponseDto;
 import org.foodos.product.service.ProductVariationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,6 +42,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @PostMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ProductVariationResponseDto> createVariation(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -64,6 +66,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @PostMapping("/bulk")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<List<ProductVariationResponseDto>> createVariationsBulk(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -86,6 +89,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @GetMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ProductVariationResponseDto>> getVariationsByProduct(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -108,6 +112,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @GetMapping("/{variationUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<ProductVariationResponseDto> getVariationById(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -131,6 +136,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @PutMapping("/{variationUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ProductVariationResponseDto> updateVariation(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -155,6 +161,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @DeleteMapping("/{variationUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> deleteVariation(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -176,6 +183,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @PatchMapping("/{variationUuid}/toggle-status")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> toggleVariationStatus(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -199,6 +207,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @PatchMapping("/{variationUuid}/set-default")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ProductVariationResponseDto> setDefaultVariation(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,

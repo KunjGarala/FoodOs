@@ -16,6 +16,7 @@ import org.foodos.product.service.ProductService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,6 +42,7 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ProductResponseDto> createProduct(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -62,6 +64,7 @@ public class ProductController {
             @ApiResponse(responseCode = "404", description = "Restaurant not found")
     })
     @GetMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ProductResponseDto>> getAllProducts(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -83,6 +86,7 @@ public class ProductController {
             @ApiResponse(responseCode = "400", description = "Category does not belong to this restaurant")
     })
     @GetMapping("/category/{categoryUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ProductResponseDto>> getProductsByCategory(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -102,6 +106,7 @@ public class ProductController {
             @ApiResponse(responseCode = "200", description = "Featured products retrieved successfully")
     })
     @GetMapping("/featured")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ProductResponseDto>> getFeaturedProducts(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid
@@ -118,6 +123,7 @@ public class ProductController {
             @ApiResponse(responseCode = "200", description = "Bestseller products retrieved successfully")
     })
     @GetMapping("/bestsellers")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ProductResponseDto>> getBestsellerProducts(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid
@@ -133,7 +139,7 @@ public class ProductController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Search results retrieved successfully")
     })
-    @GetMapping("/search")
+    @GetMapping("/search")@PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ProductResponseDto>> searchProducts(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -155,6 +161,7 @@ public class ProductController {
             @ApiResponse(responseCode = "400", description = "Product does not belong to this restaurant")
     })
     @GetMapping("/{productUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<ProductResponseDto> getProductById(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -177,6 +184,7 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PutMapping(value = "/{productUuid}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ProductResponseDto> updateProduct(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -205,6 +213,7 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @DeleteMapping("/{productUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> deleteProduct(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -229,6 +238,7 @@ public class ProductController {
             @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @PatchMapping("/{productUuid}/status")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> toggleProductStatus(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,

@@ -58,6 +58,7 @@ public class CategoryController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<CategoryResponseDto>> getAllCategories(
             @Parameter(description = "Restaurant ID", required = true)
             @PathVariable String restaurantUuid
@@ -73,6 +74,7 @@ public class CategoryController {
         @ApiResponse(responseCode = "400", description = "Category does not belong to this restaurant")
     })
     @GetMapping("/{categoryUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<CategoryResponseDto> getCategoryById(
             @Parameter(description = "Restaurant ID", required = true)
             @PathVariable String restaurantUuid,

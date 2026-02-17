@@ -16,6 +16,7 @@ import org.foodos.product.dto.response.ModifierGroupResponseDto;
 import org.foodos.product.service.ModifierGroupService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,6 +41,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @PostMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ModifierGroupResponseDto> createModifierGroup(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -59,6 +61,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @GetMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ModifierGroupResponseDto>> getAllModifierGroups(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -79,6 +82,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @GetMapping("/{modifierGroupUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<ModifierGroupResponseDto> getModifierGroupById(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -99,6 +103,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @GetMapping("/search")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ModifierGroupResponseDto>> searchModifierGroups(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -121,6 +126,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @PutMapping("/{modifierGroupUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ModifierGroupResponseDto> updateModifierGroup(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -143,6 +149,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @DeleteMapping("/{modifierGroupUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> deleteModifierGroup(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -162,6 +169,7 @@ public class ModifierGroupController {
                     content = @Content)
     })
     @PatchMapping("/{modifierGroupUuid}/toggle-status")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> toggleModifierGroupStatus(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,

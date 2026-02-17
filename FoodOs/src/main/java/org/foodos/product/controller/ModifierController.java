@@ -17,6 +17,7 @@ import org.foodos.product.dto.response.ModifierResponseDto;
 import org.foodos.product.service.ModifierService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,6 +42,7 @@ public class ModifierController {
                     content = @Content)
     })
     @PostMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ModifierResponseDto> createModifier(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -64,6 +66,7 @@ public class ModifierController {
                     content = @Content)
     })
     @PostMapping("/bulk")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<List<ModifierResponseDto>> createModifiersBulk(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -86,6 +89,7 @@ public class ModifierController {
                     content = @Content)
     })
     @GetMapping
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<List<ModifierResponseDto>> getModifiersByGroup(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -108,6 +112,7 @@ public class ModifierController {
                     content = @Content)
     })
     @GetMapping("/{modifierUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
     public ResponseEntity<ModifierResponseDto> getModifierById(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -131,6 +136,7 @@ public class ModifierController {
                     content = @Content)
     })
     @PutMapping("/{modifierUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<ModifierResponseDto> updateModifier(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -154,6 +160,7 @@ public class ModifierController {
                     content = @Content)
     })
     @DeleteMapping("/{modifierUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> deleteModifier(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
@@ -175,6 +182,7 @@ public class ModifierController {
                     content = @Content)
     })
     @PatchMapping("/{modifierUuid}/toggle-status")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> toggleModifierStatus(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,
