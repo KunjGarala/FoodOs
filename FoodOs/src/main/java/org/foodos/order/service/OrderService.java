@@ -2,6 +2,7 @@ package org.foodos.order.service;
 
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.order.dto.request.*;
+import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.Order;
 import org.foodos.order.entity.enums.OrderStatus;
@@ -139,7 +140,7 @@ public interface OrderService {
     /**
      * Get kitchen orders (for kitchen display)
      */
-    List<OrderResponse> getKitchenOrders(String restaurantUuid , UserAuthEntity user);
+    List<KotResponse> getKitchenOrders(String restaurantUuid , UserAuthEntity user);
 
     /**
      * Get orders with pending payments
@@ -174,5 +175,7 @@ public interface OrderService {
     BigDecimal getAverageOrderValue(String restaurantUuid, LocalDate orderDate);
 
     Order createEmptyOrder(CreateOrderRequest orderRequest, Long userId);
+
+    KotResponse updateKotStatus(String kotUuid, String newStatus);
 }
 

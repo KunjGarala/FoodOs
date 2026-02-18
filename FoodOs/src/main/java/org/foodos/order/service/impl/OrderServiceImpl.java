@@ -6,12 +6,10 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.order.dto.request.*;
+import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.*;
-import org.foodos.order.entity.enums.KotStatus;
-import org.foodos.order.entity.enums.OrderStatus;
-import org.foodos.order.entity.enums.OrderType;
-import org.foodos.order.entity.enums.PaymentStatus;
+import org.foodos.order.entity.enums.*;
 import org.foodos.order.mapper.OrderMapper;
 import org.foodos.order.repository.*;
 import org.foodos.order.service.OrderService;
@@ -627,22 +625,26 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getKitchenOrders(String restaurantUuid, UserAuthEntity user) {
+    public List<KotResponse> getKitchenOrders(String restaurantUuid, UserAuthEntity user) {
         UserRole role = user.getRole();
 
         if (role.equals(UserRole.CHEF)) {
-            List<OrderStatus> status = List.of(OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS);
-            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid, status);
-            return orderMapper.toOrderResponseList(orders);
+            List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS);
+            List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
+
+            return orderMapper.toKotResponseList(orders);
         } else if (role.equals(UserRole.WAITER)) {
-            List<OrderStatus> status = List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS,
-                    OrderStatus.READY);
-            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid, status);
-            return orderMapper.toOrderResponseList(orders);
+            List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS , KotTicketStatus.READY);
+            List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
+
+            return orderMapper.toKotResponseList(orders);
         }
-        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid,
-                List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS, OrderStatus.READY));
-        return orderMapper.toOrderResponseList(orders);
+        List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS , KotTicketStatus.READY ,  KotTicketStatus.COMPLETED , KotTicketStatus.COMPLETED);
+        List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
+
+        return orderMapper.toKotResponseList(orders);
+
+
     }
 
     @Override
@@ -725,5 +727,37 @@ public class OrderServiceImpl implements OrderService {
         log.info("Empty order created successfully: {}", order.getOrderUuid());
 
         return order;
+    }
+
+    @Override
+    public KotResponse updateKotStatus(String kotUuid, String newStatus) {
+        log.info("Updating KOT status for KOT: {}", kotUuid);
+
+        KitchenOrderTicket kot = kitchenOrderTicketRepository.findByKotUuidAndIsDeletedFalse(kotUuid)
+                .orElseThrow(() -> new RuntimeException("KOT not found"));
+
+        List<OrderItem> items = kot.getKotItems().stream()
+                .map(KotItem::getOrderItem)
+                .toList();
+
+
+        KotTicketStatus status;
+        try {
+            status = KotTicketStatus.valueOf(newStatus.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid KOT status: " + newStatus);
+        }
+
+        if(status.equals(KotTicketStatus.READY)){
+            items.forEach(item -> item.setKotStatus(KotStatus.READY));
+        }else if(status.equals(KotTicketStatus.COMPLETED)){
+            items.forEach(item -> item.setKotStatus(KotStatus.SERVED));
+        }
+
+        kot.setStatus(status);
+        kot = kitchenOrderTicketRepository.save(kot);
+        log.info("KOT status updated successfully: {}", kot.getKotNumber());
+
+        return orderMapper.toKotResponse(kot);
     }
 }

@@ -41,6 +41,9 @@ public class KotItem {
     @JoinColumn(name = "order_item_id", nullable = false)
     private OrderItem orderItem;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String Description;
+
     // ===== ITEM DETAILS (For kitchen display) =====
 
     @Column(name = "product_name", nullable = false, length = 200)

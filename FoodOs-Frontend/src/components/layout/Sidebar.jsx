@@ -28,7 +28,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
   const filteredItems = navItems.filter(item => {
     if (role === 'CHEF') return ['Dashboard', 'Kitchen'].includes(item.label);
-    if (role === 'WAITER') return ['Dashboard', 'Tables', 'Orders'].includes(item.label);
+    if (role === 'WAITER') return ['Dashboard', 'Tables', 'Orders' , 'Kitchen'].includes(item.label);
     if (role === 'CASHIER') return ['Dashboard', 'Tables', 'Orders', 'Menu'].includes(item.label);
     return true;
   });

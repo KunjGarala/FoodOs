@@ -82,6 +82,9 @@ public class KitchenOrderTicket extends BaseSoftDeleteEntity {
     @Builder.Default
     private KotTicketStatus status = KotTicketStatus.PENDING;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String Description;
+
     // ===== ORDER CONTEXT =====
 
     @Column(name = "order_number", length = 50)

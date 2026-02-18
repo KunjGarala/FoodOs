@@ -14,7 +14,7 @@ const KitchenDisplay = () => {
   const dispatch = useDispatch();
   const [autoRefresh, setAutoRefresh] = useState(true);
   
-  const { activeRestaurantId } = useSelector((state) => state.auth);
+  const { activeRestaurantId, role } = useSelector((state) => state.auth);
   const { kitchenOrders, loading, error, success } = useSelector((state) => state.orders);
 
   // Fetch kitchen orders on mount and auto-refresh every 30 seconds
@@ -49,11 +49,23 @@ const KitchenDisplay = () => {
     }
   }, [success, dispatch]);
 
-  const handleMarkPrepared = async (orderUuid) => {
+  const handleMarkPrepared = async (kotUuid) => {
     try {
       await dispatch(changeOrderStatus({ 
-        orderUuid, 
+        orderUuid: kotUuid, 
         newStatus: 'READY' 
+      })).unwrap();
+      dispatch(fetchKitchenOrders(activeRestaurantId));
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+    }
+  };
+
+  const handleMarkServed = async (kotUuid) => {
+    try {
+      await dispatch(changeOrderStatus({ 
+        orderUuid: kotUuid, 
+        newStatus: 'COMPLETED' 
       })).unwrap();
       // Refresh kitchen orders after status change
       dispatch(fetchKitchenOrders(activeRestaurantId));
@@ -131,9 +143,10 @@ const KitchenDisplay = () => {
           <p className="text-sm text-slate-500">Live feed of incoming orders</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
+{/*           
           <Badge variant="primary" className="text-sm sm:text-lg px-3 sm:px-4 py-1">
             Avg Time: {calculateAverageTime()}
-          </Badge>
+          </Badge> */}
           <button
             onClick={handleRefresh}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -173,6 +186,7 @@ const KitchenDisplay = () => {
                     <h3 className="text-xl font-bold text-slate-800">
                       {order.tableNumber ? `Table ${order.tableNumber}` : 'Takeaway'}
                     </h3>
+                    {}
                     <span className="text-xs text-slate-400 font-mono">
                       #{order.orderNumber || order.orderUuid?.slice(0, 8)}
                     </span>
@@ -215,14 +229,34 @@ const KitchenDisplay = () => {
                 )}
                 <div className="mt-6 pt-4 border-t border-slate-100">
                   
-                  <button 
-                    onClick={() => handleMarkPrepared(order.orderUuid)}
-                    className="w-full py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={order.status === 'READY'}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    {order.status === 'READY' ? 'Ready' : 'Mark Prepared'}
-                  </button>
+                  <div className="flex gap-2">
+                    {/* Chef Action: Mark Prepared */}
+                    {(role === 'CHEF' || role === 'OWNER' || role === 'MANAGER') && (
+                      <button 
+                        onClick={() => handleMarkPrepared(order.kotUuid)}
+                        className={`w-full py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
+                          order.status === 'READY' 
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                            : 'bg-slate-900 text-white hover:bg-slate-800'
+                        }`}
+                        disabled={order.status === 'READY'}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        {order.status === 'READY' ? 'Ready' : 'Mark Prepared'}
+                      </button>
+                    )}
+
+                    {/* Waiter Action: Mark Served */}
+                    {(role === 'WAITER' || role === 'OWNER' || role === 'MANAGER') && order.status === 'READY' && (
+                      <button 
+                        onClick={() => handleMarkServed(order.kotUuid)}
+                        className="w-full py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Served
+                      </button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
