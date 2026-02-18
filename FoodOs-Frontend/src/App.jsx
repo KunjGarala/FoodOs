@@ -21,6 +21,7 @@ import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
 import MenuManagement from './pages/Management/MenuManagement';
 import ProductForm from './pages/Management/ProductForm';
 import CategoryManagement from './pages/Management/CategoryManagement';
+import ModifierManagement from './pages/Management/ModifierManagement';
 import StaffManagement from './pages/Management/StaffManagement';
 import CustomerCRM from './pages/CRM/CustomerCRM';
 import { MainLayout } from './components/layout/MainLayout';
@@ -100,6 +101,12 @@ function App() {
             <Route path="categories" element={
                 <ProtectedRoute allowedRoles={['OWNER']}>
                     <CategoryManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="modifiers" element={
+                <ProtectedRoute allowedRoles={['OWNER']}>
+                    <ModifierManagement />
                 </ProtectedRoute>
             } />
             

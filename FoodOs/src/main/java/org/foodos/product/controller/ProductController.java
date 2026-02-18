@@ -248,16 +248,24 @@ public class ProductController {
             @Parameter(description = "Product UUID", required = true)
             @PathVariable String productUuid,
 
-            @Parameter(description = "Product active status", required = true)
-            @RequestParam(value = "isActive") boolean isActive,
-
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
-        productService.toggleProductStatus(restaurantUuid, productUuid, isActive);
+        productService.toggleProductStatus(restaurantUuid, productUuid);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Toggle featured status",
+            description = "Toggle the featured status of a product"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Featured status toggled successfully"),
+            @ApiResponse(responseCode = "404", description = "Product not found"),
+            @ApiResponse(responseCode = "400", description = "Product does not belong to this restaurant"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @PatchMapping("/{productUuid}/featured")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
     public ResponseEntity<Void> toggleFeaturedStatus(
             @Parameter(description = "Restaurant UUID", required = true)
             @PathVariable String restaurantUuid,
@@ -269,6 +277,85 @@ public class ProductController {
     ) {
         productService.toggleFeaturedStatus(restaurantUuid, productUuid);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Assign modifier group to product",
+            description = "Assign a modifier group to a product. This allows customers to customize the product with modifiers from this group."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Modifier group assigned successfully"),
+            @ApiResponse(responseCode = "404", description = "Product or modifier group not found"),
+            @ApiResponse(responseCode = "400", description = "Product or modifier group does not belong to this restaurant, or modifier group is already assigned"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @PostMapping("/{productUuid}/modifier-groups/{modifierGroupUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+    public ResponseEntity<Void> assignModifierGroupToProduct(
+            @Parameter(description = "Restaurant UUID", required = true)
+            @PathVariable String restaurantUuid,
+
+            @Parameter(description = "Product UUID", required = true)
+            @PathVariable String productUuid,
+
+            @Parameter(description = "Modifier Group UUID", required = true)
+            @PathVariable String modifierGroupUuid,
+
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        productService.assignModifierGroupToProduct(restaurantUuid, productUuid, modifierGroupUuid);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Remove modifier group from product",
+            description = "Remove a modifier group assignment from a product."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Modifier group removed successfully"),
+            @ApiResponse(responseCode = "404", description = "Product or modifier group not found"),
+            @ApiResponse(responseCode = "400", description = "Product or modifier group does not belong to this restaurant, or modifier group is not assigned to this product"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @DeleteMapping("/{productUuid}/modifier-groups/{modifierGroupUuid}")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+    public ResponseEntity<Void> removeModifierGroupFromProduct(
+            @Parameter(description = "Restaurant UUID", required = true)
+            @PathVariable String restaurantUuid,
+
+            @Parameter(description = "Product UUID", required = true)
+            @PathVariable String productUuid,
+
+            @Parameter(description = "Modifier Group UUID", required = true)
+            @PathVariable String modifierGroupUuid,
+
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        productService.removeModifierGroupFromProduct(restaurantUuid, productUuid, modifierGroupUuid);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Get product's modifier groups",
+            description = "Retrieve all modifier groups assigned to a specific product."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Modifier groups retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Product not found"),
+            @ApiResponse(responseCode = "400", description = "Product does not belong to this restaurant")
+    })
+    @GetMapping("/{productUuid}/modifier-groups")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'GUEST')")
+    public ResponseEntity<List<org.foodos.product.dto.response.ModifierGroupResponseDto>> getProductModifierGroups(
+            @Parameter(description = "Restaurant UUID", required = true)
+            @PathVariable String restaurantUuid,
+
+            @Parameter(description = "Product UUID", required = true)
+            @PathVariable String productUuid
+    ) {
+        List<org.foodos.product.dto.response.ModifierGroupResponseDto> modifierGroups =
+                productService.getProductModifierGroups(restaurantUuid, productUuid);
+        return ResponseEntity.ok(modifierGroups);
     }
 
     // Stock management endpoint - commented out for now as stock fields are not needed

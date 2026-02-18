@@ -5,6 +5,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import VariationManagerModal from '../../components/VariationManagerModal';
+import ModifierGroupAssignmentModal from '../../components/ModifierGroupAssignmentModal';
 import { 
   Edit2, Trash2, Plus, Loader2, AlertCircle, CheckCircle, 
   Star, ChevronDown, ChevronRight, Clock, Thermometer, 
@@ -31,6 +33,8 @@ const MenuManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [expandedProductIds, setExpandedProductIds] = useState(new Set());
+  const [variationModalProduct, setVariationModalProduct] = useState(null);
+  const [modifierGroupModalProduct, setModifierGroupModalProduct] = useState(null);
 
   const toggleProductExpansion = (productUuid) => {
     const newExpanded = new Set(expandedProductIds);
@@ -631,7 +635,8 @@ const MenuManagement = () => {
 
                               {/* Variations and Modifiers Section */}
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Variations */}
+                                {/* Variations - Only show if has variations or can add them */}
+                                {(product.hasVariations || (product.variations && product.variations.length > 0)) && (
                                 <div>
                                   <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
                                     <Package className="h-4 w-4" /> Variations
@@ -661,7 +666,7 @@ const MenuManagement = () => {
                                               </td>
                                               <td className="px-3 py-2 text-right">
                                                 <button
-                                                  onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                                                  onClick={() => setVariationModalProduct(product)}
                                                   className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
                                                   title="Edit variations"
                                                 >
@@ -677,14 +682,15 @@ const MenuManagement = () => {
                                     <p className="text-sm text-slate-400 italic">No variations</p>
                                   )}
                                   <button
-                                    onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                                    onClick={() => setVariationModalProduct(product)}
                                     className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
                                   >
                                     <Plus className="h-3 w-3" /> Manage Variations
                                   </button>
                                 </div>
+                                )}
 
-                                {/* Modifiers */}
+                                {/* Modifier Groups - Always show to allow adding/managing */}
                                 <div>
                                   <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
                                     <Grid className="h-4 w-4" /> Modifier Groups
@@ -719,8 +725,14 @@ const MenuManagement = () => {
                                       </table>
                                     </div>
                                   ) : (
-                                    <p className="text-sm text-slate-400 italic">No modifier groups</p>
+                                    <p className="text-sm text-slate-400 italic">No modifier groups assigned</p>
                                   )}
+                                  <button
+                                    onClick={() => setModifierGroupModalProduct(product)}
+                                    className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 transition-colors"
+                                  >
+                                    <Plus className="h-3 w-3" /> Manage Modifier Groups
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -735,6 +747,36 @@ const MenuManagement = () => {
             </>
           )}</div>
       </Card>
+
+      {/* Variation Management Modal */}
+      <VariationManagerModal
+        isOpen={variationModalProduct !== null}
+        onClose={() => {
+          setVariationModalProduct(null);
+          // Refresh products to show updated variations
+          if (activeRestaurantId) {
+            dispatch(fetchProducts({ restaurantUuid: activeRestaurantId, includeInactive: true }));
+          }
+        }}
+        restaurantUuid={activeRestaurantId}
+        productUuid={variationModalProduct?.productUuid}
+        productName={variationModalProduct?.name}
+      />
+
+      {/* Modifier Group Assignment Modal */}
+      <ModifierGroupAssignmentModal
+        isOpen={modifierGroupModalProduct !== null}
+        onClose={() => {
+          setModifierGroupModalProduct(null);
+          // Refresh products to show updated modifier groups
+          if (activeRestaurantId) {
+            dispatch(fetchProducts({ restaurantUuid: activeRestaurantId, includeInactive: true }));
+          }
+        }}
+        restaurantUuid={activeRestaurantId}
+        productUuid={modifierGroupModalProduct?.productUuid}
+        productName={modifierGroupModalProduct?.name}
+      />
     </div>
   );
 };

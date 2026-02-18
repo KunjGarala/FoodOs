@@ -318,4 +318,64 @@ export const variationAPI = {
     api.patch(`/api/restaurants/${restaurantUuid}/products/${productUuid}/variations/${variationUuid}/set-default`),
 };
 
+export const modifierGroupAPI = {
+  create:       (restaurantUuid, data) =>
+    api.post(`/api/restaurants/${restaurantUuid}/modifier-groups`, data),
+
+  getAll:       (restaurantUuid, includeInactive = false) =>
+    api.get(`/api/restaurants/${restaurantUuid}/modifier-groups?includeInactive=${includeInactive}`),
+
+  getById:      (restaurantUuid, modifierGroupUuid) =>
+    api.get(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}`),
+
+  search:       (restaurantUuid, searchTerm) =>
+    api.get(`/api/restaurants/${restaurantUuid}/modifier-groups/search?searchTerm=${encodeURIComponent(searchTerm)}`),
+
+  update:       (restaurantUuid, modifierGroupUuid, data) =>
+    api.put(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}`, data),
+
+  remove:       (restaurantUuid, modifierGroupUuid) =>
+    api.delete(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}`),
+
+  toggleStatus: (restaurantUuid, modifierGroupUuid, isActive) =>
+    api.patch(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/toggle-status?isActive=${isActive}`),
+};
+
+export const modifierAPI = {
+  create:       (restaurantUuid, modifierGroupUuid, data) =>
+    api.post(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers`, data),
+
+  createBulk:   (restaurantUuid, modifierGroupUuid, data) =>
+    api.post(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers/bulk`, data),
+
+  getAll:       (restaurantUuid, modifierGroupUuid, includeInactive = false) =>
+    api.get(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers?includeInactive=${includeInactive}`),
+
+  getById:      (restaurantUuid, modifierGroupUuid, modifierUuid) =>
+    api.get(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers/${modifierUuid}`),
+
+  update:       (restaurantUuid, modifierGroupUuid, modifierUuid, data) =>
+    api.put(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers/${modifierUuid}`, data),
+
+  remove:       (restaurantUuid, modifierGroupUuid, modifierUuid) =>
+    api.delete(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers/${modifierUuid}`),
+
+  toggleStatus: (restaurantUuid, modifierGroupUuid, modifierUuid, isActive) =>
+    api.patch(`/api/restaurants/${restaurantUuid}/modifier-groups/${modifierGroupUuid}/modifiers/${modifierUuid}/toggle-status?isActive=${isActive}`),
+};
+
+export const productModifierGroupAPI = {
+  // Assign a modifier group to a product
+  assign:       (restaurantUuid, productUuid, modifierGroupUuid) =>
+    api.post(`/api/restaurants/${restaurantUuid}/products/${productUuid}/modifier-groups/${modifierGroupUuid}`),
+
+  // Remove a modifier group from a product
+  remove:       (restaurantUuid, productUuid, modifierGroupUuid) =>
+    api.delete(`/api/restaurants/${restaurantUuid}/products/${productUuid}/modifier-groups/${modifierGroupUuid}`),
+
+  // Get all modifier groups assigned to a product
+  getAll:       (restaurantUuid, productUuid) =>
+    api.get(`/api/restaurants/${restaurantUuid}/products/${productUuid}/modifier-groups`),
+};
+
 export default api;

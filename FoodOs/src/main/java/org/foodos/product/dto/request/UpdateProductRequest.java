@@ -46,6 +46,8 @@ public class UpdateProductRequest {
 
     private Boolean isActive;
     private Boolean isFeatured;
+    private Boolean hasVariations;
+    private Boolean hasModifiers;
     private Boolean isBestseller;
     private Boolean isOpenPrice;
     private Boolean trackInventory;

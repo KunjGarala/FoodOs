@@ -10,11 +10,15 @@ import org.foodos.common.utils.S3Service;
 import org.foodos.product.dto.request.CreateProductRequest;
 import org.foodos.product.dto.request.UpdateProductRequest;
 import org.foodos.product.dto.response.ProductResponseDto;
+import org.foodos.product.dto.response.ModifierGroupResponseDto;
 import org.foodos.product.entity.Category;
 import org.foodos.product.entity.Product;
+import org.foodos.product.entity.ModifierGroup;
 import org.foodos.product.mapper.ProductMapper;
+import org.foodos.product.mapper.ModifierGroupMapper;
 import org.foodos.product.repository.CategoryRepo;
 import org.foodos.product.repository.ProductRepo;
+import org.foodos.product.repository.ModifierGroupRepo;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.repository.RestaurantRepo;
 import org.hibernate.Filter;
@@ -35,8 +39,9 @@ public class ProductService {
     private final ProductRepo productRepo;
     private final CategoryRepo categoryRepo;
     private final RestaurantRepo restaurantRepo;
+    private final ModifierGroupRepo modifierGroupRepo;
     private final ProductMapper productMapper;
-//    private final S3Service s3Service;
+    private final ModifierGroupMapper modifierGroupMapper;
     private final EntityManager entityManager;
 
     @Transactional
@@ -90,10 +95,7 @@ public class ProductService {
 
         List<Product> products;
         if (includeInactive) {
-            products = productRepo.findAll().stream()
-                    .filter(p -> p.getRestaurant().getRestaurantUuid().equals(restaurantUuid))
-                    .sorted((a, b) -> Integer.compare(a.getSortOrder(), b.getSortOrder()))
-                    .collect(Collectors.toList());
+            products = productRepo.findByRestaurant_RestaurantUuidAndIsDeletedFalseOrderBySortOrderAsc(restaurantUuid);
         } else {
             products = productRepo.findByRestaurant_RestaurantUuidAndIsActiveTrueAndIsDeletedFalseOrderBySortOrderAsc(restaurantUuid);
         }
@@ -225,9 +227,8 @@ public class ProductService {
         // Update product fields
         productMapper.updateEntity(dto, product);
 
-        // Update hasVariations and hasModifiers flags
-        product.setHasVariations(!product.getVariations().isEmpty());
-        product.setHasModifiers(!product.getModifierGroups().isEmpty());
+        // Note: hasVariations and hasModifiers are now set from the DTO by the mapper
+        // They are user-controlled flags, not auto-calculated
 
         Product updatedProduct = productRepo.save(product);
         log.info("Updated product: {} for restaurant: {}", productUuid, restaurantUuid);
@@ -253,8 +254,7 @@ public class ProductService {
     }
 
     @Transactional
-    public void toggleProductStatus(String restaurantUuid, String productUuid, boolean isActive) {
-        log.info("Toggling product status: {} to {} for restaurant: {}", productUuid, isActive, restaurantUuid);
+    public void toggleProductStatus(String restaurantUuid, String productUuid) {
 
         Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
@@ -264,9 +264,9 @@ public class ProductService {
             throw new BusinessException("Product does not belong to this restaurant");
         }
 
-        product.setIsActive(isActive);
+        product.setIsActive(!product.getIsActive());
         productRepo.save(product);
-        log.info("Toggled product status: {} to {} for restaurant: {}", productUuid, isActive, restaurantUuid);
+        log.info("Toggled product status: {} to {} for restaurant: {}", productUuid, product.getIsActive(), restaurantUuid);
     }
 
 
@@ -308,5 +308,90 @@ public class ProductService {
         log.info("Toggled featured status for product: {} to {} for restaurant: {}", product
                 .getProductUuid(), product.getIsFeatured(), restaurantUuid);
 
+    }
+
+    @Transactional
+    public void assignModifierGroupToProduct(String restaurantUuid, String productUuid, String modifierGroupUuid) {
+        log.info("Assigning modifier group: {} to product: {} for restaurant: {}",
+                modifierGroupUuid, productUuid, restaurantUuid);
+
+        // Validate and fetch product
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
+
+        if (!product.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("Product does not belong to this restaurant");
+        }
+
+        // Validate and fetch modifier group
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
+
+        if (!modifierGroup.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("Modifier group does not belong to this restaurant");
+        }
+
+        // Check if already assigned
+        if (product.getModifierGroups().contains(modifierGroup)) {
+            throw new BusinessException("Modifier group is already assigned to this product");
+        }
+
+        // Assign modifier group to product
+        product.addModifierGroup(modifierGroup);
+        productRepo.save(product);
+
+        log.info("Successfully assigned modifier group: {} to product: {}", modifierGroupUuid, productUuid);
+    }
+
+    @Transactional
+    public void removeModifierGroupFromProduct(String restaurantUuid, String productUuid, String modifierGroupUuid) {
+        log.info("Removing modifier group: {} from product: {} for restaurant: {}",
+                modifierGroupUuid, productUuid, restaurantUuid);
+
+        // Validate and fetch product
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
+
+        if (!product.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("Product does not belong to this restaurant");
+        }
+
+        // Validate and fetch modifier group
+        ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Modifier group not found with UUID: " + modifierGroupUuid));
+
+        if (!modifierGroup.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("Modifier group does not belong to this restaurant");
+        }
+
+        // Check if assigned
+        if (!product.getModifierGroups().contains(modifierGroup)) {
+            throw new BusinessException("Modifier group is not assigned to this product");
+        }
+
+        // Remove modifier group from product
+        product.removeModifierGroup(modifierGroup);
+        productRepo.save(product);
+
+        log.info("Successfully removed modifier group: {} from product: {}", modifierGroupUuid, productUuid);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ModifierGroupResponseDto> getProductModifierGroups(String restaurantUuid, String productUuid) {
+        log.info("Fetching modifier groups for product: {} in restaurant: {}", productUuid, restaurantUuid);
+
+        // Validate and fetch product
+        Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
+
+        if (!product.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("Product does not belong to this restaurant");
+        }
+
+        // Return modifier groups associated with the product
+        return product.getModifierGroups().stream()
+                .filter(mg -> !mg.getIsDeleted() && mg.getIsActive())
+                .map(modifierGroupMapper::toResponseDto)
+                .collect(Collectors.toList());
     }
 }

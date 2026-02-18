@@ -27,6 +27,9 @@ public interface ProductRepo extends JpaRepository<Product, Long> {
     List<Product> findByRestaurant_RestaurantUuidAndIsBestsellerTrueAndIsActiveTrueAndIsDeletedFalseOrderBySoldCountDesc(
             String restaurantUuid);
 
+    List<Product> findByRestaurant_RestaurantUuidAndIsDeletedFalseOrderBySortOrderAsc(
+            String restaurantUuid);
+
     @Query("SELECT p FROM Product p WHERE p.restaurant.restaurantUuid = :restaurantUuid " +
            "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
            "AND p.isActive = true AND p.isDeleted = false " +

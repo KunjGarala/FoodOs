@@ -207,7 +207,7 @@ public class ProductVariationController {
                     content = @Content)
     })
     @PatchMapping("/{variationUuid}/set-default")
-    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')") 
     public ResponseEntity<ProductVariationResponseDto> setDefaultVariation(
             @Parameter(description = "UUID of the restaurant", required = true)
             @PathVariable String restaurantUuid,

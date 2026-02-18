@@ -8,7 +8,6 @@ import {
   ArrowLeft, Loader2, AlertCircle, CheckCircle,
   Package, DollarSign, Calendar,
 } from 'lucide-react';
-import VariationManager from '../../components/VariationManager';
 import {
   createProduct,
   updateProduct,
@@ -43,6 +42,8 @@ const initialFormData = {
   isFeatured: false,
   isBestseller: false,
   isActive: true,
+  hasVariations: false,
+  hasModifiers: false,
   sortOrder: 0,
   availableFrom: '',
   availableTo: '',
@@ -92,9 +93,11 @@ const ProductForm = () => {
         dietaryType: currentProduct.dietaryType || 'VEG',
         preparationTime: currentProduct.preparationTime || '',
         spiceLevel: currentProduct.spiceLevel || '',
-        isFeatured: currentProduct.isFeatured || false,
-        isBestseller: currentProduct.isBestseller || false,
+        isFeatured: Boolean(currentProduct.isFeatured),
+        isBestseller: Boolean(currentProduct.isBestseller),
         isActive: currentProduct.isActive !== false,
+        hasVariations: Boolean(currentProduct.hasVariations),
+        hasModifiers: Boolean(currentProduct.hasModifiers),
         sortOrder: currentProduct.sortOrder || 0,
         availableFrom: currentProduct.availableFrom || '',
         availableTo: currentProduct.availableTo || '',
@@ -146,6 +149,8 @@ const ProductForm = () => {
       isFeatured: formData.isFeatured,
       isBestseller: formData.isBestseller,
       isActive: formData.isActive,
+      hasVariations: formData.hasVariations,
+      hasModifiers: formData.hasModifiers,
       sortOrder: formData.sortOrder ? parseInt(formData.sortOrder) : 0,
       availableFrom: formData.availableFrom || undefined,
       availableTo: formData.availableTo || undefined,
@@ -435,6 +440,8 @@ const ProductForm = () => {
                   { id: 'isActive', label: 'Active', desc: 'Item is available for ordering', color: 'text-emerald-600' },
                   { id: 'isFeatured', label: 'Featured', desc: 'Show in featured section', color: 'text-yellow-600' },
                   { id: 'isBestseller', label: 'Bestseller', desc: 'Display bestseller badge', color: 'text-blue-600' },
+                  { id: 'hasVariations', label: 'Has Variations', desc: 'Item has size/variation options', color: 'text-purple-600' },
+                  { id: 'hasModifiers', label: 'Has Modifiers', desc: 'Item has add-ons/modifiers', color: 'text-indigo-600' },
                 ].map(flag => (
                   <label key={flag.id} className="flex items-start gap-3 cursor-pointer group">
                     <input
@@ -454,13 +461,6 @@ const ProductForm = () => {
           </CardContent>
         </Card>
       </form>
-
-      {/* Variations — only visible when editing an existing product */}
-      {isEditMode && (
-        <div className="mt-5 pb-6">
-          <VariationManager restaurantUuid={activeRestaurantId} productUuid={productUuid} />
-        </div>
-      )}
     </div>
   );
 };

@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer        from './authSlice';
-import tableReducer       from './tableSlice';
-import productReducer     from './productSlice';
-import categoryReducer    from './categorySlice';
-import orderReducer       from './orderSlice';
-import variationReducer   from './variationSlice';
+import authReducer           from './authSlice';
+import tableReducer          from './tableSlice';
+import productReducer        from './productSlice';
+import categoryReducer       from './categorySlice';
+import orderReducer          from './orderSlice';
+import variationReducer      from './variationSlice';
+import modifierGroupReducer  from './modifierGroupSlice';
+import modifierReducer       from './modifierSlice';
 import { setupInterceptors } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -38,6 +40,8 @@ export const store = configureStore({
     categories: categoryReducer,
     orders: orderReducer,
     variations: variationReducer,
+    modifierGroups: modifierGroupReducer,
+    modifiers: modifierReducer,
   },
   middleware: (getDefault) => getDefault().concat(interceptorSyncMiddleware),
 });

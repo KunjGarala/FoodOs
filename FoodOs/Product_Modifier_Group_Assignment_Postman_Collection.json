@@ -1,0 +1,140 @@
+{
+	"info": {
+		"_postman_id": "product-modifier-group-mgmt-001",
+		"name": "Product Modifier Group Assignment",
+		"description": "API collection for assigning/removing modifier groups to/from products",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Product's Modifier Groups",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/modifier-groups",
+					"host": ["{{baseUrl}}"],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"modifier-groups"
+					]
+				},
+				"description": "Retrieve all modifier groups assigned to a specific product.\n\n**Required Permissions:** GUEST or higher\n\n**Path Parameters:**\n- `restaurantUuid`: UUID of the restaurant\n- `productUuid`: UUID of the product\n\n**Response:** List of modifier group details"
+			},
+			"response": []
+		},
+		{
+			"name": "Assign Modifier Group to Product",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/modifier-groups/{{modifierGroupUuid}}",
+					"host": ["{{baseUrl}}"],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"modifier-groups",
+						"{{modifierGroupUuid}}"
+					]
+				},
+				"description": "Assign a modifier group to a product. This allows customers to customize the product with modifiers from this group.\n\n**Required Permissions:** MANAGER or higher\n\n**Path Parameters:**\n- `restaurantUuid`: UUID of the restaurant\n- `productUuid`: UUID of the product\n- `modifierGroupUuid`: UUID of the modifier group to assign\n\n**Response:** 204 No Content on success\n\n**Example Use Cases:**\n- Assign \"Extra Toppings\" modifier group to \"Pepperoni Pizza\"\n- Assign \"Size\" modifier group to \"Coffee\"\n- Assign \"Side Dishes\" modifier group to \"Burger\""
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Modifier Group from Product",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{accessToken}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/restaurants/{{restaurantUuid}}/products/{{productUuid}}/modifier-groups/{{modifierGroupUuid}}",
+					"host": ["{{baseUrl}}"],
+					"path": [
+						"api",
+						"restaurants",
+						"{{restaurantUuid}}",
+						"products",
+						"{{productUuid}}",
+						"modifier-groups",
+						"{{modifierGroupUuid}}"
+					]
+				},
+				"description": "Remove a modifier group assignment from a product.\n\n**Required Permissions:** MANAGER or higher\n\n**Path Parameters:**\n- `restaurantUuid`: UUID of the restaurant\n- `productUuid`: UUID of the product\n- `modifierGroupUuid`: UUID of the modifier group to remove\n\n**Response:** 204 No Content on success"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		},
+		{
+			"key": "restaurantUuid",
+			"value": "restaurant_uuid_here",
+			"type": "string"
+		},
+		{
+			"key": "productUuid",
+			"value": "product_uuid_here",
+			"type": "string"
+		},
+		{
+			"key": "modifierGroupUuid",
+			"value": "modifier_group_uuid_here",
+			"type": "string"
+		}
+	]
+}
