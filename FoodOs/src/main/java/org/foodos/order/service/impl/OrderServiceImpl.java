@@ -330,7 +330,7 @@ public class OrderServiceImpl implements OrderService {
 
         order.addPayment(payment);
         order.calculateTotals();
-
+        order.setStatus(OrderStatus.PAID);
         // Check if fully paid
         if (order.isFullyPaid() && order.getStatus() == OrderStatus.BILLED) {
             order.transitionTo(OrderStatus.PAID);
@@ -542,7 +542,9 @@ public class OrderServiceImpl implements OrderService {
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
         }
-
+        if(order.getStatus().equals(OrderStatus.DRAFT)){
+            order.setStatus(OrderStatus.OPEN);
+        }
         for (OrderItemRequest itemRequest : items) {
             OrderItem orderItem = createOrderItem(itemRequest, order);
             order.addItem(orderItem);
