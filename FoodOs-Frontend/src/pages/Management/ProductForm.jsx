@@ -178,6 +178,34 @@ const ProductForm = () => {
 
   const set = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
+  // Flatten categories to include both parent and child categories
+  const flattenCategories = (categories) => {
+    const flattened = [];
+    categories.forEach(category => {
+      // Add parent category
+      flattened.push({
+        categoryUuid: category.categoryUuid || category.uuid,
+        name: category.name,
+        isParent: true
+      });
+      
+      // Add child categories if they exist
+      if (category.subCategories && category.subCategories.length > 0) {
+        category.subCategories.forEach(subCategory => {
+          flattened.push({
+            categoryUuid: subCategory.categoryUuid,
+            name: `  └─ ${subCategory.name}`, // Indented to show hierarchy
+            isParent: false,
+            parentName: category.name
+          });
+        });
+      }
+    });
+    return flattened;
+  };
+
+  const allCategories = flattenCategories(categories);
+
   // Shared input class for selects to look consistent with Input component
   const selectClass = 'flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all';
 
@@ -279,8 +307,8 @@ const ProductForm = () => {
                 required
               >
                 <option value="">Select category</option>
-                {categories.map(cat => (
-                  <option key={cat.categoryUuid || cat.uuid} value={cat.categoryUuid || cat.uuid}>
+                {allCategories.map(cat => (
+                  <option key={cat.categoryUuid} value={cat.categoryUuid}>
                     {cat.name}
                   </option>
                 ))}

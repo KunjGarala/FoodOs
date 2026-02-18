@@ -220,6 +220,34 @@ const MenuManagement = () => {
     }));
   };
 
+  // Flatten categories to include both parent and child categories
+  const flattenCategories = (categories) => {
+    const flattened = [];
+    categories.forEach(category => {
+      // Add parent category
+      flattened.push({
+        categoryUuid: category.categoryUuid || category.uuid,
+        name: category.name,
+        isParent: true
+      });
+      
+      // Add child categories if they exist
+      if (category.subCategories && category.subCategories.length > 0) {
+        category.subCategories.forEach(subCategory => {
+          flattened.push({
+            categoryUuid: subCategory.categoryUuid,
+            name: `  └─ ${subCategory.name}`, // Indented to show hierarchy
+            isParent: false,
+            parentName: category.name
+          });
+        });
+      }
+    });
+    return flattened;
+  };
+
+  const allCategories = flattenCategories(categories);
+
   // Filter products
   const filteredProducts = products.filter(product => {
     const matchesSearch = 
@@ -314,8 +342,8 @@ const MenuManagement = () => {
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
             <option value="all">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat.categoryUuid || cat.uuid} value={cat.categoryUuid || cat.uuid}>
+            {allCategories.map(cat => (
+              <option key={cat.categoryUuid} value={cat.categoryUuid}>
                 {cat.name}
               </option>
             ))}
