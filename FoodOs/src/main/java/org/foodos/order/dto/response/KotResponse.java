@@ -6,7 +6,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import org.foodos.order.entity.enums.KotTicketStatus;
 import org.foodos.order.entity.enums.KotType;
+import org.foodos.order.entity.enums.SpicyLevel;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -57,6 +59,18 @@ public class KotResponse {
 
     @Schema(description = "Kitchen station", example = "HOT_KITCHEN")
     private String kitchenStation;
+
+    @Schema(description = "Spicy level", example = "MEDIUM")
+    private SpicyLevel spicyLevel;
+
+    @Schema(description = "Total quantity", example = "5.0")
+    private BigDecimal totalQuantity;
+
+    @Schema(description = "Kitchen notes")
+    private String kitchenNotes;
+
+    @Schema(description = "Order notes")
+    private String orderNotes;
 
     @Schema(description = "KOT items")
     @Builder.Default

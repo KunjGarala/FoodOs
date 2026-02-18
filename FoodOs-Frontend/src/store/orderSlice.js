@@ -58,16 +58,17 @@ export const deleteOrder = createAsyncThunk(
 );
 
 // Change Order Status
+// Change Order Status (KOT Status)
 export const changeOrderStatus = createAsyncThunk(
   'orders/changeStatus',
-  async ({ orderUuid, newStatus }, { rejectWithValue }) => {
+  async ({ kotUuid, newStatus }, { rejectWithValue }) => {
     try {
       const response = await api.patch(
-        `/api/v1/orders/kot/${orderUuid}/status?newStatus=${newStatus}`
+        `/api/v1/orders/kot/${kotUuid}/status?newStatus=${newStatus}`
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to change order status');
+      return rejectWithValue(error.response?.data || 'Failed to change KOT status');
     }
   }
 );

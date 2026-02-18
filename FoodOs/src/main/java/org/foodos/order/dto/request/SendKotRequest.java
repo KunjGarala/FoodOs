@@ -3,7 +3,9 @@ package org.foodos.order.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.foodos.order.entity.enums.SpicyLevel;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -29,6 +31,20 @@ public class SendKotRequest {
     @Schema(description = "Special instructions for kitchen")
     @Size(max = 500, message = "Special instructions cannot exceed 500 characters")
     private String specialInstructions;
+
+    @Schema(description = "Spicy level", example = "MEDIUM")
+    private SpicyLevel spicyLevel;
+
+    @Schema(description = "Total quantity", example = "5.0")
+    private BigDecimal totalQuantity;
+
+    @Schema(description = "Kitchen notes")
+    @Size(max = 1000, message = "Kitchen notes cannot exceed 1000 characters")
+    private String kitchenNotes;
+
+    @Schema(description = "Order notes")
+    @Size(max = 1000, message = "Order notes cannot exceed 1000 characters")
+    private String orderNotes;
 
     @Schema(description = "Mark as urgent", example = "false")
     @Builder.Default

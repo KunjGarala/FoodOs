@@ -268,6 +268,13 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setKitchenOrderTicket(kot);
         }
 
+        // Calculate and set total quantity for KOT
+        BigDecimal totalQuantity = kot.getKotItems().stream()
+                .map(KotItem::getQuantity)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        kot.setTotalQuantity(totalQuantity);
+
         // Save KOT
         kot.markAsPrinted();
         kitchenOrderTicketRepository.save(kot);
@@ -641,7 +648,7 @@ public class OrderServiceImpl implements OrderService {
 
             return orderMapper.toKotResponseList(orders);
         }
-        List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS , KotTicketStatus.READY ,  KotTicketStatus.COMPLETED , KotTicketStatus.COMPLETED);
+        List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS , KotTicketStatus.READY);
         List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
 
         return orderMapper.toKotResponseList(orders);
