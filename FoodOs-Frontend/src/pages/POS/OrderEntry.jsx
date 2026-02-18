@@ -39,6 +39,7 @@ const OrderEntry = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
+  const [variationSelectionProduct, setVariationSelectionProduct] = useState(null);
 
   // Redux State
   const { activeRestaurantId } = useSelector((state) => state.auth);
@@ -120,24 +121,45 @@ const OrderEntry = () => {
   };
 
   const handleAddToCart = (product) => {
-    console.log('Adding to cart:', product);
-    dispatch(addToCart(product));
+    if (product.hasVariations) {
+      setVariationSelectionProduct(product);
+    } else {
+      console.log('Adding to cart:', product);
+      dispatch(addToCart(product));
+    }
   };
 
-  const handleUpdateQuantity = (productUuid, delta) => {
-    const item = cart.find(item => item.productUuid === productUuid);
+  const handleVariationSelect = (variation) => {
+    if (variationSelectionProduct) {
+      // Create a product object that looks like what addToCart expects but with specific variation info
+      const productWithVariation = {
+        ...variationSelectionProduct,
+        selectedVariation: variation
+      };
+      
+      dispatch(addToCart(productWithVariation));
+      setVariationSelectionProduct(null);
+    }
+  };
+
+  const handleUpdateQuantity = (productUuid, variationUuid, delta) => {
+    const item = cart.find(item => 
+      item.productUuid === productUuid && 
+      item.variationUuid === (variationUuid || null)
+    );
+    
     if (item) {
       const newQuantity = item.quantity + delta;
       if (newQuantity > 0) {
-        dispatch(updateCartQuantity({ productUuid, quantity: newQuantity }));
+        dispatch(updateCartQuantity({ productUuid, variationUuid, quantity: newQuantity }));
       } else {
-        dispatch(removeFromCart(productUuid));
+        dispatch(removeFromCart({ productUuid, variationUuid }));
       }
     }
   };
 
-  const handleRemoveFromCart = (productUuid) => {
-    dispatch(removeFromCart(productUuid));
+  const handleRemoveFromCart = (productUuid, variationUuid) => {
+    dispatch(removeFromCart({ productUuid, variationUuid }));
   };
 
   const handleSendKOT = async () => {
@@ -153,7 +175,7 @@ const OrderEntry = () => {
       orderNotes: notes || '',
       items: cart.map(item => ({
         productUuid: item.productUuid,
-        variationUuid: item.variations?.[0]?.variationUuid || null,
+        variationUuid: item.variationUuid || null,
         quantity: item.quantity,
         itemNotes: '',
         modifiers: []
@@ -184,7 +206,7 @@ const OrderEntry = () => {
 
   const calculateTotal = () => {
     const subtotal = cart.reduce((sum, item) => {
-      const price = item.variations?.[0]?.price || item.basePrice || 0;
+      const price = item.price || item.variations?.[0]?.price || item.basePrice || 0;
       return sum + (price * item.quantity);
     }, 0);
     const tax = subtotal * 0.05; // 5% tax
@@ -272,7 +294,11 @@ const OrderEntry = () => {
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
               {displayProducts.map(product => {
-                const price = product.variations?.[0]?.price || product.basePrice || 0;
+                const hasVariations = product.hasVariations;
+                const price = hasVariations
+                  ? product.variations?.[0]?.price // fallback
+                  : product.basePrice || 0;
+                
                 const isAvailable = product.isActive !== false;
                 
                 return (
@@ -296,7 +322,14 @@ const OrderEntry = () => {
                       </div>
                     </div>
                     <div className="mt-2 flex justify-between items-end">
-                      <span className="font-bold text-slate-900">₹{price}</span>
+                      {hasVariations ? (
+                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                          Select Variation
+                        </span>
+                      ) : (
+                        <span className="font-bold text-slate-900">₹{price}</span>
+                      )}
+                      
                       {product.sku && (
                         <span className="text-xs text-slate-400 font-mono bg-slate-50 px-1 rounded">
                           {product.sku}
@@ -397,10 +430,15 @@ const OrderEntry = () => {
               {cart.map(item => {
                 const price = item.variations?.[0]?.price || item.basePrice || 0;
                 return (
-                  <div key={item.productUuid} className="flex gap-3 group">
+                  <div key={`${item.productUuid}-${item.variationUuid || 'default'}`} className="flex gap-3 group">
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
-                        <p className="font-medium text-slate-800 text-sm">{item.name}</p>
+                        <div>
+                          <p className="font-medium text-slate-800 text-sm">{item.name}</p>
+                          {item.variationName && (
+                            <p className="text-xs text-slate-500">{item.variationName}</p>
+                          )}
+                        </div>
                         <p className="font-semibold text-slate-900 text-sm">
                           ₹{(price * item.quantity).toFixed(2)}
                         </p>
@@ -409,21 +447,21 @@ const OrderEntry = () => {
                       <div className="flex items-center gap-3 mt-2">
                         <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-1">
                           <button 
-                            onClick={() => handleUpdateQuantity(item.productUuid, -1)} 
+                            onClick={() => handleUpdateQuantity(item.productUuid, item.variationUuid, -1)} 
                             className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
                           <span className="text-sm font-semibold w-4 text-center">{item.quantity}</span>
                           <button 
-                            onClick={() => handleUpdateQuantity(item.productUuid, 1)} 
+                            onClick={() => handleUpdateQuantity(item.productUuid, item.variationUuid, 1)} 
                             className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
                         <button
-                          onClick={() => handleRemoveFromCart(item.productUuid)}
+                          onClick={() => handleRemoveFromCart(item.productUuid, item.variationUuid)}
                           className="p-1 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
@@ -612,6 +650,38 @@ const OrderEntry = () => {
               className="flex-1 bg-slate-900 hover:bg-slate-800"
             >
               Confirm Table
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Variation Selection Modal */}
+      <Modal 
+        isOpen={!!variationSelectionProduct} 
+        onClose={() => setVariationSelectionProduct(null)} 
+        title={`Select Variation: ${variationSelectionProduct?.name}`}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-2">
+            {variationSelectionProduct?.variations?.map((v) => (
+              <button
+                key={v.variationUuid}
+                onClick={() => handleVariationSelect(v)}
+                className="flex justify-between items-center p-4 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+              >
+                <div>
+                  <span className="font-semibold text-slate-800 block">{v.name}</span>
+                  {v.isDefault && <span className="text-xs text-slate-500">(Default)</span>}
+                </div>
+                <span className="font-bold text-slate-900 group-hover:text-blue-700">
+                  ₹{v.price?.toFixed(2)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => setVariationSelectionProduct(null)}>
+              Cancel
             </Button>
           </div>
         </div>

@@ -300,27 +300,48 @@ const orderSlice = createSlice({
     },
     // Cart Management
     addToCart: (state, action) => {
-      const existing = state.cart.find(item => item.productUuid === action.payload.productUuid);
-      console.log('Adding to cart - Product:', action.payload);
-      console.log('Existing item:', existing);
+      const product = action.payload;
+      const variationUuid = product.selectedVariation?.variationUuid || null;
+      
+      const existing = state.cart.find(item => 
+        item.productUuid === product.productUuid && 
+        item.variationUuid === variationUuid
+      );
+      
+      console.log('Adding to cart - Product:', product);
       
       if (existing) {
         existing.quantity += 1;
       } else {
-        state.cart.push({ ...action.payload, quantity: 1 });
-        console.log('Cart after adding:', state.cart);
+        const price = product.selectedVariation?.price || product.basePrice || 0;
+        state.cart.push({ 
+          ...product, 
+          quantity: 1,
+          variationUuid: variationUuid,
+          variationName: product.selectedVariation?.name || null,
+          price: price // Store the effective price
+        });
       }
     },
     removeFromCart: (state, action) => {
-      state.cart = state.cart.filter(item => item.productUuid !== action.payload);
+      const { productUuid, variationUuid } = action.payload;
+      state.cart = state.cart.filter(item => 
+        !(item.productUuid === productUuid && item.variationUuid === (variationUuid || null))
+      );
     },
     updateCartQuantity: (state, action) => {
-      const { productUuid, quantity } = action.payload;
-      const item = state.cart.find(item => item.productUuid === productUuid);
+      const { productUuid, variationUuid, quantity } = action.payload;
+      const item = state.cart.find(item => 
+        item.productUuid === productUuid && 
+        item.variationUuid === (variationUuid || null)
+      );
+      
       if (item) {
         item.quantity = quantity;
         if (item.quantity <= 0) {
-          state.cart = state.cart.filter(item => item.productUuid !== productUuid);
+          state.cart = state.cart.filter(i => 
+            !(i.productUuid === productUuid && i.variationUuid === (variationUuid || null))
+          );
         }
       }
     },

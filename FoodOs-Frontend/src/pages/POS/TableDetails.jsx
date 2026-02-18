@@ -33,12 +33,7 @@ import {
   clearError as clearOrderError,
   clearSuccess as clearOrderSuccess,
 } from '../../store/orderSlice';
-import {
-  fetchProducts
-} from '../../store/productSlice';
-import {
-  fetchCategories
-} from '../../store/categorySlice';
+
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
 
 // ─────────────────────────────────────────────────────────
@@ -102,7 +97,7 @@ const TableDetails = () => {
 
   // Modals
   const [showOccupyModal, setShowOccupyModal] = useState(false);
-  const [showAddItemsModal, setShowAddItemsModal] = useState(false);
+
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelItemModal, setShowCancelItemModal] = useState(false);
   const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
@@ -116,9 +111,7 @@ const TableDetails = () => {
   const [cancelItemTarget, setCancelItemTarget] = useState(null);
 
   // Add items state
-  const [itemSearch, setItemSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [itemCart, setItemCart] = useState([]);
+
 
   // Time updater for seated time
   const [, setTick] = useState(0);
@@ -144,12 +137,7 @@ const TableDetails = () => {
   }, [refreshDetails, dispatch]);
 
   // ── Fetch products/categories for Add Items ────────────
-  useEffect(() => {
-    if (activeRestaurantId && showAddItemsModal) {
-      dispatch(fetchProducts({ restaurantUuid: activeRestaurantId, includeInactive: false }));
-      dispatch(fetchCategories(activeRestaurantId));
-    }
-  }, [activeRestaurantId, showAddItemsModal, dispatch]);
+
 
   // ── Toast auto-clear ───────────────────────────────────
   useEffect(() => {
@@ -172,25 +160,7 @@ const TableDetails = () => {
     } catch (err) { console.error('Occupy failed:', err); }
   };
 
-  const handleAddItems = async () => {
-    if (!activeOrder || itemCart.length === 0) return;
-    console.log(activeOrder.orderUuid);
-    
 
-    const items = itemCart.map((i) => ({
-      productUuid: i.productUuid,
-      variationUuid: i.variationUuid || null,
-      quantity: i.quantity,
-      itemNotes: '',
-      modifiers: [],
-    }));
-    try {
-      await dispatch(addItemsToOrder({ orderUuid: activeOrder.orderUuid, items })).unwrap();
-      setShowAddItemsModal(false);
-      setItemCart([]);
-      refreshDetails();
-    } catch (err) { console.error('Add items failed:', err); }
-  };
 
   const handleSendKot = async () => {
     if (!activeOrder) return;
@@ -265,23 +235,7 @@ const TableDetails = () => {
     } catch (err) { console.error('Cancel item failed:', err); }
   };
 
-  const addProductToCart = (product) => {
-    setItemCart((prev) => {
-      const existing = prev.find((i) => i.productUuid === product.productUuid);
-      if (existing) {
-        return prev.map((i) =>
-          i.productUuid === product.productUuid ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      }
-      return [...prev, {
-        productUuid: product.productUuid,
-        name: product.name,
-        price: product.variations?.[0]?.price || product.basePrice || 0,
-        variationUuid: product.variations?.[0]?.variationUuid || null,
-        quantity: 1,
-      }];
-    });
-  };
+
 
   // ── Derived data ───────────────────────────────────────
   const items = activeOrder?.items || [];
@@ -296,11 +250,7 @@ const TableDetails = () => {
   const paidAmount = activeOrder?.paidAmount ?? payments.reduce((s, p) => s + (p.amount || 0), 0);
   const balance = total - paidAmount;
 
-  const displayProducts = itemSearch.trim()
-    ? products.filter((p) => p.name?.toLowerCase().includes(itemSearch.toLowerCase()))
-    : activeCategory !== 'all'
-      ? products.filter((p) => p.categoryName === activeCategory)
-      : products;
+
 
   // ── Loading / Error ────────────────────────────────────
   if (detailsLoading) {
@@ -561,7 +511,7 @@ const TableDetails = () => {
               <div className="p-4 space-y-3">
                 <Button
                   className="w-full"
-                  onClick={() => { setItemCart([]); setItemSearch(''); setActiveCategory('all'); setShowAddItemsModal(true); }}
+                  onClick={() => navigate(`/app/tables/${tableUuid}/add-items`)}
                   disabled={orderActionLoading || isBilled}
                 >
                   <Plus className="h-4 w-4 mr-2" /> Add Items
@@ -680,84 +630,7 @@ const TableDetails = () => {
       </Modal>
 
       {/* ── Add Items Modal ─────────────────────────────── */}
-      <Modal isOpen={showAddItemsModal} onClose={() => setShowAddItemsModal(false)} title="Add Items to Order">
-        <div className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Input
-              placeholder="Search items…"
-              className="pl-9"
-              value={itemSearch}
-              onChange={(e) => setItemSearch(e.target.value)}
-            />
-            <span className="absolute left-3 top-2.5 text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-          </div>
 
-          {/* Category Pills */}
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <button onClick={() => setActiveCategory('all')} className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${activeCategory === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>All</button>
-            {categories.map((c) => (
-              <button key={c.categoryUuid} onClick={() => setActiveCategory(c.name)} className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${activeCategory === c.name ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{c.name}</button>
-            ))}
-          </div>
-
-          {/* Products Grid */}
-          <div className="max-h-64 overflow-y-auto">
-            {productsLoading ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
-            ) : displayProducts.length === 0 ? (
-              <p className="text-center text-sm text-slate-400 py-8">No products found</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {displayProducts.map((p) => {
-                  const price = p.variations?.[0]?.price || p.basePrice || 0;
-                  const cartItem = itemCart.find((i) => i.productUuid === p.productUuid);
-                  return (
-                    <button
-                      key={p.productUuid}
-                      onClick={() => addProductToCart(p)}
-                      className={`p-3 rounded-lg border text-left transition-all hover:border-blue-400 hover:shadow-sm ${
-                        cartItem ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
-                      }`}
-                    >
-                      <div className="text-sm font-medium text-slate-800 line-clamp-1">{p.name}</div>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs font-bold text-slate-700">{formatCurrency(price)}</span>
-                        {cartItem && (
-                          <span className="bg-blue-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{cartItem.quantity}</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Cart Summary */}
-          {itemCart.length > 0 && (
-            <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-              <h4 className="text-sm font-semibold text-slate-700">Selected ({itemCart.reduce((s, i) => s + i.quantity, 0)} items)</h4>
-              {itemCart.map((item) => (
-                <div key={item.productUuid} className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600">{item.name} × {item.quantity}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
-                    <button onClick={() => setItemCart(prev => prev.filter(i => i.productUuid !== item.productUuid))} className="text-red-500 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowAddItemsModal(false)}>Cancel</Button>
-            <Button onClick={handleAddItems} disabled={itemCart.length === 0 || orderActionLoading}>
-              {orderActionLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</> : <><Plus className="h-4 w-4 mr-2" />Add {itemCart.reduce((s, i) => s + i.quantity, 0)} Items</>}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* ── Payment Modal ───────────────────────────────── */}
       <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Add Payment">
@@ -799,6 +672,8 @@ const TableDetails = () => {
           </div>
         </div>
       </Modal>
+
+
 
       {/* ── Cancel Item Modal ───────────────────────────── */}
       <Modal isOpen={showCancelItemModal} onClose={() => { setShowCancelItemModal(false); setCancelItemTarget(null); }} title="Cancel Item">
