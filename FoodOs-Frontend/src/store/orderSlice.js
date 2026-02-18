@@ -100,6 +100,19 @@ export const completeOrder = createAsyncThunk(
   }
 );
 
+// Generate Bill
+export const generateBill = createAsyncThunk(
+  'orders/generateBill',
+  async (orderUuid, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/v1/orders/${orderUuid}/bill`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to generate bill');
+    }
+  }
+);
+
 // Add Items to Order
 export const addItemsToOrder = createAsyncThunk(
   'orders/addItems',
@@ -131,7 +144,7 @@ export const cancelOrderItem = createAsyncThunk(
   'orders/cancelItem',
   async ({ orderUuid, itemUuid, reason }, { rejectWithValue }) => {
     try {
-      const response = await api.patch(
+      const response = await api.post(
         `/api/v1/orders/${orderUuid}/items/${itemUuid}/cancel`,
         { cancellationReason: reason }
       );
@@ -161,10 +174,10 @@ export const addPayment = createAsyncThunk(
 // Send KOT (Kitchen Order Ticket)
 export const sendKot = createAsyncThunk(
   'orders/sendKot',
-  async ({ orderUuid, itemUuids }, { rejectWithValue }) => {
+  async ({ orderUuid, orderItemUuids }, { rejectWithValue }) => {
     try {
       const response = await api.post(`/api/v1/orders/${orderUuid}/kot`, {
-        itemUuids
+        orderItemUuids
       });
       return response.data;
     } catch (error) {
@@ -439,6 +452,25 @@ const orderSlice = createSlice({
       // Send KOT
       .addCase(sendKot.fulfilled, (state, action) => {
         state.success = 'KOT sent to kitchen';
+      })
+      
+      // Generate Bill
+      .addCase(generateBill.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(generateBill.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const index = state.orders.findIndex(o => o.uuid === action.payload.uuid);
+        if (index !== -1) {
+          state.orders[index] = action.payload;
+        }
+        state.currentOrder = action.payload;
+        state.success = 'Bill generated successfully';
+      })
+      .addCase(generateBill.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       })
       
       // Fetch Orders by Restaurant

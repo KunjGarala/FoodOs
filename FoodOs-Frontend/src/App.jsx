@@ -15,6 +15,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // POS Components
 import TableManagement from './pages/POS/TableManagement';
+import TableDetails from './pages/POS/TableDetails';
 import OrderEntry from './pages/POS/OrderEntry';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
 import MenuManagement from './pages/Management/MenuManagement';
@@ -57,6 +58,12 @@ function App() {
             <Route path="tables" element={
                 <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
                     <TableManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="tables/:tableUuid" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <TableDetails />
                 </ProtectedRoute>
             } />
             

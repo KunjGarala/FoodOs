@@ -166,15 +166,15 @@ const KitchenDisplay = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {kitchenOrders.map(order => (
-            <Card key={order.uuid} className={`border-t-4 ${getStatusBorderColor(order.status)}`}>
+            <Card key={order.orderUuid} className={`border-t-4 ${getStatusBorderColor(order.status)}`}>
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-bold text-slate-800">
-                      {order.table ? `Table ${order.table.tableNumber}` : 'Takeaway'}
+                      {order.tableNumber ? `Table ${order.tableNumber}` : 'Takeaway'}
                     </h3>
                     <span className="text-xs text-slate-400 font-mono">
-                      #{order.orderNumber || order.uuid.slice(0, 8)}
+                      #{order.orderNumber || order.orderUuid?.slice(0, 8)}
                     </span>
                   </div>
                   <Badge variant={getStatusBadgeVariant(order.status)}>
@@ -193,11 +193,11 @@ const KitchenDisplay = () => {
                 <ul className="space-y-3">
                   {order.items && order.items.map((item) => (
                     <li 
-                      key={item.uuid} 
+                      key={item.orderItemUuid} 
                       className="flex justify-between items-center pb-2 border-b border-slate-100 last:border-0 last:pb-0"
                     >
                       <div className="flex-1">
-                        <span className="font-medium text-slate-700">{item.product?.name || 'Unknown Item'}</span>
+                        <span className="font-medium text-slate-700">{item.productName || 'Unknown Item'}</span>
                         {item.specialInstructions && (
                           <p className="text-xs text-slate-500 mt-1">{item.specialInstructions}</p>
                         )}
@@ -208,14 +208,15 @@ const KitchenDisplay = () => {
                     </li>
                   ))}
                 </ul>
-                {order.notes && (
+                {order.orderNotes && (
                   <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                    <strong>Note:</strong> {order.notes}
+                    <strong>Note:</strong> {order.orderNotes}
                   </div>
                 )}
                 <div className="mt-6 pt-4 border-t border-slate-100">
+                  
                   <button 
-                    onClick={() => handleMarkPrepared(order.uuid)}
+                    onClick={() => handleMarkPrepared(order.orderUuid)}
                     className="w-full py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={order.status === 'READY'}
                   >

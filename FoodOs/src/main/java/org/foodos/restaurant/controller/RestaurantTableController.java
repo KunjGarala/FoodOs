@@ -366,4 +366,11 @@ public class RestaurantTableController {
         OrderResponse response = tableService.occupyTable(tableUuid, request, currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/{tableUuid}/details")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<TableDetailResponse> getTableDetails(@PathVariable String tableUuid) {
+        TableDetailResponse response = tableService.getTableDetails(tableUuid);
+        return ResponseEntity.ok(response);
+    }
 }

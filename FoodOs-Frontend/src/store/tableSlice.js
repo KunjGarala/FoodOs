@@ -183,12 +183,44 @@ export const getTableAnalytics = createAsyncThunk(
   }
 );
 
+// Occupy a vacant table (creates a new order)
+export const occupyTable = createAsyncThunk(
+  'tables/occupy',
+  async ({ tableUuid, data = {} }, { rejectWithValue }) => {
+    try {
+      const response = await tableAPI.occupyTable(tableUuid, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to occupy table'
+      );
+    }
+  }
+);
+
+// Fetch combined table details + active order
+export const fetchTableDetails = createAsyncThunk(
+  'tables/fetchDetails',
+  async (tableUuid, { rejectWithValue }) => {
+    try {
+      const response = await tableAPI.getTableDetails(tableUuid);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to fetch table details'
+      );
+    }
+  }
+);
+
 // ─────────────────────────────────────────────────────────
 // Initial State
 // ─────────────────────────────────────────────────────────
 const initialState = {
   tables: [],
   selectedTable: {},
+  tableDetails: null,        // { table: {...}, activeOrder: {...} | null }
+  tableDetailsLoading: false,
   analytics: null,
   pagination: {
     page: 0,
@@ -248,6 +280,11 @@ const tableSlice = createSlice({
 
     // Reset all tables state
     resetTablesState: () => initialState,
+
+    // Clear table details
+    clearTableDetails: (state) => {
+      state.tableDetails = null;
+    },
   },
 
   extraReducers: (builder) => {
@@ -452,8 +489,41 @@ const tableSlice = createSlice({
       .addCase(getTableAnalytics.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // Occupy Table
+      .addCase(occupyTable.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(occupyTable.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        // Update table status in the list if present
+        const tableUuid = action.meta.arg.tableUuid;
+        const table = state.tables.find(t => t.tableUuid === tableUuid);
+        if (table) {
+          table.status = 'OCCUPIED';
+        }
+      })
+      .addCase(occupyTable.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Fetch Table Details
+      .addCase(fetchTableDetails.pending, (state) => {
+        state.tableDetailsLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchTableDetails.fulfilled, (state, action) => {
+        state.tableDetailsLoading = false;
+        state.tableDetails = action.payload;
+      })
+      .addCase(fetchTableDetails.rejected, (state, action) => {
+        state.tableDetailsLoading = false;
+        state.error = action.payload;
       });
-  },
+  }
 });
 
 // ─────────────────────────────────────────────────────────
@@ -467,6 +537,7 @@ export const {
   clearSelectedTable,
   optimisticUpdateTableStatus,
   resetTablesState,
+  clearTableDetails,
 } = tableSlice.actions;
 
 // Selectors
@@ -478,6 +549,8 @@ export const selectTableActionLoading = (state) => state.tables.actionLoading;
 export const selectTableError = (state) => state.tables.error;
 export const selectTableFilters = (state) => state.tables.filters;
 export const selectTablePagination = (state) => state.tables.pagination;
+export const selectTableDetails = (state) => state.tables.tableDetails;
+export const selectTableDetailsLoading = (state) => state.tables.tableDetailsLoading;
 
 // Derived selectors
 export const selectFilteredTables = (state) => {

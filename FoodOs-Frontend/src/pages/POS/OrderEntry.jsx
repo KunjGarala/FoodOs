@@ -498,15 +498,6 @@ const OrderEntry = () => {
         size="lg"
       >
         <div className="space-y-4">
-          {/* Quick Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-900">
-              <p className="font-medium">Select a table to place your order</p>
-              <p className="text-blue-700 mt-1">Only vacant tables can be selected for new orders</p>
-            </div>
-          </div>
-
           {/* Table Stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
@@ -544,7 +535,7 @@ const OrderEntry = () => {
             <div className="max-h-96 overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
                 {tables.map((table) => {
-                  const isAvailable = table.status === 'VACANT';
+                  const isAvailable = table.status === 'VACANT' || table.status === 'OCCUPIED';
                   const statusColor = getStatusColor(table.status);
                   
                   return (

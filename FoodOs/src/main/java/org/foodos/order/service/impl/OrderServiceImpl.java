@@ -247,10 +247,18 @@ public class OrderServiceImpl implements OrderService {
 
         // Add items to KOT
         for (String itemUuid : request.getOrderItemUuids()) {
+            log.info("Looking for itemUuid: [{}]", itemUuid);
+            log.info("Available order items:");
+            order.getItems().forEach(item -> log.info("  - OrderItemUuid: [{}], Match: {}",
+                    item.getOrderItemUuid(),
+                    item.getOrderItemUuid() != null
+                            && item.getOrderItemUuid().trim().equalsIgnoreCase(itemUuid.trim())));
+
             OrderItem orderItem = order.getItems().stream()
-                    .filter(item -> item.getOrderItemUuid().equals(itemUuid))
+                    .filter(item -> item.getOrderItemUuid() != null &&
+                            item.getOrderItemUuid().trim().equalsIgnoreCase(itemUuid.trim()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Order item not found"));
+                    .orElseThrow(() -> new RuntimeException("Order item not found: " + itemUuid));
 
             // Create KOT item using mapper
             KotItem kotItem = orderMapper.toKotItem(orderItem);
@@ -346,7 +354,8 @@ public class OrderServiceImpl implements OrderService {
         // Ensure all items are served or ready
         boolean allItemsReady = order.getActiveItems().stream()
                 .allMatch(item -> item.getKotStatus() == KotStatus.SERVED ||
-                                 item.getKotStatus() == KotStatus.READY);
+                        item.getKotStatus() == KotStatus.READY ||
+                        item.getKotStatus() == KotStatus.FIRED);
 
         if (!allItemsReady) {
             throw new RuntimeException("Cannot generate bill. Some items are not ready/served");
@@ -371,7 +380,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status, Pageable pageable) {
+    public Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status,
+            Pageable pageable) {
         Page<Order> orders = orderRepository.findByRestaurantUuidAndStatusIn(restaurantUuid, List.of(status), pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
@@ -398,9 +408,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Determine unit price
-        BigDecimal unitPrice = request.getUnitPrice() != null ?
-                request.getUnitPrice() :
-                (variation != null ? variation.getPrice() : product.getBasePrice());
+        BigDecimal unitPrice = request.getUnitPrice() != null ? request.getUnitPrice()
+                : (variation != null ? variation.getPrice() : product.getBasePrice());
 
         // Create order item using mapper
         OrderItem orderItem = orderMapper.toOrderItem(request);
@@ -574,7 +583,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse cancelOrderItem(String orderUuid, String orderItemUuid, CancelOrderItemRequest request, Long currentUserId) {
+    public OrderResponse cancelOrderItem(String orderUuid, String orderItemUuid, CancelOrderItemRequest request,
+            Long currentUserId) {
         log.info("Cancelling item {} from order {}", orderItemUuid, orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
@@ -601,8 +611,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate, OrderType orderType) {
-        List<Order> orders = orderRepository.findByRestaurantUuidAndOrderTypeAndOrderDate(restaurantUuid, orderType, orderDate);
+    public List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate,
+            OrderType orderType) {
+        List<Order> orders = orderRepository.findByRestaurantUuidAndOrderTypeAndOrderDate(restaurantUuid, orderType,
+                orderDate);
         return orderMapper.toOrderResponseList(orders);
     }
 
@@ -615,20 +627,21 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getKitchenOrders(String restaurantUuid , UserAuthEntity user) {
+    public List<OrderResponse> getKitchenOrders(String restaurantUuid, UserAuthEntity user) {
         UserRole role = user.getRole();
 
-        if(role.equals(UserRole.CHEF)){
+        if (role.equals(UserRole.CHEF)) {
             List<OrderStatus> status = List.of(OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS);
-            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid ,  status);
+            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid, status);
+            return orderMapper.toOrderResponseList(orders);
+        } else if (role.equals(UserRole.WAITER)) {
+            List<OrderStatus> status = List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS,
+                    OrderStatus.READY);
+            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid, status);
             return orderMapper.toOrderResponseList(orders);
         }
-        else if(role.equals(UserRole.WAITER)){
-            List<OrderStatus> status = List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS, OrderStatus.READY);
-            List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid ,  status);
-            return orderMapper.toOrderResponseList(orders);
-        }
-        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid ,  List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS, OrderStatus.READY));
+        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid,
+                List.of(OrderStatus.OPEN, OrderStatus.KOT_SENT, OrderStatus.IN_PROGRESS, OrderStatus.READY));
         return orderMapper.toOrderResponseList(orders);
     }
 
@@ -678,7 +691,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("Creating empty order for restaurant: {}", orderRequest.getRestaurantUuid());
 
         // 1. Validate and fetch restaurant
-        Restaurant restaurant = restaurantRepository.findByRestaurantUuidAndIsDeletedFalse(orderRequest.getRestaurantUuid())
+        Restaurant restaurant = restaurantRepository
+                .findByRestaurantUuidAndIsDeletedFalse(orderRequest.getRestaurantUuid())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
         // 2. Create order entity using mapper
@@ -713,4 +727,3 @@ public class OrderServiceImpl implements OrderService {
         return order;
     }
 }
-

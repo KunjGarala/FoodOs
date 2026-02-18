@@ -709,4 +709,20 @@ public class RestaurantTableService {
         // 4. Return order response
         return orderMapper.toOrderResponse(order);
     }
+
+    public TableDetailResponse getTableDetails(String tableUuid) {
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        TableResponseDto tableResponse = tableMapper.toResponseDto(table);
+        OrderResponse activeOrder = null;
+        if(table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
+            activeOrder = orderService.getActiveOrderByTable(tableUuid);
+        }
+
+        return TableDetailResponse.builder()
+                .table(tableResponse)
+                .activeOrder(activeOrder)
+                .build();
+    }
 }

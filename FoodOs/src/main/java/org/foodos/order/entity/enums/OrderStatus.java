@@ -54,7 +54,8 @@ public enum OrderStatus {
         return switch (this) {
             case DRAFT -> newStatus == OPEN || newStatus == CANCELLED;
             case OPEN -> newStatus == KOT_SENT || newStatus == BILLED || newStatus == CANCELLED;
-            case KOT_SENT -> newStatus == IN_PROGRESS || newStatus == CANCELLED || newStatus == READY;
+            case KOT_SENT ->
+                newStatus == IN_PROGRESS || newStatus == CANCELLED || newStatus == READY || newStatus == BILLED;
             case IN_PROGRESS -> newStatus == READY || newStatus == CANCELLED;
             case READY -> newStatus == SERVED || newStatus == CANCELLED;
             case SERVED -> newStatus == BILLED || newStatus == CANCELLED;
@@ -64,4 +65,3 @@ public enum OrderStatus {
         };
     }
 }
-
