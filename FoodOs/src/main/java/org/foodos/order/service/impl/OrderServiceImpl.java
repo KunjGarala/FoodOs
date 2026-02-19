@@ -125,7 +125,7 @@ public class OrderServiceImpl implements OrderService {
             RestaurantTable table = order.getTable();
             table.setStatus(TableStatus.OCCUPIED);
             table.setSeatedAt(LocalDateTime.now());
-            table.setCurrentOrderUuid(order.getOrderUuid());
+            table.setCurrentOrder(order);
             tableRepository.save(table);
             log.info("Table {} marked as OCCUPIED", table.getTableNumber());
         }
@@ -503,10 +503,7 @@ public class OrderServiceImpl implements OrderService {
         // Update table status back to VACANT if this was a dine-in order
         if (order.getTable() != null) {
             RestaurantTable table = order.getTable();
-            table.setStatus(TableStatus.VACANT);
-            table.setSeatedAt(null);
-            table.setCurrentOrderUuid(null);
-            table.setCurrentPax(null);
+            table.clearOrder();
             tableRepository.save(table);
             log.info("Table {} marked as VACANT", table.getTableNumber());
         }
@@ -527,10 +524,7 @@ public class OrderServiceImpl implements OrderService {
         // Update table status back to VACANT if this was a dine-in order
         if (order.getTable() != null) {
             RestaurantTable table = order.getTable();
-            table.setStatus(TableStatus.VACANT);
-            table.setSeatedAt(null);
-            table.setCurrentOrderUuid(null);
-            table.setCurrentPax(null);
+            table.clearOrder();
             tableRepository.save(table);
             log.info("Table {} marked as VACANT", table.getTableNumber());
         }
@@ -736,6 +730,14 @@ public class OrderServiceImpl implements OrderService {
         log.info("Empty order created successfully: {}", order.getOrderUuid());
 
         return order;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Order getOrderEntityByUuid(String orderUuid) {
+        log.info("Fetching order entity by UUID: {}", orderUuid);
+        return orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
+                .orElseThrow(() -> new RuntimeException("Order not found with UUID: " + orderUuid));
     }
 
     @Override

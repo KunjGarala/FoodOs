@@ -153,7 +153,7 @@ export const mergeTables = createAsyncThunk(
   }
 );
 
-// Transfer table order
+  // Transfer table order
 export const transferTable = createAsyncThunk(
   'tables/transfer',
   async ({ fromTableUuid, toTableUuid }, { rejectWithValue }) => {
@@ -163,6 +163,21 @@ export const transferTable = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Failed to transfer table'
+      );
+    }
+  }
+);
+
+// Demerge table
+export const demergeTable = createAsyncThunk(
+  'tables/demerge',
+  async (tableUuid, { rejectWithValue }) => {
+    try {
+      const response = await tableAPI.demergeTable(tableUuid);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to demerge table'
       );
     }
   }
@@ -473,6 +488,36 @@ const tableSlice = createSlice({
         }
       })
       .addCase(transferTable.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Demerge Table
+      .addCase(demergeTable.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(demergeTable.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        // The response contains the updated parent table and child tables
+        // Just like merge, we need to update the state
+        if (action.payload.parentTable) {
+          const index = state.tables.findIndex(t => t.tableUuid === action.payload.parentTable.tableUuid);
+          if (index !== -1) {
+            state.tables[index] = action.payload.parentTable;
+          }
+        }
+        // Update child tables if provided
+        if (action.payload.childTables) {
+          action.payload.childTables.forEach(childTable => {
+            const childIndex = state.tables.findIndex(t => t.tableUuid === childTable.tableUuid);
+            if (childIndex !== -1) {
+              state.tables[childIndex] = childTable;
+            }
+          });
+        }
+      })
+      .addCase(demergeTable.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload;
       })
