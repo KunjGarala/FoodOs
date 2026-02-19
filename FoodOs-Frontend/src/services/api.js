@@ -281,6 +281,9 @@ export const tableAPI = {
   
   // Transfer table order
   transferTable: (data) => api.post('/api/v1/tables/transfer', data),
+
+  // Demerge table
+  demergeTable: (tableUuid) => api.post(`/api/v1/tables/${tableUuid}/demerge`),
   
   // Get table analytics
   getTableAnalytics: (restaurantUuid) => api.get(`/api/v1/tables/analytics/${restaurantUuid}`),

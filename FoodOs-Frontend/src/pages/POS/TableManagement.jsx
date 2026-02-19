@@ -255,6 +255,12 @@ const TableManagement = () => {
   };
 
   const handleToggleTableActive = async (table) => {
+    // Prevent activating merged tables
+    if (table.isMerged && !table.isActive) {
+      alert('Cannot activate a merged table. Please demerge the parent table first.');
+      return;
+    }
+
     const action = table.isActive ? 'deactivate' : 'activate';
     if (window.confirm(`Are you sure you want to ${action} table ${table.tableNumber}?`)) {
       try {
@@ -506,8 +512,10 @@ const TableManagement = () => {
                         isInactive 
                           ? 'bg-green-500/90 hover:bg-green-600 text-white' 
                           : 'bg-white/90 hover:bg-white text-slate-700'
-                      }`}
-                      title={isInactive ? 'Activate table' : 'Deactivate table'}
+                      } ${isInactive && table.isMerged ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={isInactive 
+                        ? (table.isMerged ? 'Table is merged. Demerge to activate.' : 'Activate table') 
+                        : 'Deactivate table'}
                     >
                       <Power className="h-3.5 w-3.5" />
                     </button>

@@ -176,6 +176,8 @@ public interface OrderService {
 
     Order createEmptyOrder(CreateOrderRequest orderRequest, Long userId);
 
+    Order getOrderEntityByUuid(String orderUuid);
+
     KotResponse updateKotStatus(String kotUuid, String newStatus);
 }
 

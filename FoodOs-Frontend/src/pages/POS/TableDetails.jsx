@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   ArrowLeft, Users, Clock, Plus, ChefHat, Receipt, CreditCard,
   CheckCircle, XCircle, Loader2, AlertCircle, X, Trash2, Ban,
-  UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin
+  UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin,
+  Split as ArrowResult // Using Split icon for Demerge
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,6 +15,7 @@ import { Input } from '../../components/ui/Input';
 
 import {
   fetchTableDetails,
+  demergeTable,
   selectTableDetails,
   selectTableDetailsLoading,
   selectTableActionLoading,
@@ -160,7 +162,28 @@ const TableDetails = () => {
     } catch (err) { console.error('Occupy failed:', err); }
   };
 
+  /* 
+   * Handle demerge table
+   */
+  const handleDemergeTable = async () => {
+    // Confirm demerge
+    if (!window.confirm('Are you sure you want to demerge this table?')) {
+      return;
+    }
 
+    try {
+      const resultAction = await dispatch(demergeTable(tableUuid));
+      if (demergeTable.fulfilled.match(resultAction)) {
+        // alert('Table demerged successfully'); // Optional, navigation might be enough
+        navigate('/app/tables');
+      } else {
+        alert(resultAction.payload || 'Failed to demerge table');
+      }
+    } catch (error) {
+      console.error('Error demerging table:', error);
+      alert('Error demerging table');
+    }
+  };
 
   const handleSendKot = async () => {
     if (!activeOrder) return;
@@ -349,6 +372,20 @@ const TableDetails = () => {
             <Button onClick={() => setShowOccupyModal(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4 mr-2" /> Occupy Table
             </Button>
+            
+            {/* Demerge Button: Show if table is merged and vacant */}
+            {(table?.isMerged === true || !!table?.mergedWithTableIds) && (
+              <div className="mt-4">
+                 <Button 
+                   variant="outline"
+                   className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                   onClick={handleDemergeTable}
+                 >
+                   <ArrowResult className="h-4 w-4 mr-2" />
+                   Demerge Tables
+                 </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -516,6 +553,7 @@ const TableDetails = () => {
                 >
                   <Plus className="h-4 w-4 mr-2" /> Add Items
                 </Button>
+
 
                 {hasPendingItems && (
                   <Button

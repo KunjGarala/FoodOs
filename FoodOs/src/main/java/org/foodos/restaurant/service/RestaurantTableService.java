@@ -1,6 +1,5 @@
 package org.foodos.restaurant.service;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
@@ -40,7 +39,7 @@ public class RestaurantTableService {
     private final UserAuthRepository userAuthRepository;
     private final RestaurantTableMapper tableMapper;
     private final OrderService orderService;
-    private  final OrderMapper orderMapper;
+    private final OrderMapper orderMapper;
 
     /**
      * 1️⃣ Create a new table for a restaurant
@@ -53,13 +52,17 @@ public class RestaurantTableService {
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(requestDto.getRestaurantUuid())
                 .orElseThrow(() -> {
                     log.error("Restaurant not found with UUID: {}", requestDto.getRestaurantUuid());
-                    return new ResourceNotFoundException("Restaurant not found with UUID: " + requestDto.getRestaurantUuid());
+                    return new ResourceNotFoundException(
+                            "Restaurant not found with UUID: " + requestDto.getRestaurantUuid());
                 });
 
         // Validate table number uniqueness per restaurant
-        if (tableRepository.existsByRestaurantAndTableNumberAndIsDeletedFalse(restaurant, requestDto.getTableNumber())) {
-            log.error("Table number {} already exists in restaurant {}", requestDto.getTableNumber(), restaurant.getId());
-            throw new BusinessException("Table number " + requestDto.getTableNumber() + " already exists in this restaurant");
+        if (tableRepository.existsByRestaurantAndTableNumberAndIsDeletedFalse(restaurant,
+                requestDto.getTableNumber())) {
+            log.error("Table number {} already exists in restaurant {}", requestDto.getTableNumber(),
+                    restaurant.getId());
+            throw new BusinessException(
+                    "Table number " + requestDto.getTableNumber() + " already exists in this restaurant");
         }
 
         // Validate capacity
@@ -90,7 +93,8 @@ public class RestaurantTableService {
      * 2️⃣ Update table details (not status)
      */
     @Transactional
-    public TableResponseDto updateTable(String tableUuid, UpdateTableRequestDto requestDto, UserAuthEntity currentUser) {
+    public TableResponseDto updateTable(String tableUuid, UpdateTableRequestDto requestDto,
+            UserAuthEntity currentUser) {
         log.info("Updating table {}. Request: {}, User: {}", tableUuid, requestDto, currentUser.getUsername());
 
         RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
@@ -99,11 +103,25 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        // Capture State before update
+        Boolean wasActive = table.getIsActive();
+
         // Update fields using mapper
         tableMapper.updateTableFromDto(requestDto, table);
 
+        // Validate: Cannot manually activate a table that is merged (must demerge
+        // first)
+        // If table is merged, was inactive, and is now being activated -> Block it
+        if (Boolean.TRUE.equals(table.getIsMerged()) &&
+                !Boolean.TRUE.equals(wasActive) &&
+                Boolean.TRUE.equals(table.getIsActive())) {
+            log.error("Cannot activate a merged table. Table: {}", table.getTableNumber());
+            throw new BusinessException("Cannot activate a merged table. Please demerge the table first.");
+        }
+
         RestaurantTable updatedTable = tableRepository.save(table);
-        log.info("Table updated successfully. UUID: {}, Number: {}", updatedTable.getTableUuid(), updatedTable.getTableNumber());
+        log.info("Table updated successfully. UUID: {}, Number: {}", updatedTable.getTableUuid(),
+                updatedTable.getTableNumber());
 
         return tableMapper.toResponseDto(updatedTable);
     }
@@ -112,15 +130,15 @@ public class RestaurantTableService {
      * 3️⃣ Update table status with lifecycle validation
      */
     @Transactional
-    public TableStatusResponseDto updateTableStatus(String tableUuid, UpdateTableStatusRequestDto requestDto, UserAuthEntity currentUser) {
+    public TableStatusResponseDto updateTableStatus(String tableUuid, UpdateTableStatusRequestDto requestDto,
+            UserAuthEntity currentUser) {
         log.info("Updating table status. TableUuid: {}, NewStatus: {}, User: {}",
                 tableUuid, requestDto.getStatus(), currentUser.getUsername());
 
-        if(requestDto.getStatus() == null) {
+        if (requestDto.getStatus() == null) {
             log.error("Status is required in the request");
             throw new BusinessException("Status is required");
         }
-
 
         RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> {
@@ -141,14 +159,19 @@ public class RestaurantTableService {
                     log.error("Order ID required when marking table as OCCUPIED");
                     throw new BusinessException("Order ID is required when marking table as OCCUPIED");
                 }
-                table.setCurrentOrderUuid(requestDto.getCurrentOrderId());
+
+                // Fetch the order entity and set it on the table
+                Order order = orderService.getOrderEntityByUuid(requestDto.getCurrentOrderId());
+                table.setCurrentOrder(order);
                 table.setSeatedAt(LocalDateTime.now());
                 table.setCurrentPax(requestDto.getCurrentPax());
 
                 // Set waiter if provided
                 if (requestDto.getWaiterUuid() != null && !requestDto.getWaiterUuid().isEmpty()) {
-                    UserAuthEntity waiter = userAuthRepository.findByUserUuidAndIsDeletedFalse(requestDto.getWaiterUuid())
-                            .orElseThrow(() -> new ResourceNotFoundException("Waiter not found with UUID: " + requestDto.getWaiterUuid()));
+                    UserAuthEntity waiter = userAuthRepository
+                            .findByUserUuidAndIsDeletedFalse(requestDto.getWaiterUuid())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Waiter not found with UUID: " + requestDto.getWaiterUuid()));
                     table.setCurrentWaiter(waiter);
                 }
                 log.info("Table {} marked as OCCUPIED. Order: {}, Waiter: {}",
@@ -156,18 +179,11 @@ public class RestaurantTableService {
                 break;
 
             case VACANT:
-                table.setCurrentOrderUuid(null);
-                table.setSeatedAt(null);
-                table.setCurrentPax(null);
-                table.setCurrentWaiter(null);
+                table.clearOrder();
 
-                // Demerge tables if this table was merged
-                if (table.getIsMerged()) {
-                    demergeTable(table);
-                    log.info("Table {} demerged and marked as VACANT", table.getTableNumber());
-                } else {
-                    log.info("Table {} marked as VACANT", table.getTableNumber());
-                }
+                table.clearOrder();
+                // Removed auto-demerge logic. Tables must be manually demerged.
+                log.info("Table {} marked as VACANT", table.getTableNumber());
                 break;
 
             case DIRTY:
@@ -193,11 +209,14 @@ public class RestaurantTableService {
                 .tableUuid(updatedTable.getTableUuid())
                 .tableNumber(updatedTable.getTableNumber())
                 .status(updatedTable.getStatus())
-                .currentOrderId(updatedTable.getCurrentOrderUuid())
+                .currentOrderId(
+                        updatedTable.getCurrentOrder() != null ? updatedTable.getCurrentOrder().getOrderUuid() : null)
                 .currentPax(updatedTable.getCurrentPax())
                 .occupiedSince(updatedTable.getSeatedAt())
-                .waiterUuid(updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getUserUuid() : null)
-                .waiterName(updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getFullName() : null)
+                .waiterUuid(
+                        updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getUserUuid() : null)
+                .waiterName(
+                        updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getFullName() : null)
                 .build();
     }
 
@@ -217,14 +236,17 @@ public class RestaurantTableService {
         TableResponseDto response = tableMapper.toResponseDto(table);
 
         // Add current order details if table is occupied
-        if (table.getStatus() == TableStatus.OCCUPIED && table.getSeatedAt() != null) {
+        if (table.getStatus() == TableStatus.OCCUPIED && table.getSeatedAt() != null
+                && table.getCurrentOrder() != null) {
             long elapsedMinutes = Duration.between(table.getSeatedAt(), LocalDateTime.now()).toMinutes();
 
-            // Use stored order UUID (actual order details will be fetched when Order module is implemented)
+            // Use stored order entity
             TableResponseDto.CurrentOrderDto orderDto = TableResponseDto.CurrentOrderDto.builder()
-                    .orderId(table.getCurrentOrderUuid())
+                    .orderId(table.getCurrentOrder().getOrderUuid())
                     .elapsedMinutes(elapsedMinutes)
-                    .totalAmount(0.0) // Will be replaced with actual amount from Order module
+                    .totalAmount(table.getCurrentOrder().getTotalAmount() != null
+                            ? table.getCurrentOrder().getTotalAmount().doubleValue()
+                            : 0.0)
                     .build();
 
             response.setCurrentOrder(orderDto);
@@ -277,7 +299,7 @@ public class RestaurantTableService {
 
         return tables.stream()
                 .map(tableMapper::toFloorPlanDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -290,7 +312,8 @@ public class RestaurantTableService {
         Restaurant parentRestaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(parentRestaurantUuid)
                 .orElseThrow(() -> {
                     log.error("Parent restaurant not found with UUID: {}", parentRestaurantUuid);
-                    return new ResourceNotFoundException("Parent restaurant not found with UUID: " + parentRestaurantUuid);
+                    return new ResourceNotFoundException(
+                            "Parent restaurant not found with UUID: " + parentRestaurantUuid);
                 });
 
         if (!parentRestaurant.isParentRestaurant()) {
@@ -352,7 +375,8 @@ public class RestaurantTableService {
                 });
 
         // Fetch child tables
-        List<RestaurantTable> childTables = tableRepository.findAllByTableUuidInAndIsDeletedFalse(requestDto.getChildTableUuids());
+        List<RestaurantTable> childTables = tableRepository
+                .findAllByTableUuidInAndIsDeletedFalse(requestDto.getChildTableUuids());
 
         if (childTables.size() != requestDto.getChildTableUuids().size()) {
             log.error("Some child tables not found. Expected: {}, Found: {}",
@@ -390,11 +414,24 @@ public class RestaurantTableService {
         parentTable.setMergedWithTableIds(mergedUuids);
         parentTable.setCapacity(allTables.stream().mapToInt(RestaurantTable::getCapacity).sum());
         parentTable.setStatus(TableStatus.OCCUPIED);
+
+        // Create an empty order for the merged table
+        CreateOrderRequest orderRequest = CreateOrderRequest.builder()
+                .restaurantUuid(parentTable.getRestaurant().getRestaurantUuid())
+                .tableUuid(parentTable.getTableUuid())
+                .orderType(org.foodos.order.entity.enums.OrderType.DINE_IN)
+                .numberOfGuests(parentTable.getCapacity()) // Default to full capacity or 1
+                .items(new ArrayList<>())
+                .build();
+
+        Order order = orderService.createEmptyOrder(orderRequest, currentUser.getId());
+        parentTable.setCurrentOrder(order);
+
         parentTable.setSeatedAt(LocalDateTime.now());
 
         // Mark child tables as merged
         for (RestaurantTable childTable : childTables) {
-            if(childTable.getTableUuid().equals(parentTable.getTableUuid())) {
+            if (childTable.getTableUuid().equals(parentTable.getTableUuid())) {
                 continue; // Skip parent table
             }
             childTable.setIsMerged(true);
@@ -407,7 +444,7 @@ public class RestaurantTableService {
 
         List<String> mergedTableNumbers = childTables.stream()
                 .map(RestaurantTable::getTableNumber)
-                .collect(Collectors.toList());
+                .toList();
 
         log.info("Tables merged successfully. Parent: {}, Children: {}, Total capacity: {}",
                 parentTable.getTableNumber(), mergedTableNumbers, parentTable.getCapacity());
@@ -461,22 +498,24 @@ public class RestaurantTableService {
         }
 
         // Transfer logic - move all state from source to destination
-        String orderUuid = fromTable.getCurrentOrderUuid();
+        Order currentOrder = fromTable.getCurrentOrder();
         toTable.setStatus(TableStatus.OCCUPIED);
-        toTable.setCurrentOrderUuid(orderUuid);
+        toTable.setCurrentOrder(currentOrder);
         toTable.setSeatedAt(fromTable.getSeatedAt());
         toTable.setCurrentPax(fromTable.getCurrentPax());
         toTable.setCurrentWaiter(fromTable.getCurrentWaiter());
 
-        fromTable.setStatus(TableStatus.VACANT);
-        fromTable.setCurrentOrderUuid(null);
-        fromTable.setSeatedAt(null);
-        fromTable.setCurrentPax(null);
-        fromTable.setCurrentWaiter(null);
+        // Update the order's table reference
+        if (currentOrder != null) {
+            currentOrder.setTable(toTable);
+        }
+
+        fromTable.clearOrder();
 
         tableRepository.save(fromTable);
         tableRepository.save(toTable);
 
+        String orderUuid = currentOrder != null ? currentOrder.getOrderUuid() : null;
         log.info("Table transfer completed successfully. From: {} -> To: {}, Order: {}",
                 fromTable.getTableNumber(), toTable.getTableNumber(), orderUuid);
 
@@ -507,12 +546,11 @@ public class RestaurantTableService {
         // Filter only active tables for analytics
         List<RestaurantTable> activeTables = allTables.stream()
                 .filter(t -> Boolean.TRUE.equals(t.getIsActive()))
-                .collect(Collectors.toList());
+                .toList();
         List<RestaurantTable> occupiedTables = tableRepository.findOccupiedTablesByRestaurantUuid(restaurantUuid);
 
         // Calculate metrics (using only active tables)
-        double occupancyRate = activeTables.isEmpty() ? 0.0 :
-                (occupiedTables.size() * 100.0) / activeTables.size();
+        double occupancyRate = activeTables.isEmpty() ? 0.0 : (occupiedTables.size() * 100.0) / activeTables.size();
 
         // Calculate average turn time for currently occupied tables
         double avgTurnTime = occupiedTables.stream()
@@ -550,8 +588,7 @@ public class RestaurantTableService {
                 TableStatus.OCCUPIED, Set.of(TableStatus.BILLED, TableStatus.VACANT),
                 TableStatus.BILLED, Set.of(TableStatus.DIRTY, TableStatus.VACANT),
                 TableStatus.DIRTY, Set.of(TableStatus.VACANT),
-                TableStatus.RESERVED, Set.of(TableStatus.OCCUPIED, TableStatus.VACANT)
-        );
+                TableStatus.RESERVED, Set.of(TableStatus.OCCUPIED, TableStatus.VACANT));
 
         Set<TableStatus> allowedTransitions = validTransitions.getOrDefault(currentStatus, Collections.emptySet());
 
@@ -564,11 +601,16 @@ public class RestaurantTableService {
 
     private RestaurantChainTablesSummaryDto buildRestaurantTableSummary(Restaurant restaurant) {
         Integer totalTables = tableRepository.countByRestaurantUuid(restaurant.getRestaurantUuid());
-        Integer occupied = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.OCCUPIED);
-        Integer vacant = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.VACANT);
-        Integer billed = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.BILLED);
-        Integer dirty = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.DIRTY);
-        Integer reserved = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(), TableStatus.RESERVED);
+        Integer occupied = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(),
+                TableStatus.OCCUPIED);
+        Integer vacant = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(),
+                TableStatus.VACANT);
+        Integer billed = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(),
+                TableStatus.BILLED);
+        Integer dirty = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(),
+                TableStatus.DIRTY);
+        Integer reserved = tableRepository.countByRestaurantUuidAndStatus(restaurant.getRestaurantUuid(),
+                TableStatus.RESERVED);
 
         return RestaurantChainTablesSummaryDto.builder()
                 .restaurantUuid(restaurant.getRestaurantUuid())
@@ -593,6 +635,33 @@ public class RestaurantTableService {
     /**
      * Demerge a table and restore all child tables to their original state
      */
+    @Transactional
+    public TableResponseDto demergeTableResponse(String tableUuid, UserAuthEntity currentUser) {
+        log.info("Demerging table request by user: {}", currentUser.getUsername());
+
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        if (!Boolean.TRUE.equals(table.getIsMerged())) {
+            throw new BusinessException("Table is not merged");
+        }
+
+        // Only allow demerging from the parent table
+        if (table.getMergedWithTableIds() != null && !table.getMergedWithTableIds().contains(",")) {
+            // This check is a bit simplistic, better to check if it has children in a more
+            // robust way if needed,
+            // but for now, if it's a child (implied by having a single UUID in mergedWith
+            // or logic in mergeTables),
+            // we might want to restrict.
+            // However, the original logic handled both parent and child.
+            // Let's stick to the original logic which handles both, but wrap it for API.
+        }
+
+        demergeTable(table);
+
+        return tableMapper.toResponseDto(table);
+    }
+
     private void demergeTable(RestaurantTable table) {
         log.info("Demerging table: {}", table.getTableNumber());
 
@@ -606,8 +675,8 @@ public class RestaurantTableService {
 
             String[] childUuids = table.getMergedWithTableIds().split(",");
 
-            List<RestaurantTable> childTables =
-                    tableRepository.findAllByTableUuidInAndIsDeletedFalse(Arrays.asList(childUuids));
+            List<RestaurantTable> childTables = tableRepository
+                    .findAllByTableUuidInAndIsDeletedFalse(Arrays.asList(childUuids));
 
             int restoredCapacity = 0;
 
@@ -646,12 +715,11 @@ public class RestaurantTableService {
                 if (parent.getMergedWithTableIds() != null) {
                     remainingChildren = Arrays.stream(parent.getMergedWithTableIds().split(","))
                             .filter(uuid -> !uuid.equals(table.getTableUuid()))
-                            .collect(Collectors.toList());
+                            .toList();
                 }
 
                 parent.setMergedWithTableIds(
-                        remainingChildren.isEmpty() ? null : String.join(",", remainingChildren)
-                );
+                        remainingChildren.isEmpty() ? null : String.join(",", remainingChildren));
 
                 // 🔥 Always subtract child capacity once
                 table.setCapacity(table.getCapacity() - parent.getCapacity());
@@ -716,7 +784,7 @@ public class RestaurantTableService {
 
         TableResponseDto tableResponse = tableMapper.toResponseDto(table);
         OrderResponse activeOrder = null;
-        if(table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
+        if (table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
             activeOrder = orderService.getActiveOrderByTable(tableUuid);
         }
 

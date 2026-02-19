@@ -20,19 +20,24 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * Order Entity - Aggregate Root
- * Production-grade with optimistic locking, auditing, and business logic
+ * Order Entity — Aggregate Root
+ *
+ * Relationship notes:
+ *  - Order owns the FK to RestaurantTable via table_id  (ManyToOne).
+ *  - RestaurantTable.currentOrder is a separate unidirectional OneToOne
+ *    pointer (current_order_id) managed by RestaurantTable, NOT mapped here.
+ *    This avoids a circular bidirectional mapping and keeps Order clean.
  */
 @Entity
 @Table(name = "orders", indexes = {
-        @Index(name = "idx_order_uuid", columnList = "order_uuid"),
-        @Index(name = "idx_order_number", columnList = "order_number"),
-        @Index(name = "idx_order_date", columnList = "order_date"),
-        @Index(name = "idx_order_status", columnList = "status"),
-        @Index(name = "idx_order_type", columnList = "order_type"),
-        @Index(name = "idx_order_restaurant_id", columnList = "restaurant_id"),
-        @Index(name = "idx_order_table_id", columnList = "table_id"),
-        @Index(name = "idx_order_waiter_id", columnList = "waiter_id"),
+        @Index(name = "idx_order_uuid",           columnList = "order_uuid"),
+        @Index(name = "idx_order_number",         columnList = "order_number"),
+        @Index(name = "idx_order_date",           columnList = "order_date"),
+        @Index(name = "idx_order_status",         columnList = "status"),
+        @Index(name = "idx_order_type",           columnList = "order_type"),
+        @Index(name = "idx_order_restaurant_id",  columnList = "restaurant_id"),
+        @Index(name = "idx_order_table_id",       columnList = "table_id"),
+        @Index(name = "idx_order_waiter_id",      columnList = "waiter_id"),
         @Index(name = "idx_order_customer_phone", columnList = "customer_phone")
 })
 @SQLDelete(sql = "UPDATE orders SET is_deleted = true, deleted_at = now() WHERE id = ? AND version = ?")
@@ -52,6 +57,10 @@ public class Order extends BaseSoftDeleteEntity {
     @Builder.Default
     private String orderUuid = UUID.randomUUID().toString();
 
+    /**
+     * Optimistic locking — prevents lost updates under concurrent access.
+     * Note: SQLDelete must include "AND version = ?" to work correctly.
+     */
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
@@ -62,6 +71,11 @@ public class Order extends BaseSoftDeleteEntity {
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
+    /**
+     * The table this order belongs to.
+     * This is the owning side of the Order ↔ RestaurantTable relationship (FK: table_id).
+     * RestaurantTable.currentOrder is a separate pointer — do NOT add mappedBy here.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "table_id")
     private RestaurantTable table;
@@ -74,19 +88,16 @@ public class Order extends BaseSoftDeleteEntity {
     @JoinColumn(name = "cashier_id")
     private UserAuthEntity cashier;
 
-    // Order Items (Cascade ALL for true aggregate)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @BatchSize(size = 25)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
-    // Kitchen Order Tickets
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @BatchSize(size = 10)
     @Builder.Default
     private List<KitchenOrderTicket> kitchenOrderTickets = new ArrayList<>();
 
-    // Payments for this order
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @BatchSize(size = 10)
     @Builder.Default
@@ -261,61 +272,43 @@ public class Order extends BaseSoftDeleteEntity {
 
     // ===== AGGREGATE PATTERN METHODS =====
 
-    /**
-     * Add item to order
-     */
     public void addItem(OrderItem item) {
         items.add(item);
         item.setOrder(this);
     }
 
-    /**
-     * Remove item from order
-     */
     public void removeItem(OrderItem item) {
         items.remove(item);
         item.setOrder(null);
     }
 
-    /**
-     * Add payment to order
-     */
     public void addPayment(Payment payment) {
         payments.add(payment);
         payment.setOrder(this);
         updatePaidAmount();
     }
 
-    /**
-     * Add kitchen order ticket
-     */
     public void addKitchenOrderTicket(KitchenOrderTicket kot) {
         kitchenOrderTickets.add(kot);
         kot.setOrder(this);
     }
 
-    /**
-     * Calculate all order totals
-     */
     public void calculateTotals() {
-        // Initialize null values to ZERO
-        if (this.discountAmount == null) this.discountAmount = BigDecimal.ZERO;
-        if (this.taxAmount == null) this.taxAmount = BigDecimal.ZERO;
-        if (this.serviceCharge == null) this.serviceCharge = BigDecimal.ZERO;
-        if (this.deliveryCharge == null) this.deliveryCharge = BigDecimal.ZERO;
-        if (this.packingCharge == null) this.packingCharge = BigDecimal.ZERO;
-        if (this.tipAmount == null) this.tipAmount = BigDecimal.ZERO;
-        if (this.roundOff == null) this.roundOff = BigDecimal.ZERO;
-        if (this.paidAmount == null) this.paidAmount = BigDecimal.ZERO;
+        if (this.discountAmount == null)  this.discountAmount  = BigDecimal.ZERO;
+        if (this.taxAmount == null)       this.taxAmount       = BigDecimal.ZERO;
+        if (this.serviceCharge == null)   this.serviceCharge   = BigDecimal.ZERO;
+        if (this.deliveryCharge == null)  this.deliveryCharge  = BigDecimal.ZERO;
+        if (this.packingCharge == null)   this.packingCharge   = BigDecimal.ZERO;
+        if (this.tipAmount == null)       this.tipAmount       = BigDecimal.ZERO;
+        if (this.roundOff == null)        this.roundOff        = BigDecimal.ZERO;
+        if (this.paidAmount == null)      this.paidAmount      = BigDecimal.ZERO;
 
-        // Calculate subtotal from items
         this.subtotal = items.stream()
                 .filter(item -> !item.getIsCancelled())
                 .map(OrderItem::getLineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // Apply discount
         if (discountPercentage != null && discountPercentage.compareTo(BigDecimal.ZERO) > 0) {
             this.discountAmount = subtotal.multiply(discountPercentage)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
@@ -323,19 +316,16 @@ public class Order extends BaseSoftDeleteEntity {
 
         BigDecimal amountAfterDiscount = subtotal.subtract(discountAmount);
 
-        // Calculate tax
         if (taxPercentage != null && taxPercentage.compareTo(BigDecimal.ZERO) > 0) {
             this.taxAmount = amountAfterDiscount.multiply(taxPercentage)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         }
 
-        // Calculate service charge
         if (serviceChargePercentage != null && serviceChargePercentage.compareTo(BigDecimal.ZERO) > 0) {
             this.serviceCharge = amountAfterDiscount.multiply(serviceChargePercentage)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         }
 
-        // Calculate total before round-off
         BigDecimal totalBeforeRoundOff = amountAfterDiscount
                 .add(taxAmount)
                 .add(serviceCharge)
@@ -343,21 +333,15 @@ public class Order extends BaseSoftDeleteEntity {
                 .add(packingCharge)
                 .add(tipAmount);
 
-        // Apply round-off to nearest whole number
         BigDecimal rounded = totalBeforeRoundOff.setScale(0, RoundingMode.HALF_UP);
-        this.roundOff = rounded.subtract(totalBeforeRoundOff);
+        this.roundOff    = rounded.subtract(totalBeforeRoundOff);
         this.totalAmount = rounded;
-
-        // Update balance
         this.balanceAmount = totalAmount.subtract(paidAmount);
     }
 
-    /**
-     * Update paid amount from payments
-     */
     private void updatePaidAmount() {
         this.paidAmount = payments.stream()
-                .filter(payment -> payment.getStatus() == org.foodos.order.entity.enums.PaymentStatus.COMPLETED)
+                .filter(p -> p.getStatus() == org.foodos.order.entity.enums.PaymentStatus.COMPLETED)
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
@@ -365,88 +349,59 @@ public class Order extends BaseSoftDeleteEntity {
         this.balanceAmount = totalAmount.subtract(paidAmount);
     }
 
-    /**
-     * Check if order is fully paid
-     */
     public boolean isFullyPaid() {
         return balanceAmount.compareTo(BigDecimal.ZERO) <= 0;
     }
 
-    /**
-     * Check if order can be modified
-     */
     public boolean canBeModified() {
         return !status.isTerminal() && status != OrderStatus.BILLED;
     }
 
-    /**
-     * Transition to new status with validation
-     */
     public void transitionTo(OrderStatus newStatus) {
         if (!status.canTransitionTo(newStatus)) {
             throw new IllegalStateException(
-                    String.format("Cannot transition from %s to %s", status, newStatus)
-            );
+                    String.format("Cannot transition from %s to %s", status, newStatus));
         }
-
         this.status = newStatus;
-
-        // Update timestamps based on status
         switch (newStatus) {
-            case BILLED -> this.billedAt = LocalDateTime.now();
-            case PAID -> this.paidAt = LocalDateTime.now();
+            case BILLED    -> this.billedAt    = LocalDateTime.now();
+            case PAID      -> this.paidAt      = LocalDateTime.now();
             case COMPLETED -> this.completedAt = LocalDateTime.now();
             case CANCELLED, VOID -> this.cancelledAt = LocalDateTime.now();
         }
     }
 
-    /**
-     * Get active (non-cancelled) items
-     */
     public List<OrderItem> getActiveItems() {
         return items.stream()
                 .filter(item -> !item.getIsCancelled())
                 .toList();
     }
 
-    /**
-     * Get total item count
-     */
     public int getItemCount() {
         return (int) items.stream()
                 .filter(item -> !item.getIsCancelled())
                 .count();
     }
 
-    /**
-     * Check if order has any KOT sent
-     */
     public boolean hasKotSent() {
         return !kitchenOrderTickets.isEmpty();
     }
 
-    /**
-     * Cancel the order
-     */
     public void cancel(String reason) {
         if (!canBeCancelled()) {
-            throw new IllegalStateException("Order cannot be cancelled in its current state: " + status);
+            throw new IllegalStateException(
+                    "Order cannot be cancelled in its current state: " + status);
         }
         this.cancellationReason = reason;
         transitionTo(OrderStatus.CANCELLED);
     }
 
-    /**
-     * Check if the order can be cancelled.
-     */
     public boolean canBeCancelled() {
-        // Example logic: Can cancel if not yet completed, paid, or already cancelled.
-        return status != OrderStatus.COMPLETED && status != OrderStatus.PAID && status != OrderStatus.CANCELLED;
+        return status != OrderStatus.COMPLETED
+                && status != OrderStatus.PAID
+                && status != OrderStatus.CANCELLED;
     }
 
-    /**
-     * Complete the order
-     */
     public void complete() {
         if (status != OrderStatus.PAID) {
             throw new IllegalStateException("Order must be paid before it can be completed.");
@@ -454,11 +409,7 @@ public class Order extends BaseSoftDeleteEntity {
         transitionTo(OrderStatus.COMPLETED);
     }
 
-    /**
-     * Check if the order can be deleted.
-     */
     public boolean canBeDeleted() {
-        // Example logic: Can only delete draft or cancelled orders.
         return status == OrderStatus.DRAFT || status == OrderStatus.CANCELLED;
     }
 }
