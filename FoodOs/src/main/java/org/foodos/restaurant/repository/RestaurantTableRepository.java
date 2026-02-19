@@ -28,6 +28,17 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
 
     Page<RestaurantTable> findAllByIsDeletedFalse(Pageable pageable);
 
+    @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.isDeleted = false")
+    Page<RestaurantTable> findByIsDeletedFalseAndRestaurantUuid(@Param("restaurantUuid") String restaurantUuid, Pageable pageable);
+
+    @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.status = :status AND t.isDeleted = false")
+    Page<RestaurantTable> findByIsDeletedFalseAndRestaurantUuidAndStatus(
+            @Param("restaurantUuid") String restaurantUuid,
+            @Param("status") TableStatus status,
+            Pageable pageable
+    );
+
+
     Page<RestaurantTable> findAllByStatusAndIsDeletedFalse(TableStatus status, Pageable pageable);
 
     @Query("SELECT t FROM RestaurantTable t WHERE t.restaurant.restaurantUuid = :restaurantUuid AND t.isDeleted = false AND t.isActive = true")

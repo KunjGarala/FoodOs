@@ -183,23 +183,23 @@ const RestaurantDetails = () => {
   } = restaurant;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* 1️⃣ Header Section */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-4">
-            <div className="h-20 w-20 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                 {logoUrl ? (
                     <img src={logoUrl} alt={name} className="h-full w-full object-cover" 
                         onError={(e) => { e.target.onerror = null; e.target.src = ''; e.target.parentNode.classList.add('bg-slate-50'); e.target.style.display = 'none'; }}
                     />
                 ) : (
-                    <Store className="h-10 w-10 text-slate-400" />
+                    <Store className="h-7 w-7 sm:h-10 sm:w-10 text-slate-400" />
                 )}
             </div>
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">{name}</h1>
-                <p className="text-slate-500 font-medium">{businessName}</p>
-                <div className="flex items-center gap-2 mt-2">
+            <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-slate-900 truncate">{name}</h1>
+                <p className="text-slate-500 font-medium text-sm sm:text-base truncate">{businessName}</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <Badge variant={isActive ? 'success' : 'danger'}>
                         {isActive ? 'Active' : 'Inactive'}
                     </Badge>

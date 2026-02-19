@@ -52,18 +52,18 @@ const ModifierManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
-                <Sparkles className="h-8 w-8 text-purple-500" />
-                Modifier Management
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 shrink-0" />
+                <span className="truncate">Modifier Management</span>
               </h1>
-              <p className="text-slate-500 mt-1">
-                Manage modifier groups and their options for your menu items
+              <p className="text-slate-500 mt-1 text-sm sm:text-base">
+                Manage modifier groups and their options
               </p>
             </div>
           </div>
@@ -71,24 +71,24 @@ const ModifierManagement = () => {
 
         {/* Global Notifications */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+          <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <span>{typeof error === 'string' ? error : JSON.stringify(error)}</span>
+            <span className="line-clamp-2">{typeof error === 'string' ? error : JSON.stringify(error)}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
+          <div className="mb-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
             <CheckCircle className="h-5 w-5 flex-shrink-0" />
-            <span>{success}</span>
+            <span className="line-clamp-2">{success}</span>
           </div>
         )}
 
         {/* Main Content */}
-        <div className="grid gap-6">
+        <div className="grid gap-4 sm:gap-6">
           {/* Modifier Groups */}
           <Card className="shadow-lg">
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-slate-700">Modifier Groups</h2>
                 <p className="text-sm text-slate-500 mt-1">

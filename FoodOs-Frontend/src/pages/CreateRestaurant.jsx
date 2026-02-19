@@ -615,7 +615,7 @@ const CreateRestaurant = () => {
                             </div>
 
                             {/* Navigation Buttons */}
-                            <div className="px-8 py-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                            <div className="px-4 sm:px-8 py-4 sm:py-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3">
                                 <div>
                                     {activeStep > 1 && (
                                         <Button

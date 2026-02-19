@@ -81,9 +81,9 @@ export const getTableByUuid = createAsyncThunk(
 // Get all tables (paginated with optional status filter)
 export const getAllTables = createAsyncThunk(
   'tables/getAll',
-  async ({ page = 0, size = 20, status = null }, { rejectWithValue }) => {
+  async ({ page = 0, size = 20, status = null, restaurantUuid }, { rejectWithValue }) => {
     try {
-      const response = await tableAPI.getAllTables({ page, size, status });
+      const response = await tableAPI.getAllTables({ page, size, status, restaurantUuid });
       return response.data;
     } catch (error) {
       return rejectWithValue(

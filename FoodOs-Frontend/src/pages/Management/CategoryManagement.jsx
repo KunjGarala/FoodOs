@@ -227,11 +227,11 @@ const CategoryManagement = () => {
     <div className="flex flex-col h-full">
       {/* Notification Toast */}
       {(error || success) && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
           error ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'
         }`}>
-          {error ? <AlertCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
-          <span className="font-medium">{error || success}</span>
+          {error ? <AlertCircle className="h-5 w-5 shrink-0" /> : <CheckCircle className="h-5 w-5 shrink-0" />}
+          <span className="font-medium text-xs sm:text-sm line-clamp-2">{error || success}</span>
         </div>
       )}
 

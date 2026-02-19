@@ -262,16 +262,16 @@ public class RestaurantTableService {
      * 5️⃣ Get all tables (Admin/Manager) - Paginated
      */
     @Transactional(readOnly = true)
-    public Page<TableResponseDto> getAllTables(Pageable pageable, TableStatus status) {
+    public Page<TableResponseDto> getAllTables(Pageable pageable, TableStatus status , String restaurantUuid) {
         log.info("Fetching all tables. Page: {}, Size: {}, Status filter: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), status);
 
         Page<RestaurantTable> tablesPage;
 
         if (status != null) {
-            tablesPage = tableRepository.findAllByStatusAndIsDeletedFalse(status, pageable);
+            tablesPage = tableRepository.findByIsDeletedFalseAndRestaurantUuidAndStatus(restaurantUuid , status, pageable);
         } else {
-            tablesPage = tableRepository.findAllByIsDeletedFalse(pageable);
+            tablesPage = tableRepository.findByIsDeletedFalseAndRestaurantUuid(restaurantUuid , pageable);
         }
 
         log.info("Fetched {} tables. Total elements: {}, Total pages: {}",
