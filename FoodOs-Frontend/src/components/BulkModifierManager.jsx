@@ -181,7 +181,84 @@ const BulkModifierManager = ({ restaurantUuid, modifierGroupUuid, onComplete }) 
           </div>
         )}
 
-        <div className="bg-white rounded border border-slate-200 overflow-x-auto">
+        {/* Mobile View (Cards) */}
+        <div className="md:hidden space-y-4">
+           {modifiers.map((modifier, index) => (
+              <div key={modifier.id} className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm relative">
+                 <div className="absolute top-2 right-2">
+                    <button
+                       type="button"
+                       onClick={() => handleRemoveRow(modifier.id)}
+                       disabled={modifiers.length === 1 || isSubmitting}
+                       className="p-1 rounded hover:bg-red-50 text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                       title="Remove this modifier"
+                    >
+                       <X className="h-4 w-4" />
+                    </button>
+                 </div>
+                 <h4 className="font-medium text-slate-700 mb-2 text-sm">Modifier #{index + 1}</h4>
+                 <div className="space-y-3">
+                    <div>
+                        <label className="text-xs text-slate-500 block mb-1">Name <span className="text-red-500">*</span></label>
+                        <input
+                          className={`${inputClass} ${validationErrors[modifier.id]?.name ? inputErrorClass : inputNormalClass}`}
+                          placeholder="e.g., Extra Cheese"
+                          value={modifier.name}
+                          onChange={e => handleFieldChange(modifier.id, 'name', e.target.value)}
+                          disabled={isSubmitting}
+                        />
+                         {validationErrors[modifier.id]?.name && (
+                           <span className="text-xs text-red-500 mt-1 block">{validationErrors[modifier.id].name}</span>
+                         )}
+                    </div>
+                     <div>
+                        <label className="text-xs text-slate-500 block mb-1">Price (₹) <span className="text-red-500">*</span></label>
+                        <input
+                          className={`${inputClass} ${validationErrors[modifier.id]?.price ? inputErrorClass : inputNormalClass}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={modifier.price}
+                          onChange={e => handleFieldChange(modifier.id, 'price', e.target.value)}
+                          disabled={isSubmitting}
+                        />
+                        {validationErrors[modifier.id]?.price && (
+                           <span className="text-xs text-red-500 mt-1 block">{validationErrors[modifier.id].price}</span>
+                         )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                       <div>
+                          <label className="text-xs text-slate-500 block mb-1">Sort Order</label>
+                           <input
+                             className={`${inputClass} text-center ${inputNormalClass}`}
+                             type="number"
+                             min="0"
+                             value={modifier.sortOrder}
+                             onChange={e => handleFieldChange(modifier.id, 'sortOrder', e.target.value)}
+                             disabled={isSubmitting}
+                           />
+                       </div>
+                       <div className="flex items-end">
+                           <label className="flex items-center gap-2 text-sm text-slate-700 h-8">
+                             <input
+                               type="checkbox"
+                               checked={modifier.isActive}
+                               onChange={e => handleFieldChange(modifier.id, 'isActive', e.target.checked)}
+                               className="rounded border-slate-300 text-green-500 focus:ring-green-400"
+                               disabled={isSubmitting}
+                             />
+                             Active
+                           </label>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           ))}
+        </div>
+
+        {/* Desktop View (Table) */}
+        <div className="hidden md:block bg-white rounded border border-slate-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs font-medium">
               <tr>
