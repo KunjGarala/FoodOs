@@ -122,6 +122,9 @@ const TableDetails = () => {
     return () => clearInterval(t);
   }, []);
 
+  const hasManagerAccess = ['MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
+  const hasBillingAccess = ['CASHIER', 'MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
+
   const table = tableDetails?.table;
   const activeOrder = tableDetails?.activeOrder;
   const isOccupied = table?.status === 'OCCUPIED';
@@ -567,7 +570,7 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                {isOccupied && items.length > 0 && (
+                {hasBillingAccess && isOccupied && items.length > 0 && (
                   <Button
                     variant="outline"
                     className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
@@ -579,17 +582,19 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                <Button
-                  variant="outline"
-                  className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  onClick={() => {
-                    setPaymentForm({ method: 'CASH', amount: balance > 0 ? balance.toFixed(2) : '', transactionId: '' });
-                    setShowPaymentModal(true);
-                  }}
-                  disabled={orderActionLoading}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" /> Add Payment
-                </Button>
+                {hasBillingAccess && (
+                  <Button
+                    variant="outline"
+                    className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => {
+                      setPaymentForm({ method: 'CASH', amount: balance > 0 ? balance.toFixed(2) : '', transactionId: '' });
+                      setShowPaymentModal(true);
+                    }}
+                    disabled={orderActionLoading}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" /> Add Payment
+                  </Button>
+                )}
 
                 {paidAmount >= total && total > 0 && (
                   <Button
@@ -603,14 +608,16 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                <Button
-                  variant="danger"
-                  className="w-full"
-                  onClick={() => { setCancelReason(''); setShowCancelOrderModal(true); }}
-                  disabled={orderActionLoading}
-                >
-                  <XCircle className="h-4 w-4 mr-2" /> Cancel Order
-                </Button>
+                {hasManagerAccess && (
+                  <Button
+                    variant="danger"
+                    className="w-full"
+                    onClick={() => { setCancelReason(''); setShowCancelOrderModal(true); }}
+                    disabled={orderActionLoading}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" /> Cancel Order
+                  </Button>
+                )}
               </div>
             </Card>
           </div>

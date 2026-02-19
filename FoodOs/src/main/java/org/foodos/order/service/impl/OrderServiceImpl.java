@@ -595,7 +595,12 @@ public class OrderServiceImpl implements OrderService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Order item not found"));
 
-        itemToCancel.cancel(request.getReason(), request.getNotes());
+        if (itemToCancel.getKotStatus() == KotStatus.SERVED) {
+            throw new RuntimeException("Cannot cancel an item that has already been served.");
+        }
+
+        order.removeItem(itemToCancel);
+//        itemToCancel.cancel(request.getReason(), request.getNotes());
 
         order.calculateTotals();
         order = orderRepository.save(order);

@@ -9,6 +9,7 @@ import org.foodos.order.entity.enums.PaymentMethod;
 import org.foodos.order.entity.enums.PaymentStatus;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,7 +28,8 @@ import java.util.UUID;
         @Index(name = "idx_payment_status", columnList = "status"),
         @Index(name = "idx_payment_transaction_id", columnList = "transaction_id")
 })
-@SQLDelete(sql = "UPDATE payments SET is_deleted = true, deleted_at = now() WHERE id = ?")
+@SQLDelete(sql = "UPDATE payments SET is_deleted = true, deleted_at = now() WHERE id = ? AND version = ?")
+@Where(clause = "is_deleted = false")
 @Filter(name = "deletedFilter", condition = "is_deleted = :isDeleted")
 @Getter
 @Setter
@@ -184,5 +186,3 @@ public class Payment extends BaseSoftDeleteEntity {
         return amount;
     }
 }
-
-
