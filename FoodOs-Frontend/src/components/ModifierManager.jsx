@@ -20,7 +20,7 @@ import {
 
 const emptyForm = {
   name: '',
-  price: '',
+  priceAdd: '',
   isActive: true,
   sortOrder: 0,
 };
@@ -52,14 +52,14 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
 
   // ── Handlers ────────────────────────────────────────────
   const handleAdd = async () => {
-    if (!addForm.name || !addForm.price) return;
+    if (!addForm.name || !addForm.priceAdd) return;
     try {
       await dispatch(createModifier({
         restaurantUuid,
         modifierGroupUuid,
         data: {
           name: addForm.name,
-          price: parseFloat(addForm.price),
+          priceAdd: parseFloat(addForm.priceAdd),
           isActive: addForm.isActive,
           sortOrder: addForm.sortOrder ? parseInt(addForm.sortOrder) : 0,
         },
@@ -73,7 +73,7 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
     setEditingUuid(m.modifierUuid);
     setEditForm({
       name: m.name || '',
-      price: m.price ?? '',
+      priceAdd: m.priceAdd ?? '',
       isActive: m.isActive !== false,
       sortOrder: m.sortOrder ?? 0,
     });
@@ -92,7 +92,7 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
         modifierUuid: editingUuid,
         data: {
           name: editForm.name || undefined,
-          price: editForm.price !== '' ? parseFloat(editForm.price) : undefined,
+          priceAdd: editForm.priceAdd !== '' ? parseFloat(editForm.priceAdd) : undefined,
           isActive: editForm.isActive,
           sortOrder: editForm.sortOrder !== '' ? parseInt(editForm.sortOrder) : undefined,
         },
@@ -186,7 +186,7 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
                           <input className={cellInput} value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} />
                         </td>
                         <td className="px-3 py-2">
-                          <input className={cellInput + ' text-right'} type="number" step="0.01" value={editForm.price} onChange={e => setEditForm(p => ({ ...p, price: e.target.value }))} />
+                          <input className={cellInput + ' text-right'} type="number" step="0.01" value={editForm.priceAdd} onChange={e => setEditForm(p => ({ ...p, priceAdd: e.target.value }))} />
                         </td>
                         <td className="px-3 py-2 text-center">
                           <input type="checkbox" checked={editForm.isActive} onChange={e => setEditForm(p => ({ ...p, isActive: e.target.checked }))} className="rounded border-slate-300 text-green-500 focus:ring-green-400" />
@@ -211,7 +211,7 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
                   return (
                     <tr key={m.modifierUuid} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-2 font-medium text-slate-800">{m.name}</td>
-                      <td className="px-3 py-2 text-right font-semibold">₹{m.price}</td>
+                      <td className="px-3 py-2 text-right font-semibold">₹{m.priceAdd}</td>
                       <td className="px-3 py-2 text-center">
                         <button type="button" onClick={() => handleToggleStatus(m)} disabled={actionLoading}>
                           <Badge variant={m.isActive ? 'success' : 'danger'}>
@@ -241,7 +241,7 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
                       <input className={cellInput} placeholder="Name *" value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} />
                     </td>
                     <td className="px-3 py-2">
-                      <input className={cellInput + ' text-right'} type="number" step="0.01" placeholder="0.00 *" value={addForm.price} onChange={e => setAddForm(p => ({ ...p, price: e.target.value }))} />
+                      <input className={cellInput + ' text-right'} type="number" step="0.01" placeholder="0.00 *" value={addForm.priceAdd} onChange={e => setAddForm(p => ({ ...p, priceAdd: e.target.value }))} />
                     </td>
                     <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={addForm.isActive} onChange={e => setAddForm(p => ({ ...p, isActive: e.target.checked }))} className="rounded border-slate-300" />
@@ -251,7 +251,7 @@ const ModifierManager = ({ restaurantUuid, modifierGroupUuid }) => {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex gap-1 justify-end">
-                        <button type="button" onClick={handleAdd} disabled={actionLoading || !addForm.name || !addForm.price} className="p-1 rounded hover:bg-green-100 text-green-600 disabled:opacity-40">
+                        <button type="button" onClick={handleAdd} disabled={actionLoading || !addForm.name || !addForm.priceAdd} className="p-1 rounded hover:bg-green-100 text-green-600 disabled:opacity-40">
                           <Check className="h-4 w-4" />
                         </button>
                         <button type="button" onClick={() => { setShowAddRow(false); setAddForm(emptyForm); }} className="p-1 rounded hover:bg-slate-100 text-slate-400">

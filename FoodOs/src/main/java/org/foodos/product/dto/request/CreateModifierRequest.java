@@ -15,7 +15,7 @@ public class CreateModifierRequest {
     @NotNull(message = "Price add is required")
     @DecimalMin(value = "0.0", inclusive = true, message = "Price add must be greater than or equal to 0")
     @Digits(integer = 8, fraction = 2, message = "Price add must have at most 8 integer digits and 2 decimal places")
-    private BigDecimal priceAdd = BigDecimal.ZERO;
+    private BigDecimal priceAdd;
 
     @DecimalMin(value = "0.0", inclusive = true, message = "Cost add must be greater than or equal to 0")
     @Digits(integer = 8, fraction = 2, message = "Cost add must have at most 8 integer digits and 2 decimal places")
