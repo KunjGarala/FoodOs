@@ -284,6 +284,12 @@ export const tableAPI = {
   
   // Get table analytics
   getTableAnalytics: (restaurantUuid) => api.get(`/api/v1/tables/analytics/${restaurantUuid}`),
+
+  // Occupy a vacant table (creates a new order)
+  occupyTable: (tableUuid, data = {}) => api.post(`/api/v1/tables/${tableUuid}/occupy`, data),
+
+  // Get combined table + active order details
+  getTableDetails: (tableUuid) => api.get(`/api/v1/tables/${tableUuid}/details`),
 };
 
 export const variationAPI = {

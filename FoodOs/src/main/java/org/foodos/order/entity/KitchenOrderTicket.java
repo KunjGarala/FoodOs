@@ -6,10 +6,12 @@ import lombok.experimental.SuperBuilder;
 import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.order.entity.enums.KotTicketStatus;
 import org.foodos.order.entity.enums.KotType;
+import org.foodos.order.entity.enums.SpicyLevel;
 import org.foodos.restaurant.entity.Restaurant;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -82,6 +84,9 @@ public class KitchenOrderTicket extends BaseSoftDeleteEntity {
     @Builder.Default
     private KotTicketStatus status = KotTicketStatus.PENDING;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String Description;
+
     // ===== ORDER CONTEXT =====
 
     @Column(name = "order_number", length = 50)
@@ -101,7 +106,24 @@ public class KitchenOrderTicket extends BaseSoftDeleteEntity {
     @Column(name = "kitchen_station", length = 50)
     private String kitchenStation;
 
+    // ===== SPICY LEVEL =====
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "spicy_level", length = 20)
+    private SpicyLevel spicyLevel;
+
+    // ===== QUANTITY =====
+
+    @Column(name = "total_quantity", precision = 10, scale = 3)
+    private BigDecimal totalQuantity;
+
     // ===== NOTES =====
+
+    @Column(name = "kitchen_notes", columnDefinition = "TEXT")
+    private String kitchenNotes;
+
+    @Column(name = "order_notes", columnDefinition = "TEXT")
+    private String orderNotes;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
@@ -141,8 +163,9 @@ public class KitchenOrderTicket extends BaseSoftDeleteEntity {
 
     // ===== LIFECYCLE CALLBACKS =====
 
-    @PrePersist
+    @Override
     protected void onCreate() {
+        super.onCreate();
         if (kotUuid == null) {
             kotUuid = UUID.randomUUID().toString();
         }
@@ -152,7 +175,6 @@ public class KitchenOrderTicket extends BaseSoftDeleteEntity {
         if (kotTime == null) {
             kotTime = LocalDateTime.now();
         }
-        super.onCreate();
     }
 
     // ===== BUSINESS LOGIC METHODS =====

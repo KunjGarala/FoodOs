@@ -14,7 +14,7 @@ const KitchenDisplay = () => {
   const dispatch = useDispatch();
   const [autoRefresh, setAutoRefresh] = useState(true);
   
-  const { activeRestaurantId } = useSelector((state) => state.auth);
+  const { activeRestaurantId, role } = useSelector((state) => state.auth);
   const { kitchenOrders, loading, error, success } = useSelector((state) => state.orders);
 
   // Fetch kitchen orders on mount and auto-refresh every 30 seconds
@@ -49,11 +49,23 @@ const KitchenDisplay = () => {
     }
   }, [success, dispatch]);
 
-  const handleMarkPrepared = async (orderUuid) => {
+  const handleMarkPrepared = async (kotUuid) => {
     try {
       await dispatch(changeOrderStatus({ 
-        orderUuid, 
+        kotUuid: kotUuid, 
         newStatus: 'READY' 
+      })).unwrap();
+      dispatch(fetchKitchenOrders(activeRestaurantId));
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+    }
+  };
+
+  const handleMarkServed = async (kotUuid) => {
+    try {
+      await dispatch(changeOrderStatus({ 
+        kotUuid: kotUuid, 
+        newStatus: 'COMPLETED' 
       })).unwrap();
       // Refresh kitchen orders after status change
       dispatch(fetchKitchenOrders(activeRestaurantId));
@@ -131,9 +143,10 @@ const KitchenDisplay = () => {
           <p className="text-sm text-slate-500">Live feed of incoming orders</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
+{/*           
           <Badge variant="primary" className="text-sm sm:text-lg px-3 sm:px-4 py-1">
             Avg Time: {calculateAverageTime()}
-          </Badge>
+          </Badge> */}
           <button
             onClick={handleRefresh}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -166,15 +179,16 @@ const KitchenDisplay = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {kitchenOrders.map(order => (
-            <Card key={order.uuid} className={`border-t-4 ${getStatusBorderColor(order.status)}`}>
+            <Card key={order.kotUuid} className={`border-t-4 ${getStatusBorderColor(order.status)}`}>
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-bold text-slate-800">
-                      {order.table ? `Table ${order.table.tableNumber}` : 'Takeaway'}
+                      {order.tableNumber ? `Table ${order.tableNumber}` : 'Takeaway'}
                     </h3>
+                    {}
                     <span className="text-xs text-slate-400 font-mono">
-                      #{order.orderNumber || order.uuid.slice(0, 8)}
+                      #{order.kotNumber || order.kotUuid?.slice(0, 8)}
                     </span>
                   </div>
                   <Badge variant={getStatusBadgeVariant(order.status)}>
@@ -183,45 +197,106 @@ const KitchenDisplay = () => {
                 </div>
                 <div className="flex items-center gap-1 mt-2 text-xs font-semibold text-slate-500">
                   <Clock className="h-3 w-3" />
-                  {formatTime(order.createdAt)}
+                  {formatTime(order.kotTime || order.createdAt)}
                 </div>
-                {order.customerName && (
-                  <p className="text-sm text-slate-600 mt-1">{order.customerName}</p>
+                {order.waiterName && (
+                  <p className="text-sm text-slate-600 mt-1">Waiter: {order.waiterName}</p>
                 )}
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
-                  {order.items && order.items.map((item) => (
+                  {order.kotItems && order.kotItems.map((item) => (
                     <li 
-                      key={item.uuid} 
-                      className="flex justify-between items-center pb-2 border-b border-slate-100 last:border-0 last:pb-0"
+                      key={item.kotItemUuid} 
+                      className="flex justify-between items-start pb-3 border-b border-slate-100 last:border-0 last:pb-0"
                     >
                       <div className="flex-1">
-                        <span className="font-medium text-slate-700">{item.product?.name || 'Unknown Item'}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-slate-800 text-lg">
+                            {item.productName || 'Unknown Item'}
+                          </span>
+                          {item.variationName && (
+                            <Badge variant="outline" className="text-xs border-slate-300 text-slate-600">
+                              {item.variationName}
+                            </Badge>
+                          )}
+                          {item.spicyLevel && item.spicyLevel !== 'NONE' && (
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
+                              {item.spicyLevel}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Modifiers Display */}
+                        {item.modifiersText && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {item.modifiersText.split(',').map((mod, idx) => (
+                              <span 
+                                key={idx} 
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700"
+                              >
+                                + {mod.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Special Instructions & Notes */}
                         {item.specialInstructions && (
-                          <p className="text-xs text-slate-500 mt-1">{item.specialInstructions}</p>
+                          <div className="flex items-start gap-1 mt-1 text-xs text-orange-600 bg-orange-50 p-1 rounded">
+                            <span className="font-bold">Instr:</span> {item.specialInstructions}
+                          </div>
+                        )}
+                        {item.kitchenNotes && (
+                         <div className="flex items-start gap-1 mt-1 text-xs text-purple-600 bg-purple-50 p-1 rounded">
+                            <span className="font-bold">Note:</span> {item.kitchenNotes}
+                          </div>
                         )}
                       </div>
-                      <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-sm ml-2">
-                        x{item.quantity}
-                      </span>
+                      
+                      <div className="ml-3 flex flex-col items-center">
+                        <span className="bg-slate-900 text-white font-bold px-3 py-1 rounded-lg text-lg shadow-sm">
+                          x{item.quantity}
+                        </span>
+                      </div>
                     </li>
                   ))}
                 </ul>
-                {order.notes && (
+                {order.orderNotes && (
                   <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                    <strong>Note:</strong> {order.notes}
+                    <strong>Note:</strong> {order.orderNotes}
                   </div>
                 )}
                 <div className="mt-6 pt-4 border-t border-slate-100">
-                  <button 
-                    onClick={() => handleMarkPrepared(order.uuid)}
-                    className="w-full py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={order.status === 'READY'}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    {order.status === 'READY' ? 'Ready' : 'Mark Prepared'}
-                  </button>
+                  
+                  <div className="flex gap-2">
+                    {/* Chef Action: Mark Prepared */}
+                    {(role === 'CHEF' || role === 'OWNER' || role === 'MANAGER') && (
+                      <button 
+                        onClick={() => handleMarkPrepared(order.kotUuid)}
+                        className={`w-full py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
+                          order.status === 'READY' 
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                            : 'bg-slate-900 text-white hover:bg-slate-800'
+                        }`}
+                        disabled={order.status === 'READY'}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        {order.status === 'READY' ? 'Ready' : 'Mark Prepared'}
+                      </button>
+                    )}
+
+                    {/* Waiter Action: Mark Served */}
+                    {(role === 'WAITER' || role === 'OWNER' || role === 'MANAGER') && order.status === 'READY' && (
+                      <button 
+                        onClick={() => handleMarkServed(order.kotUuid)}
+                        className="w-full py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Served
+                      </button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

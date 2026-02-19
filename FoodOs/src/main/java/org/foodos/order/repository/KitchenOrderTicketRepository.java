@@ -30,8 +30,8 @@ public interface KitchenOrderTicketRepository extends JpaRepository<KitchenOrder
     @Query("SELECT kot FROM KitchenOrderTicket kot WHERE kot.restaurant.id = :restaurantId AND kot.kotDate = :kotDate AND kot.isDeleted = false ORDER BY kot.kotTime DESC")
     List<KitchenOrderTicket> findByRestaurantAndDate(@Param("restaurantId") Long restaurantId, @Param("kotDate") LocalDate kotDate);
 
-    @Query("SELECT kot FROM KitchenOrderTicket kot WHERE kot.restaurant.id = :restaurantId AND kot.status IN :statuses AND kot.isDeleted = false ORDER BY kot.priority DESC, kot.kotTime ASC")
-    List<KitchenOrderTicket> findByRestaurantAndStatusIn(@Param("restaurantId") Long restaurantId, @Param("statuses") List<KotTicketStatus> statuses);
+    @Query("SELECT kot FROM KitchenOrderTicket kot WHERE kot.restaurant.restaurantUuid = :restaurantUUid AND kot.status IN :statuses AND kot.isDeleted = false ORDER BY kot.priority DESC, kot.kotTime ASC")
+    List<KitchenOrderTicket> findByRestaurantAndStatusIn(@Param("restaurantUUid") String restaurantUUid, @Param("statuses") List<KotTicketStatus> statuses);
 
     @Query("SELECT kot FROM KitchenOrderTicket kot WHERE kot.restaurant.id = :restaurantId AND kot.printerTarget = :printerTarget AND kot.status IN :statuses AND kot.isDeleted = false ORDER BY kot.priority DESC, kot.kotTime ASC")
     List<KitchenOrderTicket> findByRestaurantAndPrinterTargetAndStatusIn(@Param("restaurantId") Long restaurantId,

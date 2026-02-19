@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -7,14 +8,14 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { 
   Users, Clock, Plus, Edit, Trash2, Shuffle, ArrowRightLeft, BarChart3,
-  AlertCircle, X, Check, Loader2, Power
+  AlertCircle, X, Check, Loader2, Power, Eye, HandMetal
 } from 'lucide-react';
 import {
   getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
   mergeTables, transferTable, getTableAnalytics, clearError, setStatusFilter,
   setSectionFilter, selectFilteredTables, selectTablesByStatus, selectTableLoading,
   selectTableActionLoading, selectTableError, selectTableFilters, selectTableAnalytics,
-  selectTablePagination, getValidNextStatuses, isValidStatusTransition,
+  selectTablePagination, getValidNextStatuses, isValidStatusTransition, occupyTable,
 } from '../../store/tableSlice';
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
 
@@ -44,6 +45,7 @@ const calculateOccupiedTime = (seatedAt) => {
 
 const TableManagement = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const activeRestaurantId = useSelector(selectActiveRestaurant);
   const userRole = useSelector(selectRole);
   const tables = useSelector(selectFilteredTables);
@@ -79,6 +81,8 @@ const TableManagement = () => {
   const [transferForm, setTransferForm] = useState({ fromTableUuid: '', toTableUuid: '' });
   const [validStatuses, setValidStatuses] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date()); // For real-time occupied time updates
+  const [actionPopoverTable, setActionPopoverTable] = useState(null); // For vacant table action popover
+  const popoverRef = useRef(null);
 
   const sections = ['All', ...new Set(tables.map(t => t.sectionName).filter(Boolean))];
 
@@ -90,6 +94,19 @@ const TableManagement = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Close action popover on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setActionPopoverTable(null);
+      }
+    };
+    if (actionPopoverTable) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionPopoverTable]);
 
   // Fetch tables based on user role
   useEffect(() => {
@@ -463,7 +480,13 @@ const TableManagement = () => {
                       ? getInactiveTableStyle() 
                       : `cursor-pointer hover:shadow-md ${getStatusColor(table.status)}`
                   }`}
-                  onClick={isInactive ? undefined : () => openStatusModal(table)}>
+                  onClick={isInactive ? undefined : () => {
+                    if (table.status === 'VACANT') {
+                      setActionPopoverTable(actionPopoverTable?.tableUuid === table.tableUuid ? null : table);
+                    } else {
+                      navigate(`/app/tables/${table.tableUuid}`);
+                    }
+                  }}>
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!isInactive && (
                       <>
@@ -525,6 +548,44 @@ const TableManagement = () => {
                           {calculateOccupiedTime(table.seatedAt)}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Action popover for vacant tables */}
+                  {!isInactive && actionPopoverTable?.tableUuid === table.tableUuid && table.status === 'VACANT' && (
+                    <div 
+                      ref={popoverRef}
+                      className="absolute -bottom-20 left-1/2 -translate-x-1/2 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex gap-2 z-30"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm font-medium transition-colors whitespace-nowrap"
+                        disabled={actionLoading}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await dispatch(occupyTable({ tableUuid: table.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: 1 } })).unwrap();
+                            setActionPopoverTable(null);
+                            navigate(`/app/tables/${table.tableUuid}`);
+                          } catch (err) {
+                            console.error('Failed to occupy table:', err);
+                          }
+                        }}
+                      >
+                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
+                        Take
+                      </button>
+                      <button
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-medium transition-colors whitespace-nowrap"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionPopoverTable(null);
+                          navigate(`/app/tables/${table.tableUuid}`);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                        View
+                      </button>
                     </div>
                   )}
                 </div>
@@ -607,7 +668,7 @@ const TableManagement = () => {
         </div>
         <div className="flex-1 overflow-auto p-4 space-y-3">
           {tables.filter(t => t.status !== 'VACANT').map(table => (
-            <div key={table.tableUuid} onClick={() => openStatusModal(table)}
+            <div key={table.tableUuid} onClick={() => navigate(`/app/tables/${table.tableUuid}`)}
               className="flex justify-between items-center p-3 rounded-lg border border-slate-100 hover:border-blue-100 hover:bg-blue-50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700 group-hover:bg-white group-hover:text-blue-600 transition-colors">
@@ -864,7 +925,6 @@ const TableManagement = () => {
       {/* Analytics Modal */}
       <Modal isOpen={showAnalyticsModal} onClose={() => setShowAnalyticsModal(false)} title="Table Analytics">
         <div className="space-y-4">
-          {console.log(analytics)}
           {analytics ? (
             <div className="grid grid-cols-2 gap-4">
               <Card className="p-4">

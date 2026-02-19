@@ -2,6 +2,8 @@ package org.foodos.order.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.foodos.order.entity.enums.SpicyLevel;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -41,6 +43,9 @@ public class KotItem {
     @JoinColumn(name = "order_item_id", nullable = false)
     private OrderItem orderItem;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String Description;
+
     // ===== ITEM DETAILS (For kitchen display) =====
 
     @Column(name = "product_name", nullable = false, length = 200)
@@ -60,6 +65,20 @@ public class KotItem {
 
     @Column(name = "special_instructions", columnDefinition = "TEXT")
     private String specialInstructions;
+
+    // ===== SPICY LEVEL =====
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "spicy_level", length = 20)
+    private SpicyLevel spicyLevel;
+
+    // ===== NOTES =====
+
+    @Column(name = "kitchen_notes", columnDefinition = "TEXT")
+    private String kitchenNotes;
+
+    @Column(name = "order_notes", columnDefinition = "TEXT")
+    private String orderNotes;
 
     // ===== STATUS =====
 

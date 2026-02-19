@@ -58,16 +58,17 @@ export const deleteOrder = createAsyncThunk(
 );
 
 // Change Order Status
+// Change Order Status (KOT Status)
 export const changeOrderStatus = createAsyncThunk(
   'orders/changeStatus',
-  async ({ orderUuid, newStatus }, { rejectWithValue }) => {
+  async ({ kotUuid, newStatus }, { rejectWithValue }) => {
     try {
       const response = await api.patch(
-        `/api/v1/orders/${orderUuid}/status?newStatus=${newStatus}`
+        `/api/v1/orders/kot/${kotUuid}/status?newStatus=${newStatus}`
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to change order status');
+      return rejectWithValue(error.response?.data || 'Failed to change KOT status');
     }
   }
 );
@@ -96,6 +97,19 @@ export const completeOrder = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to complete order');
+    }
+  }
+);
+
+// Generate Bill
+export const generateBill = createAsyncThunk(
+  'orders/generateBill',
+  async (orderUuid, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/v1/orders/${orderUuid}/bill`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to generate bill');
     }
   }
 );
@@ -131,7 +145,7 @@ export const cancelOrderItem = createAsyncThunk(
   'orders/cancelItem',
   async ({ orderUuid, itemUuid, reason }, { rejectWithValue }) => {
     try {
-      const response = await api.patch(
+      const response = await api.post(
         `/api/v1/orders/${orderUuid}/items/${itemUuid}/cancel`,
         { cancellationReason: reason }
       );
@@ -161,10 +175,10 @@ export const addPayment = createAsyncThunk(
 // Send KOT (Kitchen Order Ticket)
 export const sendKot = createAsyncThunk(
   'orders/sendKot',
-  async ({ orderUuid, itemUuids }, { rejectWithValue }) => {
+  async ({ orderUuid, orderItemUuids }, { rejectWithValue }) => {
     try {
       const response = await api.post(`/api/v1/orders/${orderUuid}/kot`, {
-        itemUuids
+        orderItemUuids
       });
       return response.data;
     } catch (error) {
@@ -286,27 +300,48 @@ const orderSlice = createSlice({
     },
     // Cart Management
     addToCart: (state, action) => {
-      const existing = state.cart.find(item => item.productUuid === action.payload.productUuid);
-      console.log('Adding to cart - Product:', action.payload);
-      console.log('Existing item:', existing);
+      const product = action.payload;
+      const variationUuid = product.selectedVariation?.variationUuid || null;
+      
+      const existing = state.cart.find(item => 
+        item.productUuid === product.productUuid && 
+        item.variationUuid === variationUuid
+      );
+      
+      console.log('Adding to cart - Product:', product);
       
       if (existing) {
         existing.quantity += 1;
       } else {
-        state.cart.push({ ...action.payload, quantity: 1 });
-        console.log('Cart after adding:', state.cart);
+        const price = product.selectedVariation?.price || product.basePrice || 0;
+        state.cart.push({ 
+          ...product, 
+          quantity: 1,
+          variationUuid: variationUuid,
+          variationName: product.selectedVariation?.name || null,
+          price: price // Store the effective price
+        });
       }
     },
     removeFromCart: (state, action) => {
-      state.cart = state.cart.filter(item => item.productUuid !== action.payload);
+      const { productUuid, variationUuid } = action.payload;
+      state.cart = state.cart.filter(item => 
+        !(item.productUuid === productUuid && item.variationUuid === (variationUuid || null))
+      );
     },
     updateCartQuantity: (state, action) => {
-      const { productUuid, quantity } = action.payload;
-      const item = state.cart.find(item => item.productUuid === productUuid);
+      const { productUuid, variationUuid, quantity } = action.payload;
+      const item = state.cart.find(item => 
+        item.productUuid === productUuid && 
+        item.variationUuid === (variationUuid || null)
+      );
+      
       if (item) {
         item.quantity = quantity;
         if (item.quantity <= 0) {
-          state.cart = state.cart.filter(item => item.productUuid !== productUuid);
+          state.cart = state.cart.filter(i => 
+            !(i.productUuid === productUuid && i.variationUuid === (variationUuid || null))
+          );
         }
       }
     },
@@ -439,6 +474,25 @@ const orderSlice = createSlice({
       // Send KOT
       .addCase(sendKot.fulfilled, (state, action) => {
         state.success = 'KOT sent to kitchen';
+      })
+      
+      // Generate Bill
+      .addCase(generateBill.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(generateBill.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const index = state.orders.findIndex(o => o.uuid === action.payload.uuid);
+        if (index !== -1) {
+          state.orders[index] = action.payload;
+        }
+        state.currentOrder = action.payload;
+        state.success = 'Bill generated successfully';
+      })
+      .addCase(generateBill.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       })
       
       // Fetch Orders by Restaurant

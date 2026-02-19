@@ -3,16 +3,16 @@ package org.foodos.order.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.order.dto.request.*;
+import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.*;
-import org.foodos.order.entity.enums.KotStatus;
-import org.foodos.order.entity.enums.OrderStatus;
-import org.foodos.order.entity.enums.OrderType;
-import org.foodos.order.entity.enums.PaymentStatus;
+import org.foodos.order.entity.enums.*;
 import org.foodos.order.mapper.OrderMapper;
 import org.foodos.order.repository.*;
+import org.foodos.order.service.OrderService;
 import org.foodos.product.entity.Modifier;
 import org.foodos.product.entity.Product;
 import org.foodos.product.entity.ProductVariation;
@@ -50,7 +50,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class OrderServiceImpl implements org.foodos.order.service.OrderService {
+public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -245,10 +245,18 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
         // Add items to KOT
         for (String itemUuid : request.getOrderItemUuids()) {
+            log.info("Looking for itemUuid: [{}]", itemUuid);
+            log.info("Available order items:");
+            order.getItems().forEach(item -> log.info("  - OrderItemUuid: [{}], Match: {}",
+                    item.getOrderItemUuid(),
+                    item.getOrderItemUuid() != null
+                            && item.getOrderItemUuid().trim().equalsIgnoreCase(itemUuid.trim())));
+
             OrderItem orderItem = order.getItems().stream()
-                    .filter(item -> item.getOrderItemUuid().equals(itemUuid))
+                    .filter(item -> item.getOrderItemUuid() != null &&
+                            item.getOrderItemUuid().trim().equalsIgnoreCase(itemUuid.trim()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Order item not found"));
+                    .orElseThrow(() -> new RuntimeException("Order item not found: " + itemUuid));
 
             // Create KOT item using mapper
             KotItem kotItem = orderMapper.toKotItem(orderItem);
@@ -259,6 +267,13 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
             orderItem.setKotPrintedAt(LocalDateTime.now());
             orderItem.setKitchenOrderTicket(kot);
         }
+
+        // Calculate and set total quantity for KOT
+        BigDecimal totalQuantity = kot.getKotItems().stream()
+                .map(KotItem::getQuantity)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        kot.setTotalQuantity(totalQuantity);
 
         // Save KOT
         kot.markAsPrinted();
@@ -322,7 +337,7 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
         order.addPayment(payment);
         order.calculateTotals();
-
+        order.setStatus(OrderStatus.PAID);
         // Check if fully paid
         if (order.isFullyPaid() && order.getStatus() == OrderStatus.BILLED) {
             order.transitionTo(OrderStatus.PAID);
@@ -344,7 +359,8 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         // Ensure all items are served or ready
         boolean allItemsReady = order.getActiveItems().stream()
                 .allMatch(item -> item.getKotStatus() == KotStatus.SERVED ||
-                                 item.getKotStatus() == KotStatus.READY);
+                        item.getKotStatus() == KotStatus.READY ||
+                        item.getKotStatus() == KotStatus.FIRED);
 
         if (!allItemsReady) {
             throw new RuntimeException("Cannot generate bill. Some items are not ready/served");
@@ -369,7 +385,8 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status, Pageable pageable) {
+    public Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status,
+            Pageable pageable) {
         Page<Order> orders = orderRepository.findByRestaurantUuidAndStatusIn(restaurantUuid, List.of(status), pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
@@ -396,9 +413,8 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         }
 
         // Determine unit price
-        BigDecimal unitPrice = request.getUnitPrice() != null ?
-                request.getUnitPrice() :
-                (variation != null ? variation.getPrice() : product.getBasePrice());
+        BigDecimal unitPrice = request.getUnitPrice() != null ? request.getUnitPrice()
+                : (variation != null ? variation.getPrice() : product.getBasePrice());
 
         // Create order item using mapper
         OrderItem orderItem = orderMapper.toOrderItem(request);
@@ -533,7 +549,9 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
         }
-
+        if(order.getStatus().equals(OrderStatus.DRAFT)){
+            order.setStatus(OrderStatus.OPEN);
+        }
         for (OrderItemRequest itemRequest : items) {
             OrderItem orderItem = createOrderItem(itemRequest, order);
             order.addItem(orderItem);
@@ -572,7 +590,8 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
     }
 
     @Override
-    public OrderResponse cancelOrderItem(String orderUuid, String orderItemUuid, CancelOrderItemRequest request, Long currentUserId) {
+    public OrderResponse cancelOrderItem(String orderUuid, String orderItemUuid, CancelOrderItemRequest request,
+            Long currentUserId) {
         log.info("Cancelling item {} from order {}", orderItemUuid, orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
@@ -599,8 +618,10 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate, OrderType orderType) {
-        List<Order> orders = orderRepository.findByRestaurantUuidAndOrderTypeAndOrderDate(restaurantUuid, orderType, orderDate);
+    public List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate,
+            OrderType orderType) {
+        List<Order> orders = orderRepository.findByRestaurantUuidAndOrderTypeAndOrderDate(restaurantUuid, orderType,
+                orderDate);
         return orderMapper.toOrderResponseList(orders);
     }
 
@@ -613,9 +634,26 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getKitchenOrders(String restaurantUuid) {
-        List<Order> orders = orderRepository.findKitchenOrdersByRestaurantUuid(restaurantUuid);
-        return orderMapper.toOrderResponseList(orders);
+    public List<KotResponse> getKitchenOrders(String restaurantUuid, UserAuthEntity user) {
+        UserRole role = user.getRole();
+
+        if (role.equals(UserRole.CHEF)) {
+            List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS);
+            List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
+
+            return orderMapper.toKotResponseList(orders);
+        } else if (role.equals(UserRole.WAITER)) {
+            List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS , KotTicketStatus.READY);
+            List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
+
+            return orderMapper.toKotResponseList(orders);
+        }
+        List<KotTicketStatus> kotStatus = List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS , KotTicketStatus.READY);
+        List<KitchenOrderTicket> orders = kitchenOrderTicketRepository.findByRestaurantAndStatusIn(restaurantUuid ,kotStatus);
+
+        return orderMapper.toKotResponseList(orders);
+
+
     }
 
     @Override
@@ -658,5 +696,77 @@ public class OrderServiceImpl implements org.foodos.order.service.OrderService {
     public BigDecimal getAverageOrderValue(String restaurantUuid, LocalDate orderDate) {
         return orderRepository.calculateAverageOrderValueByRestaurantUuid(restaurantUuid, orderDate);
     }
-}
 
+    @Override
+    public Order createEmptyOrder(CreateOrderRequest orderRequest, Long userId) {
+        log.info("Creating empty order for restaurant: {}", orderRequest.getRestaurantUuid());
+
+        // 1. Validate and fetch restaurant
+        Restaurant restaurant = restaurantRepository
+                .findByRestaurantUuidAndIsDeletedFalse(orderRequest.getRestaurantUuid())
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        // 2. Create order entity using mapper
+        Order order = orderMapper.toOrder(orderRequest);
+        order.setRestaurant(restaurant);
+
+        // 3. Handle table assignment (for dine-in)
+        if (orderRequest.getTableUuid() != null) {
+            RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(orderRequest.getTableUuid())
+                    .orElseThrow(() -> new RuntimeException("Table not found"));
+            order.setTable(table);
+        }
+
+        // 4. Handle waiter assignment
+        if (orderRequest.getWaiterUuid() != null) {
+            UserAuthEntity waiter = userRepository.findByUserUuidAndIsDeletedFalse(orderRequest.getWaiterUuid())
+                    .orElseThrow(() -> new RuntimeException("Waiter not found"));
+            order.setWaiter(waiter);
+        }
+
+        // 5. Generate order number
+        String orderNumber = generateOrderNumber(restaurant.getId(), LocalDate.now());
+        order.setOrderNumber(orderNumber);
+
+        // 6. Set status to DRAFT
+        order.setStatus(OrderStatus.DRAFT);
+
+        // 7. Save order
+        order = orderRepository.save(order);
+        log.info("Empty order created successfully: {}", order.getOrderUuid());
+
+        return order;
+    }
+
+    @Override
+    public KotResponse updateKotStatus(String kotUuid, String newStatus) {
+        log.info("Updating KOT status for KOT: {}", kotUuid);
+
+        KitchenOrderTicket kot = kitchenOrderTicketRepository.findByKotUuidAndIsDeletedFalse(kotUuid)
+                .orElseThrow(() -> new RuntimeException("KOT not found"));
+
+        List<OrderItem> items = kot.getKotItems().stream()
+                .map(KotItem::getOrderItem)
+                .toList();
+
+
+        KotTicketStatus status;
+        try {
+            status = KotTicketStatus.valueOf(newStatus.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid KOT status: " + newStatus);
+        }
+
+        if(status.equals(KotTicketStatus.READY)){
+            items.forEach(item -> item.setKotStatus(KotStatus.READY));
+        }else if(status.equals(KotTicketStatus.COMPLETED)){
+            items.forEach(item -> item.setKotStatus(KotStatus.SERVED));
+        }
+
+        kot.setStatus(status);
+        kot = kitchenOrderTicketRepository.save(kot);
+        log.info("KOT status updated successfully: {}", kot.getKotNumber());
+
+        return orderMapper.toKotResponse(kot);
+    }
+}

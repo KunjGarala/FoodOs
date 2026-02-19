@@ -12,7 +12,7 @@ public enum OrderStatus {
     READY("Ready", "All items prepared, ready to serve", false, false),
     SERVED("Served", "Items served to customer", false, false),
     BILLED("Billed", "Bill generated", false, false),
-    PAID("Paid", "Payment received", true, false),
+    PAID("Paid", "Payment received", false, false),
     COMPLETED("Completed", "Order completed successfully", true, false),
     CANCELLED("Cancelled", "Order cancelled", true, true),
     VOID("Void", "Order voided", true, true);
@@ -52,9 +52,10 @@ public enum OrderStatus {
 
         // Define valid transitions
         return switch (this) {
-            case DRAFT -> newStatus == OPEN || newStatus == CANCELLED;
+            case DRAFT -> newStatus == OPEN || newStatus == CANCELLED || newStatus == PAID || newStatus == COMPLETED;
             case OPEN -> newStatus == KOT_SENT || newStatus == BILLED || newStatus == CANCELLED;
-            case KOT_SENT -> newStatus == IN_PROGRESS || newStatus == CANCELLED;
+            case KOT_SENT ->
+                newStatus == IN_PROGRESS || newStatus == CANCELLED || newStatus == READY || newStatus == BILLED;
             case IN_PROGRESS -> newStatus == READY || newStatus == CANCELLED;
             case READY -> newStatus == SERVED || newStatus == CANCELLED;
             case SERVED -> newStatus == BILLED || newStatus == CANCELLED;
@@ -64,4 +65,3 @@ public enum OrderStatus {
         };
     }
 }
-

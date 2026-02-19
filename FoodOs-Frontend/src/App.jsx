@@ -15,7 +15,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // POS Components
 import TableManagement from './pages/POS/TableManagement';
+import TableDetails from './pages/POS/TableDetails';
 import OrderEntry from './pages/POS/OrderEntry';
+import AddOrderItems from './pages/POS/AddOrderItems';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
 import MenuManagement from './pages/Management/MenuManagement';
 import ProductForm from './pages/Management/ProductForm';
@@ -61,6 +63,19 @@ function App() {
                 </ProtectedRoute>
             } />
             
+            <Route path="tables/:tableUuid" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <TableDetails />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="tables/:tableUuid/add-items" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <AddOrderItems />
+                </ProtectedRoute>
+            } />
+
+            
             <Route path="order" element={
                 <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
                     <OrderEntry />
@@ -68,7 +83,7 @@ function App() {
             } />
             
             <Route path="kitchen" element={
-                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF', 'WAITER']}>
                     <KitchenDisplay />
                 </ProtectedRoute>
             } />

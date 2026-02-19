@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.order.dto.request.*;
+import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.enums.OrderStatus;
 import org.foodos.order.service.OrderService;
@@ -296,10 +297,10 @@ public class OrderController {
     @Operation(summary = "Get kitchen orders", description = "Gets orders in kitchen for KDS")
     @GetMapping("/restaurant/{restaurantUuid}/kitchen")
     @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'CHEF')")
-    public ResponseEntity<List<OrderResponse>> getKitchenOrders(@PathVariable String restaurantUuid) {
+    public ResponseEntity<List<KotResponse>> getKitchenOrders(@PathVariable String restaurantUuid , @AuthenticationPrincipal UserAuthEntity user) {
         log.info("REST: Fetching kitchen orders for restaurant: {}", restaurantUuid);
-        List<OrderResponse> orders = orderService.getKitchenOrders(restaurantUuid);
-        return ResponseEntity.ok(orders);
+        List<KotResponse> kotResponses = orderService.getKitchenOrders(restaurantUuid , user);
+        return ResponseEntity.ok(kotResponses);
     }
 
     @Operation(summary = "Search orders", description = "Searches orders by number, customer name, or phone")
@@ -381,6 +382,15 @@ public class OrderController {
 
         BigDecimal average = orderService.getAverageOrderValue(restaurantUuid, date);
         return ResponseEntity.ok(average);
+    }
+
+    @PreAuthorize(("@permissionEvaluator.hasPermissionLevel(authentication, 'CHEF')"))
+    @PatchMapping("/kot/{kotUuid}/status")
+    public ResponseEntity<KotResponse> updateKotStatus(@PathVariable String kotUuid,
+                                                @RequestParam String newStatus) {
+        log.info("REST: Updating KOT {} status to: {}", kotUuid, newStatus);
+        KotResponse response = orderService.updateKotStatus(kotUuid, newStatus);
+        return ResponseEntity.ok(response);
     }
 }
 

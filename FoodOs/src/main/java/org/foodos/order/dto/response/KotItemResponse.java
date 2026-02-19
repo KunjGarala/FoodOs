@@ -3,6 +3,7 @@ package org.foodos.order.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import org.foodos.order.entity.enums.SpicyLevel;
 
 import java.math.BigDecimal;
 
@@ -37,6 +38,15 @@ public class KotItemResponse {
 
     @Schema(description = "Special instructions")
     private String specialInstructions;
+
+    @Schema(description = "Spicy level", example = "MEDIUM")
+    private SpicyLevel spicyLevel;
+
+    @Schema(description = "Kitchen notes")
+    private String kitchenNotes;
+
+    @Schema(description = "Order notes")
+    private String orderNotes;
 
     @Schema(description = "Is cancelled", example = "false")
     private Boolean isCancelled;

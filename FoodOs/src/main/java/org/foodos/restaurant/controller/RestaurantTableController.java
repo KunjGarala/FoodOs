@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.restaurant.dto.request.*;
 import org.foodos.restaurant.dto.response.*;
 import org.foodos.restaurant.entity.enums.TableStatus;
@@ -351,6 +352,25 @@ public class RestaurantTableController {
         log.info("GET /api/v1/tables/analytics/{} - Fetch analytics by user: {}",
                 restaurantUuid, currentUser.getUsername());
         TableAnalyticsDto response = tableService.getTableAnalytics(restaurantUuid);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{tableUuid}/occupy")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<OrderResponse> occupyTable(
+            @PathVariable String tableUuid,
+            @Valid @RequestBody OccupyTableRequest request,
+            @AuthenticationPrincipal UserAuthEntity currentUser) {
+
+        log.info("REST: Occupying table: {}", tableUuid);
+        OrderResponse response = tableService.occupyTable(tableUuid, request, currentUser.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{tableUuid}/details")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<TableDetailResponse> getTableDetails(@PathVariable String tableUuid) {
+        TableDetailResponse response = tableService.getTableDetails(tableUuid);
         return ResponseEntity.ok(response);
     }
 }

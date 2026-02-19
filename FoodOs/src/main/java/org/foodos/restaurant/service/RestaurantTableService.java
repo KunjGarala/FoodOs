@@ -1,11 +1,17 @@
 package org.foodos.restaurant.service;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.order.dto.request.CreateOrderRequest;
+import org.foodos.order.dto.response.OrderResponse;
+import org.foodos.order.entity.Order;
+import org.foodos.order.mapper.OrderMapper;
+import org.foodos.order.service.OrderService;
 import org.foodos.restaurant.dto.request.*;
 import org.foodos.restaurant.dto.response.*;
 import org.foodos.restaurant.entity.Restaurant;
@@ -33,6 +39,8 @@ public class RestaurantTableService {
     private final RestaurantRepo restaurantRepo;
     private final UserAuthRepository userAuthRepository;
     private final RestaurantTableMapper tableMapper;
+    private final OrderService orderService;
+    private  final OrderMapper orderMapper;
 
     /**
      * 1️⃣ Create a new table for a restaurant
@@ -666,4 +674,55 @@ public class RestaurantTableService {
         }
     }
 
+    @Transactional
+    public OrderResponse occupyTable(String tableUuid, OccupyTableRequest request, Long userId) {
+        // 1. Fetch table and verify it's vacant
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        if (table.getStatus() != TableStatus.VACANT) {
+            throw new IllegalStateException("Table is not vacant");
+        }
+
+        Restaurant restaurant = table.getRestaurant();
+
+        // 2. Create a new order (with no items)
+        CreateOrderRequest orderRequest = CreateOrderRequest.builder()
+                .restaurantUuid(restaurant.getRestaurantUuid())
+                .tableUuid(tableUuid)
+                .orderType(request.getOrderType())
+                .numberOfGuests(request.getNumberOfGuests())
+                .customerName(request.getCustomerName())
+                .customerPhone(request.getCustomerPhone())
+                .items(new ArrayList<>()) // empty items list
+                .build();
+
+        // You may need to modify your order creation logic to allow empty items,
+        // or create a dedicated method that creates an order without items.
+        Order order = orderService.createEmptyOrder(orderRequest, userId);
+
+        // 3. Update table status and seated time
+        table.setStatus(TableStatus.OCCUPIED);
+        table.setSeatedAt(LocalDateTime.now());
+        tableRepository.save(table);
+
+        // 4. Return order response
+        return orderMapper.toOrderResponse(order);
+    }
+
+    public TableDetailResponse getTableDetails(String tableUuid) {
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        TableResponseDto tableResponse = tableMapper.toResponseDto(table);
+        OrderResponse activeOrder = null;
+        if(table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
+            activeOrder = orderService.getActiveOrderByTable(tableUuid);
+        }
+
+        return TableDetailResponse.builder()
+                .table(tableResponse)
+                .activeOrder(activeOrder)
+                .build();
+    }
 }

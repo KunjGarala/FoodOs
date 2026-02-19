@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.common.entity.BaseSoftDeleteEntity;
 import org.foodos.order.entity.enums.KotStatus;
+import org.foodos.order.entity.enums.SpicyLevel;
 import org.foodos.product.entity.Product;
 import org.foodos.product.entity.ProductVariation;
 import org.hibernate.annotations.BatchSize;
@@ -123,6 +124,20 @@ public class OrderItem extends BaseSoftDeleteEntity {
     @Column(name = "special_instructions", columnDefinition = "TEXT")
     private String specialInstructions;
 
+    // ===== SPICY LEVEL =====
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "spicy_level", length = 20)
+    private SpicyLevel spicyLevel;
+
+    // ===== ADDITIONAL NOTES =====
+
+    @Column(name = "kitchen_notes", columnDefinition = "TEXT")
+    private String kitchenNotes;
+
+    @Column(name = "order_notes", columnDefinition = "TEXT")
+    private String orderNotes;
+
     // ===== KOT STATUS TRACKING =====
 
     @Enumerated(EnumType.STRING)
@@ -178,12 +193,12 @@ public class OrderItem extends BaseSoftDeleteEntity {
 
     // ===== LIFECYCLE CALLBACKS =====
 
-    @PrePersist
+    @Override
     protected void onCreate() {
+        super.onCreate();
         if (orderItemUuid == null) {
             orderItemUuid = UUID.randomUUID().toString();
         }
-        super.onCreate();
     }
 
     // ===== BUSINESS LOGIC METHODS =====

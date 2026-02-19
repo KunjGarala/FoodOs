@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.foodos.order.entity.enums.SpicyLevel;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -52,6 +53,17 @@ public class OrderItemRequest {
     @Schema(description = "Special instructions for this item", example = "Extra spicy")
     @Size(max = 500, message = "Item notes cannot exceed 500 characters")
     private String itemNotes;
+
+    @Schema(description = "Spicy level", example = "MEDIUM")
+    private SpicyLevel spicyLevel;
+
+    @Schema(description = "Kitchen notes")
+    @Size(max = 1000, message = "Kitchen notes cannot exceed 1000 characters")
+    private String kitchenNotes;
+
+    @Schema(description = "Order notes")
+    @Size(max = 1000, message = "Order notes cannot exceed 1000 characters")
+    private String orderNotes;
 
     @Schema(description = "Is this a complimentary item", example = "false")
     @Builder.Default
