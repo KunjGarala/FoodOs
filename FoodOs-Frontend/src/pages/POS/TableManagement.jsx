@@ -868,14 +868,14 @@ const TableManagement = () => {
                 min="1" required />
             </div>
           </div>
-          <div>
+          {/* <div>
             <label htmlFor="shape" className="block text-sm font-medium text-slate-700 mb-1">Shape *</label>
             <select id="shape" name="shape" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={tableForm.shape} onChange={(e) => setTableForm({ ...tableForm, shape: e.target.value })}>
               {TABLE_SHAPES.map(shape => (<option key={shape} value={shape}>{shape}</option>))}
             </select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          </div> */}
+          {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="posX" className="block text-sm font-medium text-slate-700 mb-1">Position X</label>
               <Input id="posX" name="posX" type="number" value={tableForm.posX} onChange={(e) => setTableForm({ ...tableForm, posX: parseInt(e.target.value) })} />
@@ -884,7 +884,7 @@ const TableManagement = () => {
               <label htmlFor="posY" className="block text-sm font-medium text-slate-700 mb-1">Position Y</label>
               <Input id="posY" name="posY" type="number" value={tableForm.posY} onChange={(e) => setTableForm({ ...tableForm, posY: parseInt(e.target.value) })} />
             </div>
-          </div>
+          </div> */}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="isActive" checked={tableForm.isActive}
               onChange={(e) => setTableForm({ ...tableForm, isActive: e.target.checked })} className="rounded" />
