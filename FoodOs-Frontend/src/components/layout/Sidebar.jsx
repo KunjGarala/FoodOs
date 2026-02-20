@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { LayoutDashboard, Armchair, UtensilsCrossed, ChefHat, Receipt, Users, Settings, LogOut, Store, Layers, Sparkles } from 'lucide-react';
 import { logout } from '../../store/authSlice';
+import websocketService from '../../services/websocket';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const { role } = useSelector((state) => state.auth);
@@ -10,6 +11,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    websocketService.disconnect();
     dispatch(logout());
     navigate('/login');
   };

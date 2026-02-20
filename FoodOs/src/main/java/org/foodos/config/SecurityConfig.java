@@ -120,7 +120,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api/auth/request-password-reset/**",
-                                "/api/auth/reset-password/**")
+                                "/api/auth/reset-password/**",
+                                "/ws/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

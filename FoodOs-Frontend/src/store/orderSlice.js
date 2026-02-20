@@ -351,6 +351,53 @@ const orderSlice = createSlice({
     setCart: (state, action) => {
       state.cart = action.payload;
     },
+
+    // ─── WebSocket event handlers ──────────────────────
+    // Called when a message arrives on /topic/orders/{restaurantUuid}
+    handleOrderWsEvent: (state, action) => {
+      const data = action.payload;
+      if (!data) return;
+
+      // Update existing order or add new one
+      if (data.orderUuid) {
+        const idx = state.orders.findIndex(
+          o => o.orderUuid === data.orderUuid
+        );
+        if (idx !== -1) {
+          state.orders[idx] = { ...state.orders[idx], ...data };
+        } else {
+          state.orders.unshift(data);
+        }
+
+        // Also update currentOrder if it matches
+        if (state.currentOrder?.orderUuid === data.orderUuid) {
+          state.currentOrder = { ...state.currentOrder, ...data };
+        }
+      }
+    },
+
+    // Called when a message arrives on /topic/kitchen/{restaurantUuid}
+    handleKitchenWsEvent: (state, action) => {
+      const data = action.payload;
+      if (!data) return;
+
+      if (data.kotUuid) {
+        const idx = state.kitchenOrders.findIndex(
+          k => k.kotUuid === data.kotUuid
+        );
+        if (idx !== -1) {
+          state.kitchenOrders[idx] = { ...state.kitchenOrders[idx], ...data };
+        } else {
+          // New KOT – add to the list
+          state.kitchenOrders.unshift(data);
+        }
+
+        // Remove completed / cancelled KOTs from the display
+        state.kitchenOrders = state.kitchenOrders.filter(
+          k => k.status !== 'COMPLETED' && k.status !== 'CANCELLED'
+        );
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -537,6 +584,8 @@ export const {
   updateCartQuantity,
   clearCart,
   setCart,
+  handleOrderWsEvent,
+  handleKitchenWsEvent,
 } = orderSlice.actions;
 
 export default orderSlice.reducer;

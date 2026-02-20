@@ -8,7 +8,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { 
   Users, Clock, Plus, Edit, Trash2, Shuffle, ArrowRightLeft, BarChart3,
-  AlertCircle, X, Check, Loader2, Power, Eye, HandMetal, Activity, ChevronUp, ChevronDown as ChevronDownIcon
+  AlertCircle, X, Check, Loader2, Power, Eye, HandMetal, Activity, ChevronUp, ChevronDown as ChevronDownIcon,
+  Wifi, WifiOff
 } from 'lucide-react';
 import {
   getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
@@ -16,8 +17,10 @@ import {
   setSectionFilter, selectFilteredTables, selectTablesByStatus, selectTableLoading,
   selectTableActionLoading, selectTableError, selectTableFilters, selectTableAnalytics,
   selectTablePagination, getValidNextStatuses, isValidStatusTransition, occupyTable,
+  handleTableWsEvent,
 } from '../../store/tableSlice';
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
+import useWebSocket from '../../hooks/useWebSocket';
 
 const TABLE_SHAPES = ['RECTANGLE', 'ROUND', 'SQUARE', 'OVAL'];
 
@@ -95,6 +98,14 @@ const TableManagement = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // ─── WebSocket: real-time table updates ───────────
+  useWebSocket(
+    activeRestaurantId ? `/topic/tables/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleTableWsEvent(data));
+    }
+  );
 
   // Close action popover on outside click
   useEffect(() => {

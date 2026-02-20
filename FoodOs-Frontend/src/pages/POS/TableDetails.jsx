@@ -23,6 +23,7 @@ import {
   clearTableDetails,
   occupyTable,
   clearError,
+  handleTableWsEvent,
 } from '../../store/tableSlice';
 import {
   addItemsToOrder,
@@ -34,9 +35,11 @@ import {
   cancelOrderItem,
   clearError as clearOrderError,
   clearSuccess as clearOrderSuccess,
+  handleOrderWsEvent,
 } from '../../store/orderSlice';
 
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
+import useWebSocket from '../../hooks/useWebSocket';
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -140,6 +143,24 @@ const TableDetails = () => {
     refreshDetails();
     return () => { dispatch(clearTableDetails()); };
   }, [refreshDetails, dispatch]);
+
+  // ─── WebSocket: live updates for this table & order ───
+  useWebSocket(
+    activeRestaurantId ? `/topic/tables/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleTableWsEvent(data));
+      // If this table was updated, refresh details
+      if (data.tableUuid === tableUuid) refreshDetails();
+    }
+  );
+  useWebSocket(
+    activeRestaurantId ? `/topic/orders/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleOrderWsEvent(data));
+      // If the active order on this table was updated, refresh
+      if (activeOrder?.orderUuid && data.orderUuid === activeOrder.orderUuid) refreshDetails();
+    }
+  );
 
   // ── Fetch products/categories for Add Items ────────────
 

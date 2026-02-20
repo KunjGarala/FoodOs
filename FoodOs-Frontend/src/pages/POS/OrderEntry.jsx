@@ -25,10 +25,13 @@ import {
   sendKot,
   clearError,
   clearSuccess,
+  handleOrderWsEvent,
 } from '../../store/orderSlice';
 import {
   getTablesByRestaurant,
+  handleTableWsEvent,
 } from '../../store/tableSlice';
+import useWebSocket from '../../hooks/useWebSocket';
 
 const OrderEntry = () => {
   const dispatch = useDispatch();
@@ -56,6 +59,16 @@ const OrderEntry = () => {
       dispatch(getTablesByRestaurant(activeRestaurantId));
     }
   }, [dispatch, activeRestaurantId]);
+
+  // ─── WebSocket: real-time order & table updates ───
+  useWebSocket(
+    activeRestaurantId ? `/topic/orders/${activeRestaurantId}` : null,
+    (data) => dispatch(handleOrderWsEvent(data))
+  );
+  useWebSocket(
+    activeRestaurantId ? `/topic/tables/${activeRestaurantId}` : null,
+    (data) => dispatch(handleTableWsEvent(data))
+  );
 
   // Handle search with debounce
   useEffect(() => {
