@@ -1,6 +1,5 @@
 package org.foodos.config;
 
-
 import org.foodos.auth.utils.JwtUtil;
 import org.foodos.auth.authenticationProviders.JWTAuthenticationProvider;
 import org.foodos.auth.filters.JWTAuthenticationFilter;
@@ -46,7 +45,8 @@ public class SecurityConfig {
     @Value("${frontend.port.url}")
     private String frontendUrl;
 
-    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService , UserAuthRepository userAuthRepository , RestaurantGetUtil restaurantGetUtil) {
+    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService,
+            UserAuthRepository userAuthRepository, RestaurantGetUtil restaurantGetUtil) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.userAuthRepository = userAuthRepository;
@@ -70,8 +70,7 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(
                 daoAuthenticationProvider(),
-                jwtAuthenticationProvider()
-        );
+                jwtAuthenticationProvider());
     }
 
     @Bean
@@ -85,7 +84,7 @@ public class SecurityConfig {
         String frontendUrllocal = "http://localhost:" + frontendUrl.substring(frontendUrl.indexOf(":") + 1);
 
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(frontendUrl , frontendUrllocal));
+        configuration.setAllowedOrigins(List.of(frontendUrl, frontendUrllocal));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Refresh-Token"));
@@ -100,38 +99,35 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            AuthenticationManager authenticationManager
-    ) throws Exception {
+            AuthenticationManager authenticationManager) throws Exception {
 
-        JWTAuthenticationFilter jwtAuthenticationFilter =
-                new JWTAuthenticationFilter(authenticationManager, jwtUtil , userAuthRepository , restaurantGetUtil);
+        JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, jwtUtil,
+                userAuthRepository, restaurantGetUtil);
 
-        JwtValidationFilter jwtValidationFilter =
-                new JwtValidationFilter(authenticationManager);
+        JwtValidationFilter jwtValidationFilter = new JwtValidationFilter(authenticationManager);
 
-        JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager , jwtUtil , restaurantGetUtil);
+        JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager, jwtUtil, restaurantGetUtil);
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/signup", "/auth/google/**" ,
-                                "/actuator/**" , "/auth/verify-email/**",
+                                "/api/auth/signup", "/auth/google/**",
+                                "/actuator/**", "/api/auth/verify-email",
                                 "/api/auth/login",
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api/auth/request-password-reset/**",
-                                "/api/auth/reset-password/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                                "/api/auth/reset-password/**",
+                                "/ws/**")
+                        .permitAll()
+                        .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtValidationFilter, JWTAuthenticationFilter.class)
-                .addFilterAfter(jwtRefreshFilter , JwtValidationFilter.class);
+                .addFilterAfter(jwtRefreshFilter, JwtValidationFilter.class);
 
         return http.build();
     }

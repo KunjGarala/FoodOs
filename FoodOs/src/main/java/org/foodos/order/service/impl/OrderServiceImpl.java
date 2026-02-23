@@ -10,6 +10,7 @@ import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.*;
 import org.foodos.order.entity.enums.*;
+import org.foodos.config.websocket.WebSocketEventService;
 import org.foodos.order.mapper.OrderMapper;
 import org.foodos.order.repository.*;
 import org.foodos.order.service.OrderService;
@@ -66,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserAuthRepository userRepository;
 
     private final OrderMapper orderMapper;
+    private final WebSocketEventService webSocketEventService;
 
     // ===== CREATE ORDER =====
 
@@ -128,9 +130,15 @@ public class OrderServiceImpl implements OrderService {
             table.setCurrentOrder(order);
             tableRepository.save(table);
             log.info("Table {} marked as OCCUPIED", table.getTableNumber());
+            // Broadcast table update via WebSocket
+            webSocketEventService.broadcastTableUpdate(
+                    request.getRestaurantUuid(), tableMapper_buildTableBroadcast(table));
         }
 
-        return orderMapper.toOrderResponse(order);
+        // Broadcast order creation via WebSocket
+        OrderResponse response = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(request.getRestaurantUuid(), response);
+        return response;
     }
 
     // ===== GET ORDER =====
@@ -219,7 +227,9 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
         log.info("Order updated successfully: {}", orderUuid);
 
-        return orderMapper.toOrderResponse(order);
+        OrderResponse response = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), response);
+        return response;
     }
 
     // ===== SEND KOT =====
@@ -288,6 +298,11 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
         log.info("KOT sent successfully: {}", kot.getKotNumber());
 
+        // Broadcast KOT to kitchen display via WebSocket
+        String restaurantUuid = order.getRestaurant().getRestaurantUuid();
+        webSocketEventService.broadcastKitchenUpdate(restaurantUuid, orderMapper.toKotResponse(kot));
+        webSocketEventService.broadcastOrderUpdate(restaurantUuid, orderMapper.toOrderResponse(order));
+
         return orderMapper.toOrderResponse(order);
     }
 
@@ -346,7 +361,9 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
         log.info("Payment added successfully");
 
-        return orderMapper.toOrderResponse(order);
+        OrderResponse paymentResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), paymentResponse);
+        return paymentResponse;
     }
 
     @Override
@@ -371,7 +388,15 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
 
         log.info("Bill generated successfully");
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse billResponse = orderMapper.toOrderResponse(order);
+        String restUuid = order.getRestaurant().getRestaurantUuid();
+        webSocketEventService.broadcastOrderUpdate(restUuid, billResponse);
+        // Also notify tables page about BILLED status
+        if (order.getTable() != null) {
+            webSocketEventService.broadcastTableUpdate(restUuid, tableMapper_buildTableBroadcast(order.getTable()));
+        }
+        return billResponse;
     }
 
     // ===== QUERY OPERATIONS =====
@@ -489,7 +514,10 @@ public class OrderServiceImpl implements OrderService {
 
         order = orderRepository.save(order);
         log.info("Successfully changed status of order {} to {}", orderUuid, newStatus);
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse statusResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), statusResponse);
+        return statusResponse;
     }
 
     @Override
@@ -506,11 +534,16 @@ public class OrderServiceImpl implements OrderService {
             table.clearOrder();
             tableRepository.save(table);
             log.info("Table {} marked as VACANT", table.getTableNumber());
+            webSocketEventService.broadcastTableUpdate(
+                    order.getRestaurant().getRestaurantUuid(), tableMapper_buildTableBroadcast(table));
         }
 
         order = orderRepository.save(order);
         log.info("Order {} cancelled successfully", orderUuid);
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse cancelResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), cancelResponse);
+        return cancelResponse;
     }
 
     @Override
@@ -527,11 +560,16 @@ public class OrderServiceImpl implements OrderService {
             table.clearOrder();
             tableRepository.save(table);
             log.info("Table {} marked as VACANT", table.getTableNumber());
+            webSocketEventService.broadcastTableUpdate(
+                    order.getRestaurant().getRestaurantUuid(), tableMapper_buildTableBroadcast(table));
         }
 
         order = orderRepository.save(order);
         log.info("Order {} completed successfully", orderUuid);
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse completeResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), completeResponse);
+        return completeResponse;
     }
 
     @Override
@@ -554,7 +592,10 @@ public class OrderServiceImpl implements OrderService {
         order.calculateTotals();
         order = orderRepository.save(order);
         log.info("Successfully added items to order {}", orderUuid);
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse addItemsResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), addItemsResponse);
+        return addItemsResponse;
     }
 
     @Override
@@ -580,7 +621,10 @@ public class OrderServiceImpl implements OrderService {
         order.calculateTotals();
         order = orderRepository.save(order);
         log.info("Successfully removed item {} from order {}", orderItemUuid, orderUuid);
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse removeResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), removeResponse);
+        return removeResponse;
     }
 
     @Override
@@ -595,12 +639,20 @@ public class OrderServiceImpl implements OrderService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Order item not found"));
 
-        itemToCancel.cancel(request.getReason(), request.getNotes());
+        if (itemToCancel.getKotStatus() == KotStatus.SERVED) {
+            throw new RuntimeException("Cannot cancel an item that has already been served.");
+        }
+
+        order.removeItem(itemToCancel);
+//        itemToCancel.cancel(request.getReason(), request.getNotes());
 
         order.calculateTotals();
         order = orderRepository.save(order);
         log.info("Successfully cancelled item {} from order {}", orderItemUuid, orderUuid);
-        return orderMapper.toOrderResponse(order);
+
+        OrderResponse cancelItemResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), cancelItemResponse);
+        return cancelItemResponse;
     }
 
     @Override
@@ -769,6 +821,38 @@ public class OrderServiceImpl implements OrderService {
         kot = kitchenOrderTicketRepository.save(kot);
         log.info("KOT status updated successfully: {}", kot.getKotNumber());
 
-        return orderMapper.toKotResponse(kot);
+        // Broadcast KOT status update to kitchen display
+        KotResponse kotResponse = orderMapper.toKotResponse(kot);
+        String rUuid = kot.getRestaurant().getRestaurantUuid();
+        webSocketEventService.broadcastKitchenUpdate(rUuid, kotResponse);
+        // Also broadcast order update since item statuses changed
+        webSocketEventService.broadcastOrderUpdate(rUuid, orderMapper.toOrderResponse(kot.getOrder()));
+
+        return kotResponse;
+    }
+
+    // ===== WebSocket helper =====
+
+    /**
+     * Build a lightweight table broadcast payload so the frontend can update its grid.
+     */
+    private java.util.Map<String, Object> tableMapper_buildTableBroadcast(RestaurantTable table) {
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("tableUuid", table.getTableUuid());
+        map.put("tableNumber", table.getTableNumber());
+        map.put("status", table.getStatus() != null ? table.getStatus().name() : null);
+        map.put("sectionName", table.getSectionName());
+        map.put("capacity", table.getCapacity());
+        map.put("currentPax", table.getCurrentPax());
+        map.put("seatedAt", table.getSeatedAt() != null ? table.getSeatedAt().toString() : null);
+        map.put("isActive", table.getIsActive());
+        map.put("isMerged", table.getIsMerged());
+        if (table.getCurrentOrder() != null) {
+            map.put("currentOrderUuid", table.getCurrentOrder().getOrderUuid());
+        }
+        if (table.getCurrentWaiter() != null) {
+            map.put("currentWaiterName", table.getCurrentWaiter().getFullName());
+        }
+        return map;
     }
 }

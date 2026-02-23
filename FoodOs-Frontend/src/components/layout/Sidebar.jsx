@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { LayoutDashboard, Armchair, UtensilsCrossed, ChefHat, Receipt, Users, Settings, LogOut, Store, Layers, Sparkles } from 'lucide-react';
 import { logout } from '../../store/authSlice';
+import websocketService from '../../services/websocket';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const { role } = useSelector((state) => state.auth);
@@ -10,6 +11,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    websocketService.disconnect();
     dispatch(logout());
     navigate('/login');
   };
@@ -17,19 +19,19 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app' },
     { icon: Armchair, label: 'Tables', path: '/app/tables' },
-    { icon: UtensilsCrossed, label: 'Orders', path: '/app/order' },
+    // { icon: UtensilsCrossed, label: 'Orders', path: '/app/order' },
     { icon: ChefHat, label: 'Kitchen', path: '/app/kitchen' },
     { icon: Layers, label: 'Categories', path: '/app/categories' },
     { icon: Sparkles, label: 'Modifiers', path: '/app/modifiers' },
     { icon: Receipt, label: 'Menu', path: '/app/menu' },
     { icon: Users, label: 'Staff', path: '/app/staff' },
-    { icon: Users, label: 'CRM', path: '/app/crm' },
+    // { icon: Users, label: 'CRM', path: '/app/crm' },
   ];
 
   const filteredItems = navItems.filter(item => {
     if (role === 'CHEF') return ['Dashboard', 'Kitchen'].includes(item.label);
-    if (role === 'WAITER') return ['Dashboard', 'Tables', 'Orders' , 'Kitchen'].includes(item.label);
-    if (role === 'CASHIER') return ['Dashboard', 'Tables', 'Orders', 'Menu'].includes(item.label);
+    if (role === 'WAITER') return ['Dashboard', 'Tables', 'Kitchen'].includes(item.label);
+    if (role === 'CASHIER') return ['Dashboard', 'Tables', 'Menu'].includes(item.label);
     return true;
   });
 
@@ -43,7 +45,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       className={`
         fixed top-0 left-0 z-40 h-screen bg-white border-r border-slate-200 flex flex-col
         transition-transform duration-300 ease-in-out
-        w-64
+        w-[280px] sm:w-64
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
       `}

@@ -2,37 +2,59 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Clock, CheckCircle, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Clock, CheckCircle, Loader2, AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import {
   fetchKitchenOrders,
   changeOrderStatus,
   clearError,
   clearSuccess,
+  handleKitchenWsEvent,
 } from '../../store/orderSlice';
+import useWebSocket from '../../hooks/useWebSocket';
+import websocketService from '../../services/websocket';
 
 const KitchenDisplay = () => {
   const dispatch = useDispatch();
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [wsConnected, setWsConnected] = useState(false);
   
   const { activeRestaurantId, role } = useSelector((state) => state.auth);
   const { kitchenOrders, loading, error, success } = useSelector((state) => state.orders);
 
-  // Fetch kitchen orders on mount and auto-refresh every 30 seconds
+  // Fetch kitchen orders on mount
   useEffect(() => {
     if (activeRestaurantId) {
       dispatch(fetchKitchenOrders(activeRestaurantId));
     }
   }, [dispatch, activeRestaurantId]);
 
+  // ─── WebSocket: real-time kitchen updates ─────────
+  useWebSocket(
+    activeRestaurantId ? `/topic/kitchen/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleKitchenWsEvent(data));
+      setWsConnected(true);
+    }
+  );
+
+  // Track WS connection status
   useEffect(() => {
-    if (autoRefresh && activeRestaurantId) {
+    const interval = setInterval(() => {
+      setWsConnected(websocketService.isConnected());
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fallback polling: only poll if auto-refresh is on AND WebSocket is NOT connected
+  useEffect(() => {
+    if (autoRefresh && activeRestaurantId && !wsConnected) {
       const interval = setInterval(() => {
         dispatch(fetchKitchenOrders(activeRestaurantId));
-      }, 30000); // 30 seconds
+      }, 30000); // 30 seconds fallback
 
       return () => clearInterval(interval);
     }
-  }, [autoRefresh, dispatch, activeRestaurantId]);
+  }, [autoRefresh, dispatch, activeRestaurantId, wsConnected]);
 
   // Clear messages after 3 seconds
   useEffect(() => {
@@ -129,11 +151,11 @@ const KitchenDisplay = () => {
     <div className="h-full">
       {/* Notification Toast */}
       {(error || success) && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
           error ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'
         }`}>
-          {error ? <AlertCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
-          <span className="font-medium">{error || success}</span>
+          {error ? <AlertCircle className="h-5 w-5 shrink-0" /> : <CheckCircle className="h-5 w-5 shrink-0" />}
+          <span className="font-medium text-xs sm:text-sm line-clamp-2">{error || success}</span>
         </div>
       )}
 
@@ -147,6 +169,14 @@ const KitchenDisplay = () => {
           <Badge variant="primary" className="text-sm sm:text-lg px-3 sm:px-4 py-1">
             Avg Time: {calculateAverageTime()}
           </Badge> */}
+          {/* WebSocket connection indicator */}
+          <div className="flex items-center gap-1 text-xs">
+            {wsConnected ? (
+              <><Wifi className="h-4 w-4 text-green-500" /><span className="text-green-600 font-medium">Live</span></>
+            ) : (
+              <><WifiOff className="h-4 w-4 text-slate-400" /><span className="text-slate-400">Polling</span></>
+            )}
+          </div>
           <button
             onClick={handleRefresh}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -177,7 +207,7 @@ const KitchenDisplay = () => {
           <p className="text-sm mt-1">Orders will appear here when they're sent to kitchen</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {kitchenOrders.map(order => (
             <Card key={order.kotUuid} className={`border-t-4 ${getStatusBorderColor(order.status)}`}>
               <CardHeader className="pb-2">

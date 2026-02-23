@@ -6,6 +6,7 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.config.websocket.WebSocketEventService;
 import org.foodos.order.dto.request.CreateOrderRequest;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.Order;
@@ -40,6 +41,7 @@ public class RestaurantTableService {
     private final RestaurantTableMapper tableMapper;
     private final OrderService orderService;
     private final OrderMapper orderMapper;
+    private final WebSocketEventService webSocketEventService;
 
     /**
      * 1️⃣ Create a new table for a restaurant
@@ -86,7 +88,9 @@ public class RestaurantTableService {
         log.info("Table created successfully. ID: {}, Number: {}, Restaurant: {}",
                 savedTable.getId(), savedTable.getTableNumber(), restaurant.getName());
 
-        return tableMapper.toResponseDto(savedTable);
+        TableResponseDto responseDto = tableMapper.toResponseDto(savedTable);
+        webSocketEventService.broadcastTableUpdate(requestDto.getRestaurantUuid(), responseDto);
+        return responseDto;
     }
 
     /**
@@ -123,7 +127,10 @@ public class RestaurantTableService {
         log.info("Table updated successfully. UUID: {}, Number: {}", updatedTable.getTableUuid(),
                 updatedTable.getTableNumber());
 
-        return tableMapper.toResponseDto(updatedTable);
+        TableResponseDto updateResponse = tableMapper.toResponseDto(updatedTable);
+        webSocketEventService.broadcastTableUpdate(
+                updatedTable.getRestaurant().getRestaurantUuid(), updateResponse);
+        return updateResponse;
     }
 
     /**
@@ -205,7 +212,7 @@ public class RestaurantTableService {
         log.info("Table status updated successfully. UUID: {}, Status: {} -> {}",
                 tableUuid, currentStatus, newStatus);
 
-        return TableStatusResponseDto.builder()
+        TableStatusResponseDto statusResponse = TableStatusResponseDto.builder()
                 .tableUuid(updatedTable.getTableUuid())
                 .tableNumber(updatedTable.getTableNumber())
                 .status(updatedTable.getStatus())
@@ -218,6 +225,12 @@ public class RestaurantTableService {
                 .waiterName(
                         updatedTable.getCurrentWaiter() != null ? updatedTable.getCurrentWaiter().getFullName() : null)
                 .build();
+
+        // Broadcast table status change via WebSocket
+        webSocketEventService.broadcastTableUpdate(
+                updatedTable.getRestaurant().getRestaurantUuid(), statusResponse);
+
+        return statusResponse;
     }
 
     /**
@@ -262,16 +275,16 @@ public class RestaurantTableService {
      * 5️⃣ Get all tables (Admin/Manager) - Paginated
      */
     @Transactional(readOnly = true)
-    public Page<TableResponseDto> getAllTables(Pageable pageable, TableStatus status) {
+    public Page<TableResponseDto> getAllTables(Pageable pageable, TableStatus status , String restaurantUuid) {
         log.info("Fetching all tables. Page: {}, Size: {}, Status filter: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), status);
 
         Page<RestaurantTable> tablesPage;
 
         if (status != null) {
-            tablesPage = tableRepository.findAllByStatusAndIsDeletedFalse(status, pageable);
+            tablesPage = tableRepository.findByIsDeletedFalseAndRestaurantUuidAndStatus(restaurantUuid , status, pageable);
         } else {
-            tablesPage = tableRepository.findAllByIsDeletedFalse(pageable);
+            tablesPage = tableRepository.findByIsDeletedFalseAndRestaurantUuid(restaurantUuid , pageable);
         }
 
         log.info("Fetched {} tables. Total elements: {}, Total pages: {}",
@@ -354,9 +367,14 @@ public class RestaurantTableService {
         }
 
         // Permanent delete
+        String restaurantUuid = table.getRestaurant().getRestaurantUuid();
         tableRepository.delete(table);
 
         log.info("Table permanently deleted. UUID: {}, Number: {}", tableUuid, table.getTableNumber());
+        // Broadcast deletion so frontend can remove the table from the grid
+        java.util.Map<String, Object> deletePayload = java.util.Map.of(
+                "tableUuid", tableUuid, "deleted", true);
+        webSocketEventService.broadcastTableUpdate(restaurantUuid, deletePayload);
     }
 
     /**
@@ -449,7 +467,7 @@ public class RestaurantTableService {
         log.info("Tables merged successfully. Parent: {}, Children: {}, Total capacity: {}",
                 parentTable.getTableNumber(), mergedTableNumbers, parentTable.getCapacity());
 
-        return MergeTablesResponseDto.builder()
+        MergeTablesResponseDto mergeResponse = MergeTablesResponseDto.builder()
                 .mergedTableUuid(parentTable.getTableUuid())
                 .mergedTableNumber(parentTable.getTableNumber())
                 .mergedTables(mergedTableNumbers)
@@ -457,6 +475,12 @@ public class RestaurantTableService {
                 .status(parentTable.getStatus())
                 .mergedAt(LocalDateTime.now())
                 .build();
+
+        // Broadcast merge event – frontend should refresh all tables
+        webSocketEventService.broadcastTableUpdate(
+                parentTable.getRestaurant().getRestaurantUuid(), mergeResponse);
+
+        return mergeResponse;
     }
 
     /**
@@ -519,7 +543,7 @@ public class RestaurantTableService {
         log.info("Table transfer completed successfully. From: {} -> To: {}, Order: {}",
                 fromTable.getTableNumber(), toTable.getTableNumber(), orderUuid);
 
-        return TransferTableResponseDto.builder()
+        TransferTableResponseDto transferResponse = TransferTableResponseDto.builder()
                 .orderId(orderUuid)
                 .fromTable(fromTable.getTableNumber())
                 .toTable(toTable.getTableNumber())
@@ -527,6 +551,12 @@ public class RestaurantTableService {
                 .toTableUuid(toTable.getTableUuid())
                 .transferredAt(LocalDateTime.now())
                 .build();
+
+        // Broadcast both tables changed
+        String rUuid = fromTable.getRestaurant().getRestaurantUuid();
+        webSocketEventService.broadcastTableUpdate(rUuid, transferResponse);
+
+        return transferResponse;
     }
 
     /**
@@ -659,7 +689,10 @@ public class RestaurantTableService {
 
         demergeTable(table);
 
-        return tableMapper.toResponseDto(table);
+        TableResponseDto demergeResponse = tableMapper.toResponseDto(table);
+        webSocketEventService.broadcastTableUpdate(
+                table.getRestaurant().getRestaurantUuid(), demergeResponse);
+        return demergeResponse;
     }
 
     private void demergeTable(RestaurantTable table) {
@@ -774,8 +807,14 @@ public class RestaurantTableService {
         table.setSeatedAt(LocalDateTime.now());
         tableRepository.save(table);
 
+        // Broadcast table and order updates via WebSocket
+        String restaurantUuid = restaurant.getRestaurantUuid();
+        webSocketEventService.broadcastTableUpdate(restaurantUuid, tableMapper.toResponseDto(table));
+        OrderResponse orderResponse = orderMapper.toOrderResponse(order);
+        webSocketEventService.broadcastOrderUpdate(restaurantUuid, orderResponse);
+
         // 4. Return order response
-        return orderMapper.toOrderResponse(order);
+        return orderResponse;
     }
 
     public TableDetailResponse getTableDetails(String tableUuid) {

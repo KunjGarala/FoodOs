@@ -81,9 +81,9 @@ export const getTableByUuid = createAsyncThunk(
 // Get all tables (paginated with optional status filter)
 export const getAllTables = createAsyncThunk(
   'tables/getAll',
-  async ({ page = 0, size = 20, status = null }, { rejectWithValue }) => {
+  async ({ page = 0, size = 20, status = null, restaurantUuid }, { rejectWithValue }) => {
     try {
-      const response = await tableAPI.getAllTables({ page, size, status });
+      const response = await tableAPI.getAllTables({ page, size, status, restaurantUuid });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -299,6 +299,34 @@ const tableSlice = createSlice({
     // Clear table details
     clearTableDetails: (state) => {
       state.tableDetails = null;
+    },
+
+    // ─── WebSocket event handler ───────────────────────
+    // Called when a message arrives on /topic/tables/{restaurantUuid}
+    handleTableWsEvent: (state, action) => {
+      const data = action.payload;
+
+      // If it's a deletion event
+      if (data.deleted) {
+        state.tables = state.tables.filter(t => t.tableUuid !== data.tableUuid);
+        if (state.selectedTable?.tableUuid === data.tableUuid) {
+          state.selectedTable = null;
+        }
+        return;
+      }
+
+      // Try to find existing table and update it
+      const idx = state.tables.findIndex(t => t.tableUuid === data.tableUuid);
+      if (idx !== -1) {
+        // Merge incoming data with existing table (partial updates)
+        state.tables[idx] = { ...state.tables[idx], ...data };
+        if (state.selectedTable?.tableUuid === data.tableUuid) {
+          state.selectedTable = { ...state.selectedTable, ...data };
+        }
+      } else if (data.tableUuid && data.tableNumber) {
+        // New table added — push it
+        state.tables.push(data);
+      }
     },
   },
 
@@ -583,6 +611,7 @@ export const {
   optimisticUpdateTableStatus,
   resetTablesState,
   clearTableDetails,
+  handleTableWsEvent,
 } = tableSlice.actions;
 
 // Selectors

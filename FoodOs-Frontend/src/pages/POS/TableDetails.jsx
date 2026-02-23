@@ -23,6 +23,7 @@ import {
   clearTableDetails,
   occupyTable,
   clearError,
+  handleTableWsEvent,
 } from '../../store/tableSlice';
 import {
   addItemsToOrder,
@@ -34,9 +35,11 @@ import {
   cancelOrderItem,
   clearError as clearOrderError,
   clearSuccess as clearOrderSuccess,
+  handleOrderWsEvent,
 } from '../../store/orderSlice';
 
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
+import useWebSocket from '../../hooks/useWebSocket';
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -122,6 +125,9 @@ const TableDetails = () => {
     return () => clearInterval(t);
   }, []);
 
+  const hasManagerAccess = ['MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
+  const hasBillingAccess = ['CASHIER', 'MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
+
   const table = tableDetails?.table;
   const activeOrder = tableDetails?.activeOrder;
   const isOccupied = table?.status === 'OCCUPIED';
@@ -137,6 +143,24 @@ const TableDetails = () => {
     refreshDetails();
     return () => { dispatch(clearTableDetails()); };
   }, [refreshDetails, dispatch]);
+
+  // ─── WebSocket: live updates for this table & order ───
+  useWebSocket(
+    activeRestaurantId ? `/topic/tables/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleTableWsEvent(data));
+      // If this table was updated, refresh details
+      if (data.tableUuid === tableUuid) refreshDetails();
+    }
+  );
+  useWebSocket(
+    activeRestaurantId ? `/topic/orders/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleOrderWsEvent(data));
+      // If the active order on this table was updated, refresh
+      if (activeOrder?.orderUuid && data.orderUuid === activeOrder.orderUuid) refreshDetails();
+    }
+  );
 
   // ── Fetch products/categories for Add Items ────────────
 
@@ -303,58 +327,58 @@ const TableDetails = () => {
 
   // ── Render ─────────────────────────────────────────────
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-4 sm:space-y-6 pb-8">
       {/* Toast */}
       {(orderError || orderSuccess || tableError) && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in max-w-sm ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
           (orderError || tableError) ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'
         }`}>
           {(orderError || tableError) ? <AlertCircle className="h-5 w-5 flex-shrink-0" /> : <CheckCircle className="h-5 w-5 flex-shrink-0" />}
-          <span className="text-sm font-medium">{orderError || tableError || orderSuccess}</span>
+          <span className="text-xs sm:text-sm font-medium line-clamp-2">{orderError || tableError || orderSuccess}</span>
         </div>
       )}
 
       {/* ───── HEADER ───── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4 bg-white rounded-xl border border-slate-200 p-3 sm:p-5">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => navigate('/app/tables')}
-            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
           >
             <ArrowLeft className="h-5 w-5 text-slate-600" />
           </button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">Table {table.tableNumber}</h1>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${sc.bg} ${sc.text}`}>
-                <span className={`h-2 w-2 rounded-full ${sc.dot}`} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <h1 className="text-lg sm:text-2xl font-bold text-slate-900">Table {table.tableNumber}</h1>
+              <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-semibold ${sc.bg} ${sc.text}`}>
+                <span className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${sc.dot}`} />
                 {table.status}
               </span>
             </div>
-            <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
-              <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {table.capacity} seats</span>
-              {table.sectionName && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{table.sectionName}</span>}
+            <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-500">
+              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {table.capacity} seats</span>
+              {table.sectionName && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{table.sectionName}</span>}
             </div>
           </div>
         </div>
 
         {/* Order info badge (if occupied/billed) */}
         {activeOrder && (
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="flex items-center gap-2 justify-end">
-                <Hash className="h-4 w-4 text-slate-400" />
-                <span className="font-semibold text-slate-800">{activeOrder.orderNumber || activeOrder.orderUuid?.slice(0, 8)}</span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 pl-0 sm:pl-12">
+            <div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Hash className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />
+                <span className="font-semibold text-sm text-slate-800">{activeOrder.orderNumber || activeOrder.orderUuid?.slice(0, 8)}</span>
                 <Badge variant={activeOrder.status === 'OPEN' ? 'success' : activeOrder.status === 'BILLED' ? 'primary' : 'default'}>
                   {activeOrder.status}
                 </Badge>
               </div>
-              <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
+              <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 mt-0.5">
                 {activeOrder.numberOfGuests > 0 && (
-                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{activeOrder.numberOfGuests} guests</span>
+                  <span className="flex items-center gap-1"><Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{activeOrder.numberOfGuests} guests</span>
                 )}
                 {table.seatedAt && (
-                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{calculateSeatedTime(table.seatedAt)}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{calculateSeatedTime(table.seatedAt)}</span>
                 )}
               </div>
             </div>
@@ -392,9 +416,9 @@ const TableDetails = () => {
 
       {/* ───── OCCUPIED / BILLED STATE ───── */}
       {(isOccupied || isBilled) && activeOrder && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* LEFT: Items + Customer */}
-          <div className="xl:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-4 sm:space-y-6">
 
             {/* Customer Info */}
             {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) && (
@@ -427,10 +451,10 @@ const TableDetails = () => {
 
             {/* Order Items Table */}
             <Card>
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800">Order Items ({items.length})</h3>
+              <div className="p-3 sm:p-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-800 text-sm sm:text-base">Order Items ({items.length})</h3>
                 {hasPendingItems && (
-                  <Badge variant="warning">{items.filter(i => i.kotStatus === 'PENDING' || !i.kotStatus).length} pending</Badge>
+                  <Badge variant="warning" className="text-[10px] sm:text-xs">{items.filter(i => i.kotStatus === 'PENDING' || !i.kotStatus).length} pending</Badge>
                 )}
               </div>
               {items.length === 0 ? (
@@ -494,7 +518,7 @@ const TableDetails = () => {
           </div>
 
           {/* RIGHT: Bill + Payments + Actions */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
 
             {/* Bill Summary */}
             <Card>
@@ -567,7 +591,7 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                {isOccupied && items.length > 0 && (
+                {hasBillingAccess && isOccupied && items.length > 0 && (
                   <Button
                     variant="outline"
                     className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
@@ -579,17 +603,19 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                <Button
-                  variant="outline"
-                  className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  onClick={() => {
-                    setPaymentForm({ method: 'CASH', amount: balance > 0 ? balance.toFixed(2) : '', transactionId: '' });
-                    setShowPaymentModal(true);
-                  }}
-                  disabled={orderActionLoading}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" /> Add Payment
-                </Button>
+                {hasBillingAccess && (
+                  <Button
+                    variant="outline"
+                    className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => {
+                      setPaymentForm({ method: 'CASH', amount: balance > 0 ? balance.toFixed(2) : '', transactionId: '' });
+                      setShowPaymentModal(true);
+                    }}
+                    disabled={orderActionLoading}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" /> Add Payment
+                  </Button>
+                )}
 
                 {paidAmount >= total && total > 0 && (
                   <Button
@@ -603,14 +629,16 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                <Button
-                  variant="danger"
-                  className="w-full"
-                  onClick={() => { setCancelReason(''); setShowCancelOrderModal(true); }}
-                  disabled={orderActionLoading}
-                >
-                  <XCircle className="h-4 w-4 mr-2" /> Cancel Order
-                </Button>
+                {hasManagerAccess && (
+                  <Button
+                    variant="danger"
+                    className="w-full"
+                    onClick={() => { setCancelReason(''); setShowCancelOrderModal(true); }}
+                    disabled={orderActionLoading}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" /> Cancel Order
+                  </Button>
+                )}
               </div>
             </Card>
           </div>

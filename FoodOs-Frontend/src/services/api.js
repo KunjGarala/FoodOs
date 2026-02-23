@@ -261,8 +261,8 @@ export const tableAPI = {
   getTableByUuid: (tableUuid) => api.get(`/api/v1/tables/${tableUuid}`),
   
   // Get all tables (paginated with optional status filter)
-  getAllTables: ({ page = 0, size = 20, status = null }) => {
-    const params = { page, size };
+  getAllTables: ({ page = 0, size = 20, status = null, restaurantUuid }) => {
+    const params = { page, size, restaurantUuid };
     if (status) params.status = status;
     return api.get('/api/v1/tables', { params });
   },

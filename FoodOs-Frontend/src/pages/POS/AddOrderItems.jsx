@@ -210,13 +210,13 @@ const AddOrderItems = () => {
 
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] flex-col md:flex-row gap-4 overflow-hidden">
+    <div className="flex h-[calc(100vh-6rem)] flex-col lg:flex-row gap-3 sm:gap-4 overflow-hidden">
       
       {/* LEFT PANEL: Product Selection */}
       <div className="flex-1 flex flex-col h-full bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
         
         {/* Header: Back, Search, Categories */}
-        <div className="p-4 bg-white border-b border-slate-200 z-10 flex flex-col gap-4">
+        <div className="p-3 sm:p-4 bg-white border-b border-slate-200 z-10 flex flex-col gap-3 sm:gap-4">
             <div className="flex items-center gap-3">
                 <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2 mr-2">
                     <ArrowLeft className="h-5 w-5 text-slate-600" />
@@ -273,7 +273,7 @@ const AddOrderItems = () => {
               <p>No products found</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-4">
               {displayProducts.map(product => {
                 const hasVariations = product.hasVariations;
                 const price = hasVariations
@@ -292,9 +292,9 @@ const AddOrderItems = () => {
                     key={product.productUuid}
                     onClick={() => isAvailable && (hasVariations ? setVariationSelectionProduct(product) : handleAddToCart(product))}
                     disabled={!isAvailable}
-                    className={`bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between group h-32 transition-all text-left relative overflow-hidden ${
+                    className={`bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 flex flex-col justify-between group h-28 sm:h-32 transition-all text-left relative overflow-hidden ${
                       isAvailable 
-                        ? 'hover:border-blue-500 hover:shadow-md cursor-pointer' 
+                        ? 'hover:border-blue-500 hover:shadow-md cursor-pointer active:scale-[0.98]' 
                         : 'opacity-60 cursor-not-allowed bg-slate-50'
                     }`}
                   >
@@ -333,7 +333,7 @@ const AddOrderItems = () => {
       </div>
 
       {/* RIGHT PANEL: Cart Summary */}
-      <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm h-[40vh] md:h-full">
+      <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm h-[35vh] sm:h-[40vh] lg:h-full">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-xl">
             <h2 className="font-semibold text-slate-800 flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />

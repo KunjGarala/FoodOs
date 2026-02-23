@@ -135,11 +135,12 @@ public class RestaurantTableController {
                         @Parameter(description = "Filter by status", schema = @Schema(allowableValues = { "VACANT",
                                         "OCCUPIED", "BILLED", "DIRTY",
                                         "RESERVED" })) @RequestParam(required = false) TableStatus status,
+                        @RequestParam String restaurantUuid,
                         @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser) {
                 log.info("GET /api/v1/tables - Fetch all tables. Page: {}, Size: {}, Status: {}, User: {}",
                                 page, size, status, currentUser.getUsername());
                 Pageable pageable = PageRequest.of(page, size);
-                Page<TableResponseDto> response = tableService.getAllTables(pageable, status);
+                Page<TableResponseDto> response = tableService.getAllTables(pageable, status , restaurantUuid);
                 return ResponseEntity.ok(response);
         }
 

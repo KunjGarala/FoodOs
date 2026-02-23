@@ -4,6 +4,7 @@ import { store } from './store/store';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import AccountActivation from './pages/AccountActivation';
 import Dashboard from './pages/Dashboard';
 import CreateRestaurant from './pages/CreateRestaurant';
 import CreateOutlet from './pages/CreateOutlet';
@@ -44,6 +45,7 @@ function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-email" element={<AccountActivation />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<GoogleCallback />} />
@@ -89,31 +91,31 @@ function App() {
             } />
             
             <Route path="menu" element={
-                <ProtectedRoute allowedRoles={['OWNER']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
                     <MenuManagement />
                 </ProtectedRoute>
             } />
             
             <Route path="menu/new" element={
-                <ProtectedRoute allowedRoles={['OWNER']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
                     <ProductForm />
                 </ProtectedRoute>
             } />
             
             <Route path="menu/:productUuid/edit" element={
-                <ProtectedRoute allowedRoles={['OWNER']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
                     <ProductForm />
                 </ProtectedRoute>
             } />
             
             <Route path="categories" element={
-                <ProtectedRoute allowedRoles={['OWNER']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
                     <CategoryManagement />
                 </ProtectedRoute>
             } />
             
             <Route path="modifiers" element={
-                <ProtectedRoute allowedRoles={['OWNER']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
                     <ModifierManagement />
                 </ProtectedRoute>
             } />

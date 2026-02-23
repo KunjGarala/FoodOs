@@ -25,10 +25,13 @@ import {
   sendKot,
   clearError,
   clearSuccess,
+  handleOrderWsEvent,
 } from '../../store/orderSlice';
 import {
   getTablesByRestaurant,
+  handleTableWsEvent,
 } from '../../store/tableSlice';
+import useWebSocket from '../../hooks/useWebSocket';
 
 const OrderEntry = () => {
   const dispatch = useDispatch();
@@ -56,6 +59,16 @@ const OrderEntry = () => {
       dispatch(getTablesByRestaurant(activeRestaurantId));
     }
   }, [dispatch, activeRestaurantId]);
+
+  // ─── WebSocket: real-time order & table updates ───
+  useWebSocket(
+    activeRestaurantId ? `/topic/orders/${activeRestaurantId}` : null,
+    (data) => dispatch(handleOrderWsEvent(data))
+  );
+  useWebSocket(
+    activeRestaurantId ? `/topic/tables/${activeRestaurantId}` : null,
+    (data) => dispatch(handleTableWsEvent(data))
+  );
 
   // Handle search with debounce
   useEffect(() => {
@@ -223,18 +236,18 @@ const OrderEntry = () => {
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-8rem)] gap-4 lg:gap-6">
       {/* Notification Toast */}
       {(error || success) && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
           error ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'
         }`}>
-          {error ? <AlertCircle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
-          <span className="font-medium">{error || success}</span>
+          {error ? <AlertCircle className="h-5 w-5 shrink-0" /> : <CheckCircle className="h-5 w-5 shrink-0" />}
+          <span className="font-medium text-xs sm:text-sm line-clamp-2">{error || success}</span>
         </div>
       )}
 
       {/* Left: Menu Area */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Search & Categories */}
-        <div className="flex flex-col gap-4 bg-white p-4 rounded-xl border border-slate-200">
+        <div className="flex flex-col gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl border border-slate-200">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
             <Input 
@@ -292,7 +305,7 @@ const OrderEntry = () => {
               <p>No products found</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 pb-4">
               {displayProducts.map(product => {
                 const hasVariations = product.hasVariations;
                 const price = hasVariations
@@ -305,9 +318,9 @@ const OrderEntry = () => {
                   <div 
                     key={product.productUuid}
                     onClick={() => isAvailable && handleAddToCart(product)}
-                    className={`bg-white p-4 rounded-xl border border-slate-200 flex flex-col justify-between group h-32 transition-all ${
+                    className={`bg-white p-3 sm:p-4 rounded-xl border border-slate-200 flex flex-col justify-between group h-28 sm:h-32 transition-all ${
                       isAvailable 
-                        ? 'hover:border-blue-500 hover:shadow-md cursor-pointer' 
+                        ? 'hover:border-blue-500 hover:shadow-md cursor-pointer active:scale-[0.98]' 
                         : 'opacity-50 cursor-not-allowed'
                     }`}
                   >
@@ -462,7 +475,7 @@ const OrderEntry = () => {
                         </div>
                         <button
                           onClick={() => handleRemoveFromCart(item.productUuid, item.variationUuid)}
-                          className="p-1 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                          className="p-1.5 hover:bg-red-50 rounded-md transition-colors sm:opacity-0 sm:group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </button>

@@ -8,7 +8,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { 
   Users, Clock, Plus, Edit, Trash2, Shuffle, ArrowRightLeft, BarChart3,
-  AlertCircle, X, Check, Loader2, Power, Eye, HandMetal
+  AlertCircle, X, Check, Loader2, Power, Eye, HandMetal, Activity, ChevronUp, ChevronDown as ChevronDownIcon,
+  Wifi, WifiOff
 } from 'lucide-react';
 import {
   getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
@@ -16,8 +17,10 @@ import {
   setSectionFilter, selectFilteredTables, selectTablesByStatus, selectTableLoading,
   selectTableActionLoading, selectTableError, selectTableFilters, selectTableAnalytics,
   selectTablePagination, getValidNextStatuses, isValidStatusTransition, occupyTable,
+  handleTableWsEvent,
 } from '../../store/tableSlice';
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
+import useWebSocket from '../../hooks/useWebSocket';
 
 const TABLE_SHAPES = ['RECTANGLE', 'ROUND', 'SQUARE', 'OVAL'];
 
@@ -82,6 +85,7 @@ const TableManagement = () => {
   const [validStatuses, setValidStatuses] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date()); // For real-time occupied time updates
   const [actionPopoverTable, setActionPopoverTable] = useState(null); // For vacant table action popover
+  const [showMobileLiveStatus, setShowMobileLiveStatus] = useState(false); // Mobile live status panel
   const popoverRef = useRef(null);
 
   const sections = ['All', ...new Set(tables.map(t => t.sectionName).filter(Boolean))];
@@ -94,6 +98,14 @@ const TableManagement = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // ─── WebSocket: real-time table updates ───────────
+  useWebSocket(
+    activeRestaurantId ? `/topic/tables/${activeRestaurantId}` : null,
+    (data) => {
+      dispatch(handleTableWsEvent(data));
+    }
+  );
 
   // Close action popover on outside click
   useEffect(() => {
@@ -115,7 +127,8 @@ const TableManagement = () => {
       dispatch(getAllTables({ 
         page: pagination.page, 
         size: pagination.size, 
-        status: filters.status 
+        status: filters.status,
+        restaurantUuid: activeRestaurantId
       }));
     } else if (activeRestaurantId) {
       // WAITER: Fetch only restaurant-specific tables
@@ -158,7 +171,8 @@ const TableManagement = () => {
         await dispatch(getAllTables({ 
           page: pagination.page, 
           size: pagination.size, 
-          status: filters.status 
+          status: filters.status,
+          restaurantUuid: activeRestaurantId
         })).unwrap();
       } else if (activeRestaurantId) {
         await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -180,7 +194,8 @@ const TableManagement = () => {
         await dispatch(getAllTables({ 
           page: pagination.page, 
           size: pagination.size, 
-          status: filters.status 
+          status: filters.status,
+          restaurantUuid: activeRestaurantId
         })).unwrap();
       } else if (activeRestaurantId) {
         await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -219,7 +234,8 @@ const TableManagement = () => {
         await dispatch(getAllTables({ 
           page: pagination.page, 
           size: pagination.size, 
-          status: filters.status 
+          status: filters.status,
+          restaurantUuid: activeRestaurantId
         })).unwrap();
       } else if (activeRestaurantId) {
         await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -243,7 +259,8 @@ const TableManagement = () => {
           await dispatch(getAllTables({ 
             page: pagination.page, 
             size: pagination.size, 
-            status: filters.status 
+            status: filters.status,
+            restaurantUuid: activeRestaurantId
           })).unwrap();
         } else if (activeRestaurantId) {
           await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -274,7 +291,8 @@ const TableManagement = () => {
           await dispatch(getAllTables({ 
             page: pagination.page, 
             size: pagination.size, 
-            status: filters.status 
+            status: filters.status,
+            restaurantUuid: activeRestaurantId
           })).unwrap();
         } else if (activeRestaurantId) {
           await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -294,7 +312,8 @@ const TableManagement = () => {
         await dispatch(getAllTables({ 
           page: pagination.page, 
           size: pagination.size, 
-          status: filters.status 
+          status: filters.status,
+          restaurantUuid: activeRestaurantId
         })).unwrap();
       } else if (activeRestaurantId) {
         await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -316,7 +335,8 @@ const TableManagement = () => {
         await dispatch(getAllTables({ 
           page: pagination.page, 
           size: pagination.size, 
-          status: filters.status 
+          status: filters.status,
+          restaurantUuid: activeRestaurantId
         })).unwrap();
       } else if (activeRestaurantId) {
         await dispatch(getTablesByRestaurant(activeRestaurantId)).unwrap();
@@ -403,21 +423,42 @@ const TableManagement = () => {
 
   return (
     <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-8rem)] gap-4 lg:gap-6">
-      <div className="flex-1 flex flex-col">
-        <div className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Floor Plan</h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm text-slate-500">Manage tables and seating</p>
-                {hasManagerAccess && (
-                  <Badge variant="info" size="sm">
-                    {userRole} View - All Restaurants
-                  </Badge>
-                )}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="mb-4 sm:mb-6">
+          {/* Header */}
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800">Floor Plan</h1>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <p className="text-xs sm:text-sm text-slate-500">Manage tables and seating</p>
+                  {hasManagerAccess && (
+                    <Badge variant="info" size="sm">
+                      {userRole} View
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {/* Mobile: compact action buttons */}
+              <div className="flex items-center gap-1.5 sm:hidden">
+                <button onClick={() => setShowMobileLiveStatus(!showMobileLiveStatus)}
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 relative">
+                  <Activity className="h-4 w-4" />
+                  {tablesByStatus.occupied > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {tablesByStatus.occupied}
+                    </span>
+                  )}
+                </button>
+                <button onClick={() => setShowCreateModal(true)}
+                  className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            
+            {/* Desktop action buttons */}
+            <div className="hidden sm:flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleViewAnalytics} disabled={loading}>
                 <BarChart3 className="h-4 w-4 mr-2" />Analytics
               </Button>
@@ -433,25 +474,43 @@ const TableManagement = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* Status filter badges - horizontally scrollable on mobile */}
+          <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 overflow-x-auto scrollbar-hide pb-1">
             {Object.entries(tablesByStatus).map(([status, count]) => (
               <Badge key={status} variant={filters.status === status.toUpperCase() ? 'default' : 'outline'}
-                className="cursor-pointer capitalize" onClick={() => dispatch(setStatusFilter(status === filters.status ? null : status.toUpperCase()))}>
+                className="cursor-pointer capitalize whitespace-nowrap text-xs sm:text-sm" onClick={() => dispatch(setStatusFilter(status === filters.status ? null : status.toUpperCase()))}>
                 {status}: {count}
               </Badge>
             ))}
           </div>
 
-          <div className="flex overflow-x-auto bg-white p-1 rounded-lg border border-slate-200">
+          {/* Section tabs - scrollable */}
+          <div className="flex overflow-x-auto bg-white p-1 rounded-lg border border-slate-200 scrollbar-hide">
             {sections.map(section => (
               <button key={section} onClick={() => dispatch(setSectionFilter(section))}
-                className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                   filters.section === section ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
                 }`}>
                 {section}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Mobile action bar (Analytics, Merge, Transfer) */}
+        <div className="flex sm:hidden gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+          <button onClick={handleViewAnalytics} disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium whitespace-nowrap hover:bg-slate-50">
+            <BarChart3 className="h-3.5 w-3.5" />Analytics
+          </button>
+          <button onClick={() => setShowMergeModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium whitespace-nowrap hover:bg-slate-50">
+            <Shuffle className="h-3.5 w-3.5" />Merge
+          </button>
+          <button onClick={() => setShowTransferModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium whitespace-nowrap hover:bg-slate-50">
+            <ArrowRightLeft className="h-3.5 w-3.5" />Transfer
+          </button>
         </div>
 
         {error && (
@@ -476,15 +535,15 @@ const TableManagement = () => {
               <p className="text-sm">Create your first table to get started</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5 pb-32">
               {tables.map(table => {
                 const isInactive = table.isActive === false;
                 return (
                 <div key={table.tableUuid}
-                  className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all group ${
+                  className={`relative aspect-square rounded-xl sm:rounded-2xl border-2 flex flex-col items-center justify-center transition-all group ${
                     isInactive 
                       ? getInactiveTableStyle() 
-                      : `cursor-pointer hover:shadow-md ${getStatusColor(table.status)}`
+                      : `cursor-pointer hover:shadow-md active:scale-[0.98] ${getStatusColor(table.status)}`
                   }`}
                   onClick={isInactive ? undefined : () => {
                     if (table.status === 'VACANT') {
@@ -493,22 +552,22 @@ const TableManagement = () => {
                       navigate(`/app/tables/${table.tableUuid}`);
                     }
                   }}>
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 hidden sm:flex gap-0.5 sm:gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     {!isInactive && (
                       <>
                         <button onClick={(e) => { e.stopPropagation(); openEditModal(table); }}
-                          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white shadow-sm">
-                          <Edit className="h-3.5 w-3.5 text-slate-700" />
+                          className="p-1 sm:p-1.5 bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg hover:bg-white shadow-sm">
+                          <Edit className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-700" />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteTable(table.tableUuid); }}
-                          className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white shadow-sm">
-                          <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                          className="p-1 sm:p-1.5 bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg hover:bg-white shadow-sm">
+                          <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600" />
                         </button>
                       </>
                     )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleToggleTableActive(table); }}
-                      className={`p-1.5 backdrop-blur-sm rounded-lg shadow-sm ${
+                      className={`p-1 sm:p-1.5 backdrop-blur-sm rounded-md sm:rounded-lg shadow-sm ${
                         isInactive 
                           ? 'bg-green-500/90 hover:bg-green-600 text-white' 
                           : 'bg-white/90 hover:bg-white text-slate-700'
@@ -517,23 +576,23 @@ const TableManagement = () => {
                         ? (table.isMerged ? 'Table is merged. Demerge to activate.' : 'Activate table') 
                         : 'Deactivate table'}
                     >
-                      <Power className="h-3.5 w-3.5" />
+                      <Power className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                     </button>
                   </div>
-                  <div className="absolute top-2 left-2">
+                  <div className="absolute top-1.5 sm:top-2 left-1.5 sm:left-2">
                     {isInactive ? (
-                      <Badge variant="default" size="sm" className="bg-slate-400 text-white">INACTIVE</Badge>
+                      <Badge variant="default" size="sm" className="bg-slate-400 text-white text-[10px] sm:text-xs">INACTIVE</Badge>
                     ) : (
-                      <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
+                      <Badge variant={getStatusBadgeVariant(table.status)} size="sm" className="text-[10px] sm:text-xs">{table.status}</Badge>
                     )}
                   </div>
                   
-                  <span className={`text-2xl font-bold ${isInactive ? 'line-through' : ''}`}>{table.tableNumber}</span>
-                  <div className="flex items-center gap-1 mt-2 text-sm font-medium opacity-80">
-                    <Users className="h-4 w-4" />
+                  <span className={`text-xl sm:text-2xl font-bold ${isInactive ? 'line-through' : ''}`}>{table.tableNumber}</span>
+                  <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium opacity-80">
+                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span>{table.capacity} Seats</span>
                   </div>
-                  {table.sectionName && <span className="text-xs opacity-60 mt-1">{table.sectionName}</span>}
+                  {table.sectionName && <span className="text-[10px] sm:text-xs opacity-60 mt-0.5 sm:mt-1">{table.sectionName}</span>}
                   
                   {isInactive && (
                     <div className="mt-2 text-xs font-medium text-slate-500">
@@ -543,16 +602,16 @@ const TableManagement = () => {
                   
                   {/* Guest count and time info for occupied/billed tables */}
                   {!isInactive && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
-                    <div className="absolute bottom-2 left-0 right-0 px-3 flex flex-col items-center gap-1">
+                    <div className="absolute bottom-1.5 sm:bottom-2 left-0 right-0 px-2 sm:px-3 flex flex-col items-center gap-0.5 sm:gap-1">
                       {table.currentPax > 0 && (
-                        <div className="bg-white/90 backdrop-blur-sm rounded-lg py-1 px-2 text-xs font-semibold shadow-sm">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg py-0.5 sm:py-1 px-1.5 sm:px-2 text-[10px] sm:text-xs font-semibold shadow-sm">
                           {table.currentPax} Guest{table.currentPax !== 1 ? 's' : ''}
                         </div>
                       )}
                       {/* Show occupied time only for manager/owner/admin with seatedAt field */}
                       {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
-                        <div className="bg-orange-100 text-orange-800 rounded-lg py-1 px-2 text-xs font-semibold inline-flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                        <div className="bg-orange-100 text-orange-800 rounded-md sm:rounded-lg py-0.5 sm:py-1 px-1.5 sm:px-2 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1">
+                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                           {calculateOccupiedTime(table.seatedAt)}
                         </div>
                       )}
@@ -563,11 +622,11 @@ const TableManagement = () => {
                   {!isInactive && actionPopoverTable?.tableUuid === table.tableUuid && table.status === 'VACANT' && (
                     <div 
                       ref={popoverRef}
-                      className="absolute -bottom-20 left-1/2 -translate-x-1/2 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex gap-2 z-30"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:top-auto sm:translate-y-0 sm:-bottom-20 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 z-30"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm font-medium transition-colors whitespace-nowrap"
+                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
                         disabled={actionLoading}
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -580,18 +639,18 @@ const TableManagement = () => {
                           }
                         }}
                       >
-                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
+                        {actionLoading ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <HandMetal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                         Take
                       </button>
                       <button
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-medium transition-colors whitespace-nowrap"
+                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActionPopoverTable(null);
                           navigate(`/app/tables/${table.tableUuid}`);
                         }}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         View
                       </button>
                     </div>
@@ -605,27 +664,29 @@ const TableManagement = () => {
 
         {/* Pagination Controls for Manager/Owner/Admin */}
         {hasManagerAccess && pagination.totalPages > 1 && (
-          <div className="border-t border-slate-200 p-4 bg-white">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-600">
+          <div className="border-t border-slate-200 p-3 sm:p-4 bg-white">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:justify-between">
+              <div className="text-xs sm:text-sm text-slate-600 text-center sm:text-left">
                 Showing {pagination.page * pagination.size + 1} to{' '}
                 {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of{' '}
                 {pagination.totalElements} tables
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm px-2 sm:px-3"
                   onClick={() => dispatch(getAllTables({ 
                     page: pagination.page - 1, 
                     size: pagination.size, 
-                    status: filters.status 
+                    status: filters.status,
+                    restaurantUuid: activeRestaurantId
                   }))}
                   disabled={pagination.page === 0 || loading}
                 >
-                  Previous
+                  Prev
                 </Button>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 sm:gap-1">
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                     const pageNum = pagination.page < 3 ? i : 
                                    pagination.page >= pagination.totalPages - 3 ? 
@@ -637,10 +698,11 @@ const TableManagement = () => {
                         onClick={() => dispatch(getAllTables({ 
                           page: pageNum, 
                           size: pagination.size, 
-                          status: filters.status 
+                          status: filters.status,
+                          restaurantUuid: activeRestaurantId
                         }))}
                         disabled={loading}
-                        className={`min-w-[2rem] h-8 px-2 text-sm rounded ${
+                        className={`min-w-[1.75rem] sm:min-w-[2rem] h-7 sm:h-8 px-1.5 sm:px-2 text-xs sm:text-sm rounded ${
                           pagination.page === pageNum
                             ? 'bg-slate-900 text-white'
                             : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
@@ -654,10 +716,12 @@ const TableManagement = () => {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs sm:text-sm px-2 sm:px-3"
                   onClick={() => dispatch(getAllTables({ 
                     page: pagination.page + 1, 
                     size: pagination.size, 
-                    status: filters.status 
+                    status: filters.status,
+                    restaurantUuid: activeRestaurantId
                   }))}
                   disabled={pagination.page >= pagination.totalPages - 1 || loading}
                 >
@@ -669,6 +733,7 @@ const TableManagement = () => {
         )}
       </div>
 
+      {/* Desktop Live Status Sidebar */}
       <Card className="w-80 h-full bg-white hidden lg:flex lg:flex-col">
         <div className="p-4 border-b border-slate-100 flex justify-between items-center">
           <h3 className="font-semibold text-slate-800">Live Status</h3>
@@ -721,12 +786,76 @@ const TableManagement = () => {
         </div>
       </Card>
 
+      {/* Mobile Live Status Bottom Sheet */}
+      {showMobileLiveStatus && (
+        <>
+          <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden" onClick={() => setShowMobileLiveStatus(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl lg:hidden animate-slide-up max-h-[75vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-slate-800">Live Status</h3>
+                <Badge variant="success" className="text-xs">{tablesByStatus.occupied} Occupied</Badge>
+              </div>
+              <button onClick={() => setShowMobileLiveStatus(false)} className="p-1.5 hover:bg-slate-100 rounded-lg">
+                <X className="h-4 w-4 text-slate-500" />
+              </button>
+            </div>
+            
+            {/* Quick stats */}
+            <div className="grid grid-cols-3 gap-2 p-3 border-b border-slate-100 shrink-0">
+              <div className="text-center p-2 bg-slate-50 rounded-lg">
+                <div className="text-lg font-bold text-slate-800">{tables.length}</div>
+                <div className="text-[10px] text-slate-500 font-medium">Total</div>
+              </div>
+              <div className="text-center p-2 bg-green-50 rounded-lg">
+                <div className="text-lg font-bold text-green-600">{tablesByStatus.vacant}</div>
+                <div className="text-[10px] text-green-600 font-medium">Available</div>
+              </div>
+              <div className="text-center p-2 bg-amber-50 rounded-lg">
+                <div className="text-lg font-bold text-amber-600">{tablesByStatus.occupied}</div>
+                <div className="text-[10px] text-amber-600 font-medium">Occupied</div>
+              </div>
+            </div>
+
+            {/* Active tables list */}
+            <div className="flex-1 overflow-auto p-3 space-y-2 pb-safe">
+              {tables.filter(t => t.status !== 'VACANT').map(table => (
+                <div key={table.tableUuid} onClick={() => { setShowMobileLiveStatus(false); navigate(`/app/tables/${table.tableUuid}`); }}
+                  className="flex justify-between items-center p-3 rounded-xl border border-slate-100 hover:bg-blue-50 active:bg-blue-100 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center font-bold text-sm text-slate-700">
+                      {table.tableNumber.length > 2 ? table.tableNumber.slice(-2) : table.tableNumber}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-800">{table.sectionName || 'Main Hall'}</div>
+                      <div className="text-xs text-slate-500">{table.currentPax || 0} / {table.capacity} Guests</div>
+                      {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
+                        <div className="text-[10px] text-orange-600 font-medium mt-0.5">
+                          ⏱ {calculateOccupiedTime(table.seatedAt)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant={getStatusBadgeVariant(table.status)} size="sm" className="text-[10px]">{table.status}</Badge>
+                </div>
+              ))}
+              {tables.filter(t => t.status !== 'VACANT').length === 0 && (
+                <div className="text-center text-slate-400 py-6">
+                  <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No active tables</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Create/Edit Modal */}
       <Modal isOpen={showCreateModal || showEditModal} onClose={() => {
         setShowCreateModal(false); setShowEditModal(false); setSelectedTable(null); resetTableForm();
       }} title={showEditModal ? 'Edit Table' : 'Create New Table'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="tableNumber" className="block text-sm font-medium text-slate-700 mb-1">Table Number *</label>
               <Input id="tableNumber" name="tableNumber" value={tableForm.tableNumber} onChange={(e) => setTableForm({ ...tableForm, tableNumber: e.target.value })}
@@ -738,7 +867,7 @@ const TableManagement = () => {
                 placeholder="AC Hall" required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="capacity" className="block text-sm font-medium text-slate-700 mb-1">Capacity *</label>
               <Input id="capacity" name="capacity" type="number" value={tableForm.capacity} onChange={(e) => setTableForm({ ...tableForm, capacity: parseInt(e.target.value) })}
@@ -750,14 +879,14 @@ const TableManagement = () => {
                 min="1" required />
             </div>
           </div>
-          <div>
+          {/* <div>
             <label htmlFor="shape" className="block text-sm font-medium text-slate-700 mb-1">Shape *</label>
             <select id="shape" name="shape" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={tableForm.shape} onChange={(e) => setTableForm({ ...tableForm, shape: e.target.value })}>
               {TABLE_SHAPES.map(shape => (<option key={shape} value={shape}>{shape}</option>))}
             </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          </div> */}
+          {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="posX" className="block text-sm font-medium text-slate-700 mb-1">Position X</label>
               <Input id="posX" name="posX" type="number" value={tableForm.posX} onChange={(e) => setTableForm({ ...tableForm, posX: parseInt(e.target.value) })} />
@@ -766,7 +895,7 @@ const TableManagement = () => {
               <label htmlFor="posY" className="block text-sm font-medium text-slate-700 mb-1">Position Y</label>
               <Input id="posY" name="posY" type="number" value={tableForm.posY} onChange={(e) => setTableForm({ ...tableForm, posY: parseInt(e.target.value) })} />
             </div>
-          </div>
+          </div> */}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="isActive" checked={tableForm.isActive}
               onChange={(e) => setTableForm({ ...tableForm, isActive: e.target.checked })} className="rounded" />
@@ -934,7 +1063,7 @@ const TableManagement = () => {
       <Modal isOpen={showAnalyticsModal} onClose={() => setShowAnalyticsModal(false)} title="Table Analytics">
         <div className="space-y-4">
           {analytics ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Card className="p-4">
                 <p className="text-sm text-slate-500">Avg Turn Time</p>
                 <p className="text-2xl font-bold text-slate-800">
