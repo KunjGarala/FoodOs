@@ -3,6 +3,7 @@ package org.foodos.product.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
 import org.foodos.product.dto.request.CreateCategoryRequest;
 import org.foodos.product.dto.request.UpdateCategoryRequest;
@@ -117,6 +118,25 @@ public class CategoryService {
         categoryRepo.save(category);
 
         log.info("Deleted (soft) category with id: {} for restaurant id: {}", categoryUuid, restaurantUuid);
+    }
+
+    public void toggleActiveStatus(String restaurantUuid, String categoryUuid) {
+        Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid));
+
+        Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("category not found with UUID:" + categoryUuid));
+
+        if (!category.getRestaurant().getRestaurantUuid().equals(restaurantUuid)) {
+            throw new BusinessException("category does not belong to this restaurant");
+        }
+
+
+        category.setIsActive(!category.getIsActive());
+        categoryRepo.save(category);
+        log.info("Toggled active status for category: {} to {} for restaurant: {}", category
+                .getCategoryUuid(), category.getIsActive(), restaurantUuid);
+
     }
 
 }

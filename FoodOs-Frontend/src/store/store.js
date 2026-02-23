@@ -7,6 +7,7 @@ import orderReducer          from './orderSlice';
 import variationReducer      from './variationSlice';
 import modifierGroupReducer  from './modifierGroupSlice';
 import modifierReducer       from './modifierSlice';
+import menuReducer           from './menuSlice';
 import { setupInterceptors } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ export const store = configureStore({
     variations: variationReducer,
     modifierGroups: modifierGroupReducer,
     modifiers: modifierReducer,
+    menu: menuReducer,
   },
   middleware: (getDefault) => getDefault().concat(interceptorSyncMiddleware),
 });

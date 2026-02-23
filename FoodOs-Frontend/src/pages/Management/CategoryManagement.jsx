@@ -23,6 +23,7 @@ import {
   updateCategory,
   deleteCategory,
   fetchCategoryByUuid,
+  toggleActiveStatus,
   clearError,
   clearSuccess,
   clearCurrentCategory,
@@ -185,6 +186,23 @@ const CategoryManagement = () => {
     }
   };
 
+  const handleToggleActive = async (categoryUuid, e) => {
+    e?.stopPropagation();
+    console.log('Toggle clicked for category:', categoryUuid);
+    console.log('Restaurant UUID:', activeRestaurantId);
+    try {
+      await dispatch(toggleActiveStatus({
+        restaurantUuid: activeRestaurantId,
+        categoryUuid,
+      })).unwrap();
+      console.log('Toggle successful');
+      // Refresh categories to show updated status
+      dispatch(fetchCategories(activeRestaurantId));
+    } catch (error) {
+      console.error('Failed to toggle category status:', error);
+    }
+  };
+
   const handleToggleExpand = async (categoryUuid) => {
     // Toggle expansion state
     const isCurrentlyExpanded = expandedCategories[categoryUuid];
@@ -311,7 +329,14 @@ const CategoryManagement = () => {
                       </div>
                       {category.description && <p className="text-sm text-slate-500 mt-1 ml-7">{category.description}</p>}
                       <div className="flex flex-wrap gap-1.5 mt-2 ml-7">
-                        <Badge variant={isActive ? 'success' : 'danger'} className="text-xs">{isActive ? 'Active' : 'Inactive'}</Badge>
+                        <Badge 
+                          variant={isActive ? 'success' : 'danger'} 
+                          className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={(e) => handleToggleActive(categoryId, e)}
+                          title="Click to toggle active status"
+                        >
+                          {isActive ? 'Active' : 'Inactive'}
+                        </Badge>
                         {category.isVisibleInMenu !== false && <Badge variant="info" className="text-xs">Menu</Badge>}
                         {category.parentCategoryName && <Badge variant="outline" className="text-xs">{category.parentCategoryName}</Badge>}
                       </div>
@@ -402,7 +427,12 @@ const CategoryManagement = () => {
                       </td>
                       <td className="px-6 py-3">
                         <div className="flex gap-1">
-                          <Badge variant={isActive ? 'success' : 'danger'} className="text-xs">
+                          <Badge 
+                            variant={isActive ? 'success' : 'danger'} 
+                            className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => handleToggleActive(categoryId, e)}
+                            title="Click to toggle active status"
+                          >
                             {isActive ? 'Active' : 'Inactive'}
                           </Badge>
                           {category.isVisibleInMenu !== false && (
@@ -459,7 +489,12 @@ const CategoryManagement = () => {
                           </td>
                           <td className="px-6 py-3">
                             <div className="flex gap-1">
-                              <Badge variant={subCat.isActive !== false ? 'success' : 'danger'} className="text-xs">
+                              <Badge 
+                                variant={subCat.isActive !== false ? 'success' : 'danger'} 
+                                className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={(e) => handleToggleActive(subCat.categoryUuid, e)}
+                                title="Click to toggle active status"
+                              >
                                 {subCat.isActive !== false ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>

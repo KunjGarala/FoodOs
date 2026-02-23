@@ -11,14 +11,12 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import {
-  fetchProducts,
-  fetchProductsByCategory,
   searchProducts as searchProductsAction,
   clearSearchResults,
 } from '../../store/productSlice';
 import {
-  fetchCategories,
-} from '../../store/categorySlice';
+  fetchMenu,
+} from '../../store/menuSlice';
 import {
   fetchTableDetails,
   selectTableDetails,
@@ -41,17 +39,62 @@ const AddOrderItems = () => {
 
   // Redux State
   const { activeRestaurantId } = useSelector((state) => state.auth);
-  const { products, loading: productsLoading, searchResults } = useSelector((state) => state.products);
-  const { categories, loading: categoriesLoading } = useSelector((state) => state.categories);
+  const { searchResults } = useSelector((state) => state.products);
+  const { categories: menuCategories, loading: menuLoading } = useSelector((state) => state.menu);
   const tableDetails = useSelector(selectTableDetails);
   
   const activeOrder = tableDetails?.activeOrder;
 
-  // 1. Fetch Initial Data
+  // Transform menu data to flat arrays for existing UI
+  const categories = menuCategories || [];
+  const products = menuCategories?.flatMap(category => 
+    category.products.map(product => ({
+      ...product,
+      categoryName: category.name,
+      categoryUuid: category.categoryUuid
+    }))
+  ) || [];
+
+  // Build hierarchical category structure for display
+  const buildCategoryHierarchy = () => {
+    const result = [];
+    
+    // First, add all parent categories (those without parentCategoryUuid)
+    categories.forEach(category => {
+      if (!category.parentCategoryUuid) {
+        result.push({
+          ...category,
+          isParent: true,
+          displayName: category.name
+        });
+        
+        // Add its subcategories if any
+        if (category.subCategories && category.subCategories.length > 0) {
+          category.subCategories.forEach(subCat => {
+            // Find the full category data for this subcategory
+            const fullSubCat = categories.find(c => c.categoryUuid === subCat.categoryUuid);
+            if (fullSubCat) {
+              result.push({
+                ...fullSubCat,
+                isParent: false,
+                parentName: category.name,
+                displayName: `└─ ${fullSubCat.name}` // Indented with tree character
+              });
+            }
+          });
+        }
+      }
+    });
+    
+    return result;
+  };
+
+  const hierarchicalCategories = buildCategoryHierarchy();
+
+  // 1. Fetch Menu Data
   useEffect(() => {
     if (activeRestaurantId) {
-      dispatch(fetchProducts({ restaurantUuid: activeRestaurantId, includeInactive: false }));
-      dispatch(fetchCategories(activeRestaurantId));
+      dispatch(fetchMenu(activeRestaurantId));
     }
     if (tableUuid) {
         dispatch(fetchTableDetails(tableUuid));
@@ -70,20 +113,12 @@ const AddOrderItems = () => {
     }
   }, [searchQuery, dispatch, activeRestaurantId]);
 
-  // 3. Handle Category Filter
-  useEffect(() => {
-    if (activeRestaurantId && activeCategory !== 'all') {
-      const category = categories.find(cat => cat.name === activeCategory);
-      if (category) {
-        dispatch(fetchProductsByCategory({ 
-          restaurantUuid: activeRestaurantId, 
-          categoryUuid: category.categoryUuid 
-        }));
-      }
-    } else if (activeRestaurantId && activeCategory === 'all') {
-      dispatch(fetchProducts({ restaurantUuid: activeRestaurantId, includeInactive: false }));
-    }
-  }, [activeCategory, dispatch, activeRestaurantId, categories]);
+  // 3. Filter products by active category
+  const filteredProducts = activeCategory === 'all' 
+    ? products 
+    : products.filter(p => p.categoryName === activeCategory);
+
+  const displayProducts = searchQuery.trim() ? searchResults : filteredProducts;
 
   // Helper to calculate totals
   const calculateCartTotal = () => {
@@ -172,7 +207,7 @@ const AddOrderItems = () => {
 
   // --- Render ---
 
-  const displayProducts = searchQuery.trim() ? searchResults : products;
+
 
   return (
     <div className="flex h-[calc(100vh-6rem)] flex-col md:flex-row gap-4 overflow-hidden">
@@ -197,37 +232,38 @@ const AddOrderItems = () => {
                 </div>
             </div>
             
-            {/* Categories */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <button
-                    onClick={() => setActiveCategory('all')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                        activeCategory === 'all' 
-                        ? 'bg-slate-900 text-white' 
-                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
+            {/* Categories Dropdown */}
+            <div className="relative">
+                <select
+                    value={activeCategory}
+                    onChange={(e) => setActiveCategory(e.target.value)}
+                    className="w-full md:w-64 pl-4 pr-10 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer shadow-sm"
                 >
-                    All Items
-                </button>
-                {!categoriesLoading && categories.map(cat => (
-                    <button
-                        key={cat.categoryUuid}
-                        onClick={() => setActiveCategory(cat.name)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                            activeCategory === cat.name 
-                            ? 'bg-slate-900 text-white' 
-                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                    >
-                        {cat.name}
-                    </button>
-                ))}
+                    <option value="all">All Categories</option>
+                    {hierarchicalCategories.map(cat => (
+                        <option 
+                            key={cat.categoryUuid} 
+                            value={cat.name}
+                            style={{
+                                fontWeight: cat.isParent ? '600' : '400',
+                                paddingLeft: cat.isParent ? '0.5rem' : '1.5rem'
+                            }}
+                        >
+                            {cat.displayName}
+                        </option>
+                    ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                    </svg>
+                </div>
             </div>
         </div>
 
         {/* Product Grid */}
         <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
-             {productsLoading ? (
+             {menuLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             </div>

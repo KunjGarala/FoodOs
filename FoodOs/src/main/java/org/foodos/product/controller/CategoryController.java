@@ -137,6 +137,31 @@ public class CategoryController {
         categoryService.deleteCategory(restaurantUuid, categoryUuid);
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(
+            summary = "Toggle category active status",
+            description = "Toggle the active status of a category. This will enable or disable the category."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Category active status toggled successfully"),
+            @ApiResponse(responseCode = "404", description = "Restaurant or category not found"),
+            @ApiResponse(responseCode = "400", description = "Category does not belong to this restaurant"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @PatchMapping("/{categoryUuid}/toggle-active")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+    public ResponseEntity<Void> toggleActiveStatus(
+            @Parameter(description = "Restaurant UUID", required = true)
+            @PathVariable String restaurantUuid,
+
+            @Parameter(description = "Category UUID", required = true)
+            @PathVariable String categoryUuid,
+
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        categoryService.toggleActiveStatus(restaurantUuid, categoryUuid);
+        return ResponseEntity.ok().build();
+    }
 }
 
 

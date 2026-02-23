@@ -82,6 +82,21 @@ export const deleteCategory = createAsyncThunk(
   }
 );
 
+// Toggle Active Status
+export const toggleActiveStatus = createAsyncThunk(
+  'categories/toggleActive',
+  async ({ restaurantUuid, categoryUuid }, { rejectWithValue }) => {
+    try {
+      await api.patch(
+        `/api/restaurants/${restaurantUuid}/categories/${categoryUuid}/toggle-active`
+      );
+      return categoryUuid;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to toggle category status');
+    }
+  }
+);
+
 // ─────────────────────────────────────────────────────────
 // Initial State
 // ─────────────────────────────────────────────────────────
@@ -186,6 +201,43 @@ const categorySlice = createSlice({
         state.success = 'Category deleted successfully';
       })
       .addCase(deleteCategory.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Toggle Active Status
+      .addCase(toggleActiveStatus.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(toggleActiveStatus.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const categoryUuid = action.payload;
+        
+        // Update in main categories list
+        const category = state.categories.find(c => (c.categoryUuid || c.uuid) === categoryUuid);
+        if (category) {
+          category.isActive = !category.isActive;
+        }
+        
+        // Update in currentCategory if it matches
+        if (state.currentCategory && (state.currentCategory.categoryUuid || state.currentCategory.uuid) === categoryUuid) {
+          state.currentCategory.isActive = !state.currentCategory.isActive;
+        }
+        
+        // Update in subcategories if it exists
+        if (state.currentCategory?.subCategories) {
+          const subCategory = state.currentCategory.subCategories.find(
+            sc => (sc.categoryUuid || sc.uuid) === categoryUuid
+          );
+          if (subCategory) {
+            subCategory.isActive = !subCategory.isActive;
+          }
+        }
+        
+        state.success = 'Category status updated successfully';
+      })
+      .addCase(toggleActiveStatus.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload;
       });
