@@ -151,6 +151,11 @@ const TableDetails = () => {
       dispatch(handleTableWsEvent(data));
       // If this table was updated, refresh details
       if (data.tableUuid === tableUuid) refreshDetails();
+      // If this table is involved in a transfer, refresh details
+      if (data.type === 'TABLE_TRANSFER' &&
+          (data.fromTableUuid === tableUuid || data.toTableUuid === tableUuid)) {
+        refreshDetails();
+      }
     }
   );
   useWebSocket(

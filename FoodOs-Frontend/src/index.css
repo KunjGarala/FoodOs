@@ -74,12 +74,6 @@ body {
 }
 
 /* ── Smooth Transitions ───────────────────────────────── */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
 button, input, select, textarea {
   transition: all 0.2s ease;
 }

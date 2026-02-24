@@ -315,6 +315,30 @@ const tableSlice = createSlice({
         return;
       }
 
+      // Handle TABLE_TRANSFER events — update both source and destination tables
+      if (data.type === 'TABLE_TRANSFER') {
+        const { fromTableUuid, toTableUuid, fromTableData, toTableData } = data;
+        if (fromTableData && fromTableUuid) {
+          const fromIdx = state.tables.findIndex(t => t.tableUuid === fromTableUuid);
+          if (fromIdx !== -1) {
+            state.tables[fromIdx] = { ...state.tables[fromIdx], ...fromTableData };
+            if (state.selectedTable?.tableUuid === fromTableUuid) {
+              state.selectedTable = { ...state.selectedTable, ...fromTableData };
+            }
+          }
+        }
+        if (toTableData && toTableUuid) {
+          const toIdx = state.tables.findIndex(t => t.tableUuid === toTableUuid);
+          if (toIdx !== -1) {
+            state.tables[toIdx] = { ...state.tables[toIdx], ...toTableData };
+            if (state.selectedTable?.tableUuid === toTableUuid) {
+              state.selectedTable = { ...state.selectedTable, ...toTableData };
+            }
+          }
+        }
+        return;
+      }
+
       // Try to find existing table and update it
       const idx = state.tables.findIndex(t => t.tableUuid === data.tableUuid);
       if (idx !== -1) {
@@ -505,15 +529,32 @@ const tableSlice = createSlice({
       })
       .addCase(transferTable.fulfilled, (state, action) => {
         state.actionLoading = false;
-        // Update both source and destination tables
-        if (action.payload.fromTable) {
-          const fromIndex = state.tables.findIndex(t => t.tableUuid === action.payload.fromTable.tableUuid);
-          if (fromIndex !== -1) state.tables[fromIndex] = action.payload.fromTable;
+        state.error = null; // Clear any previous error on success
+        const { fromTableUuid, toTableUuid, fromTableData, toTableData } = action.payload;
+        // Update source table (now VACANT) using full table DTO
+        if (fromTableData && fromTableUuid) {
+          const fromIndex = state.tables.findIndex(t => t.tableUuid === fromTableUuid);
+          if (fromIndex !== -1) {
+            state.tables[fromIndex] = { ...state.tables[fromIndex], ...fromTableData };
+          }
+          // Also update selectedTable if it matches
+          if (state.selectedTable?.tableUuid === fromTableUuid) {
+            state.selectedTable = { ...state.selectedTable, ...fromTableData };
+          }
         }
-        if (action.payload.toTable) {
-          const toIndex = state.tables.findIndex(t => t.tableUuid === action.payload.toTable.tableUuid);
-          if (toIndex !== -1) state.tables[toIndex] = action.payload.toTable;
+        // Update destination table (now OCCUPIED) using full table DTO
+        if (toTableData && toTableUuid) {
+          const toIndex = state.tables.findIndex(t => t.tableUuid === toTableUuid);
+          if (toIndex !== -1) {
+            state.tables[toIndex] = { ...state.tables[toIndex], ...toTableData };
+          }
+          // Also update selectedTable if it matches
+          if (state.selectedTable?.tableUuid === toTableUuid) {
+            state.selectedTable = { ...state.selectedTable, ...toTableData };
+          }
         }
+        // Clear tableDetails so it's re-fetched fresh on next navigation
+        state.tableDetails = null;
       })
       .addCase(transferTable.rejected, (state, action) => {
         state.actionLoading = false;
