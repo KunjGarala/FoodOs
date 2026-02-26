@@ -40,6 +40,9 @@ public class TableFloorPlanDto {
     @Schema(description = "Time when guests were seated")
     private LocalDateTime seatedAt;
 
+    @Schema(description = "Current order UUID when table is occupied")
+    private String currentOrderId;
+
     @Schema(description = "X-coordinate for floor plan", example = "120")
     private Integer posX;
 

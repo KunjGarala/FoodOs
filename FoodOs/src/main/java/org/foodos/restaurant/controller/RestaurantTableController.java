@@ -140,7 +140,7 @@ public class RestaurantTableController {
                 log.info("GET /api/v1/tables - Fetch all tables. Page: {}, Size: {}, Status: {}, User: {}",
                                 page, size, status, currentUser.getUsername());
                 Pageable pageable = PageRequest.of(page, size);
-                Page<TableResponseDto> response = tableService.getAllTables(pageable, status , restaurantUuid);
+                Page<TableResponseDto> response = tableService.getAllTables(pageable, status, restaurantUuid);
                 return ResponseEntity.ok(response);
         }
 
@@ -296,3 +296,4 @@ public class RestaurantTableController {
                 return ResponseEntity.ok(response);
         }
 }
+// Trigger rebuild

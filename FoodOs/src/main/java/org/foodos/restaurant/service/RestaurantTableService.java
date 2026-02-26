@@ -9,8 +9,11 @@ import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
 import org.foodos.config.websocket.WebSocketEventService;
 import org.foodos.order.dto.request.CreateOrderRequest;
 import org.foodos.order.dto.response.OrderResponse;
+import org.foodos.order.entity.KitchenOrderTicket;
 import org.foodos.order.entity.Order;
 import org.foodos.order.mapper.OrderMapper;
+import org.foodos.order.repository.KitchenOrderTicketRepository;
+import org.foodos.order.repository.OrderRepository;
 import org.foodos.order.service.OrderService;
 import org.foodos.restaurant.dto.request.*;
 import org.foodos.restaurant.dto.response.*;
@@ -41,6 +44,8 @@ public class RestaurantTableService {
     private final RestaurantTableMapper tableMapper;
     private final OrderService orderService;
     private final OrderMapper orderMapper;
+    private final OrderRepository orderRepository;
+    private final KitchenOrderTicketRepository kitchenOrderTicketRepository;
     private final WebSocketEventService webSocketEventService;
 
     /**
@@ -186,8 +191,6 @@ public class RestaurantTableService {
                 break;
 
             case VACANT:
-                table.clearOrder();
-
                 table.clearOrder();
                 // Removed auto-demerge logic. Tables must be manually demerged.
                 log.info("Table {} marked as VACANT", table.getTableNumber());
@@ -521,27 +524,85 @@ public class RestaurantTableService {
             throw new BusinessException("Tables must be in the same restaurant");
         }
 
-        // Transfer logic - move all state from source to destination
+        // Transfer logic - capture all state from source BEFORE clearing
         Order currentOrder = fromTable.getCurrentOrder();
-        toTable.setStatus(TableStatus.OCCUPIED);
-        toTable.setCurrentOrder(currentOrder);
-        toTable.setSeatedAt(fromTable.getSeatedAt());
-        toTable.setCurrentPax(fromTable.getCurrentPax());
-        toTable.setCurrentWaiter(fromTable.getCurrentWaiter());
+        LocalDateTime seatedAt = fromTable.getSeatedAt();
+        Integer currentPax = fromTable.getCurrentPax();
+        UserAuthEntity currentWaiter = fromTable.getCurrentWaiter();
 
-        // Update the order's table reference
-        if (currentOrder != null) {
-            currentOrder.setTable(toTable);
+        // Fallback: if currentOrder was not set on the table (legacy data),
+        // look up the active order by table UUID from the orders table.
+        if (currentOrder == null) {
+            log.warn("currentOrder is null on source table {}. Attempting fallback lookup via order repository.",
+                    fromTable.getTableUuid());
+            currentOrder = orderRepository.findActiveOrderByTableUuid(
+                    fromTable.getTableUuid(),
+                    List.of(org.foodos.order.entity.enums.OrderStatus.COMPLETED,
+                            org.foodos.order.entity.enums.OrderStatus.CANCELLED,
+                            org.foodos.order.entity.enums.OrderStatus.VOID)
+            ).orElse(null);
         }
 
-        fromTable.clearOrder();
+        if (currentOrder == null) {
+            log.error("No active order found for source table {}", fromTable.getTableUuid());
+            throw new BusinessException("Source table has no active order to transfer");
+        }
 
-        tableRepository.save(fromTable);
-        tableRepository.save(toTable);
+        Long orderId = currentOrder.getId();
+        String orderUuid = currentOrder.getOrderUuid();
 
-        String orderUuid = currentOrder != null ? currentOrder.getOrderUuid() : null;
+        // Step 1: Clear source table FIRST to avoid unique constraint violation
+        // on current_order_id (both tables can't reference the same order simultaneously)
+        fromTable.setCurrentOrder(null);
+        fromTable.setCurrentPax(null);
+        fromTable.setSeatedAt(null);
+        fromTable.setCurrentWaiter(null);
+        fromTable.setStatus(TableStatus.VACANT);
+        tableRepository.saveAndFlush(fromTable);
+
+        // Step 2: Re-load the Order FRESH from DB to avoid Hibernate lazy proxy issues.
+        // The proxy obtained via fromTable.getCurrentOrder() can become stale after
+        // clearing and flushing the source table.
+        Order orderToTransfer = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException("Order not found during transfer: " + orderUuid));
+
+        // Update the order's table reference to the destination table
+        orderToTransfer.setTable(toTable);
+        orderRepository.saveAndFlush(orderToTransfer);
+        log.info("Order {} table_id updated to destination table {}", orderUuid, toTable.getTableNumber());
+
+        // Step 3: Set up destination table with transferred state
+        toTable.setStatus(TableStatus.OCCUPIED);
+        toTable.setCurrentOrder(orderToTransfer);
+        toTable.setSeatedAt(seatedAt != null ? seatedAt : LocalDateTime.now());
+        toTable.setCurrentPax(currentPax);
+        toTable.setCurrentWaiter(currentWaiter);
+        tableRepository.saveAndFlush(toTable);
         log.info("Table transfer completed successfully. From: {} -> To: {}, Order: {}",
                 fromTable.getTableNumber(), toTable.getTableNumber(), orderUuid);
+
+        // Step 4: Update table number on all KOTs belonging to this order
+        // KOTs store a denormalized tableNumber; update it to the new destination table.
+        List<KitchenOrderTicket> orderKots = kitchenOrderTicketRepository.findByOrderId(orderId);
+        if (!orderKots.isEmpty()) {
+            String newTableNumber = toTable.getTableNumber();
+            for (KitchenOrderTicket kot : orderKots) {
+                kot.setTableNumber(newTableNumber);
+            }
+            kitchenOrderTicketRepository.saveAll(orderKots);
+            log.info("Updated tableNumber to '{}' on {} KOT(s) for order {}",
+                    newTableNumber, orderKots.size(), orderUuid);
+
+            // Broadcast each updated KOT so the kitchen display refreshes in real-time
+            String rUuidForKot = fromTable.getRestaurant().getRestaurantUuid();
+            for (KitchenOrderTicket kot : orderKots) {
+                webSocketEventService.broadcastKitchenUpdate(rUuidForKot, orderMapper.toKotResponse(kot));
+            }
+        }
+
+        // Build full table DTOs for both source and destination
+        TableFloorPlanDto fromTableDto = tableMapper.toFloorPlanDto(fromTable);
+        TableFloorPlanDto toTableDto = tableMapper.toFloorPlanDto(toTable);
 
         TransferTableResponseDto transferResponse = TransferTableResponseDto.builder()
                 .orderId(orderUuid)
@@ -549,10 +610,12 @@ public class RestaurantTableService {
                 .toTable(toTable.getTableNumber())
                 .fromTableUuid(fromTable.getTableUuid())
                 .toTableUuid(toTable.getTableUuid())
+                .fromTableData(fromTableDto)
+                .toTableData(toTableDto)
                 .transferredAt(LocalDateTime.now())
                 .build();
 
-        // Broadcast both tables changed
+        // Broadcast transfer event (contains both tables' full data)
         String rUuid = fromTable.getRestaurant().getRestaurantUuid();
         webSocketEventService.broadcastTableUpdate(rUuid, transferResponse);
 
@@ -802,9 +865,11 @@ public class RestaurantTableService {
         // or create a dedicated method that creates an order without items.
         Order order = orderService.createEmptyOrder(orderRequest, userId);
 
-        // 3. Update table status and seated time
+        // 3. Update table status, link order, and record seated time
+        table.setCurrentOrder(order);
         table.setStatus(TableStatus.OCCUPIED);
         table.setSeatedAt(LocalDateTime.now());
+        table.setCurrentPax(request.getNumberOfGuests());
         tableRepository.save(table);
 
         // Broadcast table and order updates via WebSocket
@@ -824,7 +889,17 @@ public class RestaurantTableService {
         TableResponseDto tableResponse = tableMapper.toResponseDto(table);
         OrderResponse activeOrder = null;
         if (table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
-            activeOrder = orderService.getActiveOrderByTable(tableUuid);
+            try {
+                activeOrder = orderService.getActiveOrderByTable(tableUuid);
+            } catch (Exception e) {
+                log.warn("Could not find active order by table UUID query for table {}. " +
+                         "Falling back to table's currentOrder entity. Error: {}",
+                         tableUuid, e.getMessage());
+                // Fallback: use the table's currentOrder relationship directly
+                if (table.getCurrentOrder() != null) {
+                    activeOrder = orderMapper.toOrderResponse(table.getCurrentOrder());
+                }
+            }
         }
 
         return TableDetailResponse.builder()

@@ -38,7 +38,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // SockJS fallback endpoint – the frontend connects here
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(frontendUrl, "http://localhost:5173")
+                .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
 }
