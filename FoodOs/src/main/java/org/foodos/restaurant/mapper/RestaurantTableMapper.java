@@ -21,8 +21,11 @@ public interface RestaurantTableMapper {
     @Mapping(target = "positionY", source = "posY")
     @Mapping(target = "tableShape", source = "shape")
     @Mapping(target = "isDeleted", constant = "false")
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "isMerged", constant = "false")
     @Mapping(target = "mergedWithTableIds", ignore = true)
+    @Mapping(target = "currentOrder", ignore = true)
+    @Mapping(target = "orderHistory", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     RestaurantTable toEntity(CreateTableRequestDto dto);
@@ -46,7 +49,9 @@ public interface RestaurantTableMapper {
     @Mapping(target = "shape", source = "tableShape")
     @Mapping(target = "currentPax", source = "currentPax")
     @Mapping(target = "seatedAt", source = "seatedAt")
+    @Mapping(target = "currentWaiterUuid", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getUserUuid() : null)")
     @Mapping(target = "currentWaiterName", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getFullName() : null)")
+    @Mapping(target = "currentOrderId", expression = "java(table.getCurrentOrder() != null ? table.getCurrentOrder().getOrderUuid() : null)")
     TableFloorPlanDto toFloorPlanDto(RestaurantTable table);
 
     @Mapping(target = "positionX", source = "posX")
@@ -62,8 +67,11 @@ public interface RestaurantTableMapper {
     @Mapping(target = "currentPax", ignore = true)
     @Mapping(target = "seatedAt", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "isMerged", ignore = true)
     @Mapping(target = "mergedWithTableIds", ignore = true)
+    @Mapping(target = "currentOrder", ignore = true)
+    @Mapping(target = "orderHistory", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateTableFromDto(UpdateTableRequestDto dto, @MappingTarget RestaurantTable table);

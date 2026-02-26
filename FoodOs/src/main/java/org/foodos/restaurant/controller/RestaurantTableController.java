@@ -140,7 +140,7 @@ public class RestaurantTableController {
                 log.info("GET /api/v1/tables - Fetch all tables. Page: {}, Size: {}, Status: {}, User: {}",
                                 page, size, status, currentUser.getUsername());
                 Pageable pageable = PageRequest.of(page, size);
-                Page<TableResponseDto> response = tableService.getAllTables(pageable, status , restaurantUuid);
+                Page<TableResponseDto> response = tableService.getAllTables(pageable, status, restaurantUuid);
                 return ResponseEntity.ok(response);
         }
 
@@ -295,4 +295,47 @@ public class RestaurantTableController {
                 TableResponseDto response = tableService.demergeTableResponse(tableUuid, currentUser);
                 return ResponseEntity.ok(response);
         }
+
+        /**
+         * Assign a waiter to a table (Manager/Owner/Admin only)
+         */
+        @Operation(summary = "Assign waiter to table", description = "Assigns or reassigns a waiter to a specific table. Only managers, owners, and admins can perform this action.")
+        @ApiResponses({
+                        @ApiResponse(responseCode = "200", description = "Waiter assigned successfully", content = @Content(schema = @Schema(implementation = TableResponseDto.class))),
+                        @ApiResponse(responseCode = "404", description = "Table or waiter not found"),
+                        @ApiResponse(responseCode = "403", description = "Access denied - requires MANAGER or higher")
+        })
+        @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+        @PatchMapping("/{tableUuid}/assign-waiter")
+        public ResponseEntity<TableResponseDto> assignWaiter(
+                        @Parameter(description = "Table UUID", required = true) @PathVariable String tableUuid,
+                        @Valid @RequestBody AssignWaiterRequestDto requestDto,
+                        @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser) {
+                log.info("PATCH /api/v1/tables/{}/assign-waiter - Assign waiter by user: {}",
+                                tableUuid, currentUser.getUsername());
+                TableResponseDto response = tableService.assignWaiter(tableUuid, requestDto.getWaiterUuid(),
+                                currentUser);
+                return ResponseEntity.ok(response);
+        }
+
+        /**
+         * Remove waiter from a table (Manager/Owner/Admin only)
+         */
+        @Operation(summary = "Remove waiter from table", description = "Removes the currently assigned waiter from a table.")
+        @ApiResponses({
+                        @ApiResponse(responseCode = "200", description = "Waiter removed successfully", content = @Content(schema = @Schema(implementation = TableResponseDto.class))),
+                        @ApiResponse(responseCode = "404", description = "Table not found"),
+                        @ApiResponse(responseCode = "403", description = "Access denied - requires MANAGER or higher")
+        })
+        @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+        @DeleteMapping("/{tableUuid}/assign-waiter")
+        public ResponseEntity<TableResponseDto> removeWaiter(
+                        @Parameter(description = "Table UUID", required = true) @PathVariable String tableUuid,
+                        @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser) {
+                log.info("DELETE /api/v1/tables/{}/assign-waiter - Remove waiter by user: {}",
+                                tableUuid, currentUser.getUsername());
+                TableResponseDto response = tableService.removeWaiter(tableUuid, currentUser);
+                return ResponseEntity.ok(response);
+        }
 }
+// Trigger rebuild

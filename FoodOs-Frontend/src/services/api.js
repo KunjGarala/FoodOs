@@ -293,6 +293,26 @@ export const tableAPI = {
 
   // Get combined table + active order details
   getTableDetails: (tableUuid) => api.get(`/api/v1/tables/${tableUuid}/details`),
+
+  // Assign waiter to table (Manager/Owner/Admin)
+  assignWaiter: (tableUuid, waiterUuid) => api.patch(`/api/v1/tables/${tableUuid}/assign-waiter`, { waiterUuid }),
+
+  // Remove waiter from table (Manager/Owner/Admin)
+  removeWaiter: (tableUuid) => api.delete(`/api/v1/tables/${tableUuid}/assign-waiter`),
+};
+
+export const orderAPI = {
+  // Get paginated order history for a table
+  getTableOrderHistory: (tableUuid, { page = 0, size = 10, search, startDate, endDate } = {}) => {
+    const params = { page, size };
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    return api.get(`/api/v1/orders/table/${tableUuid}/history`, { params });
+  },
+
+  // Get single order by UUID
+  getOrderByUuid: (orderUuid) => api.get(`/api/v1/orders/${orderUuid}`),
 };
 
 export const variationAPI = {

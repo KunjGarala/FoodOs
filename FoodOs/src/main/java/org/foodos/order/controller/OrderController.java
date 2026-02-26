@@ -349,6 +349,20 @@ public class OrderController {
         return ResponseEntity.ok(order);
     }
 
+    @Operation(summary = "Get order history for a table", description = "Gets paginated order history for a specific table with optional search and date filtering")
+    @GetMapping("/table/{tableUuid}/history")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<Page<OrderResponse>> getTableOrderHistory(
+            @PathVariable String tableUuid,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @PageableDefault(size = 10, sort = "orderTime", direction = Sort.Direction.DESC) Pageable pageable) {
+        log.info("REST: Fetching order history for table: {}, search: {}, startDate: {}, endDate: {}", tableUuid, search, startDate, endDate);
+        Page<OrderResponse> orders = orderService.getOrderHistoryByTable(tableUuid, search, startDate, endDate, pageable);
+        return ResponseEntity.ok(orders);
+    }
+
     // ===== STATISTICS =====
 
     @Operation(summary = "Get total orders count", description = "Gets count of orders for a date")

@@ -201,5 +201,31 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     boolean existsByOrderNumberAndIsDeletedFalse(String orderNumber);
 
     boolean existsByTableAndStatusNotInAndIsDeletedFalse(RestaurantTable table, List<OrderStatus> statuses);
+
+    // ===== TABLE ORDER HISTORY =====
+
+    @Query("SELECT o FROM Order o WHERE o.table.tableUuid = :tableUuid AND o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> findAllByTableUuid(@Param("tableUuid") String tableUuid, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.table.tableUuid = :tableUuid AND o.orderDate = :orderDate AND o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> findAllByTableUuidAndOrderDate(@Param("tableUuid") String tableUuid, @Param("orderDate") LocalDate orderDate, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.table.tableUuid = :tableUuid AND o.orderDate BETWEEN :startDate AND :endDate AND o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> findAllByTableUuidAndOrderDateBetween(@Param("tableUuid") String tableUuid, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.table.tableUuid = :tableUuid AND " +
+           "(LOWER(o.customerName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.customerPhone) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
+           "o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> searchOrdersByTableUuid(@Param("tableUuid") String tableUuid, @Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.table.tableUuid = :tableUuid AND " +
+           "(LOWER(o.customerName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(o.customerPhone) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
+           "o.orderDate BETWEEN :startDate AND :endDate AND " +
+           "o.isDeleted = false ORDER BY o.orderTime DESC")
+    Page<Order> searchOrdersByTableUuidAndDateRange(@Param("tableUuid") String tableUuid, @Param("searchTerm") String searchTerm, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
 }
 

@@ -216,6 +216,23 @@ export const fetchOrdersByTable = createAsyncThunk(
   }
 );
 
+// Get paginated order history for a table
+export const fetchTableOrderHistory = createAsyncThunk(
+  'orders/fetchTableHistory',
+  async ({ tableUuid, page = 0, size = 10, search, startDate, endDate }, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams({ page, size });
+      if (search) params.append('search', search);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      const response = await api.get(`/api/v1/orders/table/${tableUuid}/history?${params}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to fetch table order history');
+    }
+  }
+);
+
 // Get Orders by Status
 export const fetchOrdersByStatus = createAsyncThunk(
   'orders/fetchByStatus',
@@ -279,6 +296,17 @@ const initialState = {
     size: 20,
     totalElements: 0,
     totalPages: 0,
+  },
+  tableOrderHistory: {
+    orders: [],
+    loading: false,
+    error: null,
+    pagination: {
+      page: 0,
+      size: 10,
+      totalElements: 0,
+      totalPages: 0,
+    },
   },
 };
 
@@ -571,6 +599,28 @@ const orderSlice = createSlice({
       // Fetch Analytics
       .addCase(fetchOrderAnalytics.fulfilled, (state, action) => {
         state.analytics = action.payload;
+      })
+
+      // Fetch Table Order History
+      .addCase(fetchTableOrderHistory.pending, (state) => {
+        state.tableOrderHistory.loading = true;
+        state.tableOrderHistory.error = null;
+      })
+      .addCase(fetchTableOrderHistory.fulfilled, (state, action) => {
+        state.tableOrderHistory.loading = false;
+        state.tableOrderHistory.orders = action.payload.content || [];
+        if (action.payload.totalElements !== undefined) {
+          state.tableOrderHistory.pagination = {
+            page: action.payload.number || 0,
+            size: action.payload.size || 10,
+            totalElements: action.payload.totalElements || 0,
+            totalPages: action.payload.totalPages || 0,
+          };
+        }
+      })
+      .addCase(fetchTableOrderHistory.rejected, (state, action) => {
+        state.tableOrderHistory.loading = false;
+        state.tableOrderHistory.error = action.payload;
       });
   },
 });

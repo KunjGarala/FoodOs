@@ -187,6 +187,9 @@ public class OrderServiceImpl implements OrderService {
         if (request.getCustomerPhone() != null) {
             order.setCustomerPhone(request.getCustomerPhone());
         }
+        if (request.getCustomerEmail() != null) {
+            order.setCustomerEmail(request.getCustomerEmail());
+        }
         if (request.getOrderNotes() != null) {
             order.setOrderNotes(request.getOrderNotes());
         }
@@ -463,6 +466,7 @@ public class OrderServiceImpl implements OrderService {
                 itemModifier.setModifierGroupName(modifier.getModifierGroup().getName());
                 itemModifier.setQuantity(modRequest.getQuantity());
                 itemModifier.setUnitPrice(modifier.getPriceAdd());
+                itemModifier.calculateLineTotal();
 
                 orderItem.addModifier(itemModifier);
             }
@@ -551,6 +555,17 @@ public class OrderServiceImpl implements OrderService {
         log.info("Completing order: {}", orderUuid);
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Validate all KOT items are SERVED or CANCELLED before completing
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            boolean hasUnservedItems = order.getItems().stream()
+                    .filter(item -> item.getKotStatus() != KotStatus.CANCELLED
+                            && (item.getKotStatus() == null || !item.getKotStatus().name().equals("CANCELLED")))
+                    .anyMatch(item -> item.getKotStatus() != KotStatus.SERVED);
+            if (hasUnservedItems) {
+                throw new RuntimeException("Cannot complete order: All items must be served before completing the order. Please wait for all KOT items to be served.");
+            }
+        }
 
         order.complete();
 
@@ -675,6 +690,28 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Page<OrderResponse> searchOrders(String restaurantUuid, String searchTerm, Pageable pageable) {
         Page<Order> orders = orderRepository.searchOrdersByRestaurantUuid(restaurantUuid, searchTerm, pageable);
+        return orders.map(orderMapper::toOrderResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrderHistoryByTable(String tableUuid, String searchTerm,
+            java.time.LocalDate startDate, java.time.LocalDate endDate, Pageable pageable) {
+        Page<Order> orders;
+
+        boolean hasSearch = searchTerm != null && !searchTerm.trim().isEmpty();
+        boolean hasDateRange = startDate != null && endDate != null;
+
+        if (hasSearch && hasDateRange) {
+            orders = orderRepository.searchOrdersByTableUuidAndDateRange(tableUuid, searchTerm.trim(), startDate, endDate, pageable);
+        } else if (hasSearch) {
+            orders = orderRepository.searchOrdersByTableUuid(tableUuid, searchTerm.trim(), pageable);
+        } else if (hasDateRange) {
+            orders = orderRepository.findAllByTableUuidAndOrderDateBetween(tableUuid, startDate, endDate, pageable);
+        } else {
+            orders = orderRepository.findAllByTableUuid(tableUuid, pageable);
+        }
+
         return orders.map(orderMapper::toOrderResponse);
     }
 

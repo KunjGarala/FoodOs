@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { 
   Users, Clock, Plus, Edit, Trash2, Shuffle, ArrowRightLeft, BarChart3,
   AlertCircle, X, Check, Loader2, Power, Eye, HandMetal, Activity, ChevronUp, ChevronDown as ChevronDownIcon,
-  Wifi, WifiOff
+  Wifi, WifiOff, UserCheck
 } from 'lucide-react';
 import {
   getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
@@ -17,9 +17,10 @@ import {
   setSectionFilter, selectFilteredTables, selectTablesByStatus, selectTableLoading,
   selectTableActionLoading, selectTableError, selectTableFilters, selectTableAnalytics,
   selectTablePagination, getValidNextStatuses, isValidStatusTransition, occupyTable,
-  handleTableWsEvent,
+  handleTableWsEvent, assignWaiter,
 } from '../../store/tableSlice';
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
+import { employeeAPI } from '../../services/api';
 import useWebSocket from '../../hooks/useWebSocket';
 
 const TABLE_SHAPES = ['RECTANGLE', 'ROUND', 'SQUARE', 'OVAL'];
@@ -51,6 +52,7 @@ const TableManagement = () => {
   const navigate = useNavigate();
   const activeRestaurantId = useSelector(selectActiveRestaurant);
   const userRole = useSelector(selectRole);
+  const currentUserUuid = useSelector((state) => state.auth.userId);
   const tables = useSelector(selectFilteredTables);
   const tablesByStatus = useSelector(selectTablesByStatus);
   const loading = useSelector(selectTableLoading);
@@ -62,6 +64,12 @@ const TableManagement = () => {
 
   // Determine if user has manager-level access (MANAGER, OWNER, ADMIN)
   const hasManagerAccess = ['MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
+  const isWaiter = userRole === 'WAITER';
+
+  // For WAITER role: only show tables assigned to them + vacant tables
+  const displayTables = isWaiter
+    ? tables.filter(t => t.status === 'VACANT' || t.currentWaiterUuid === currentUserUuid)
+    : tables;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -69,7 +77,11 @@ const TableManagement = () => {
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showAssignWaiterModal, setShowAssignWaiterModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
+  const [waiterList, setWaiterList] = useState([]);
+  const [waiterListLoading, setWaiterListLoading] = useState(false);
+  const [assignWaiterTableUuid, setAssignWaiterTableUuid] = useState(null);
 
   const [tableForm, setTableForm] = useState({
     sectionName: '', tableNumber: '', capacity: 4, minCapacity: 1,
@@ -358,6 +370,39 @@ const TableManagement = () => {
     }
   };
 
+  const handleOpenAssignWaiter = async (table) => {
+    setAssignWaiterTableUuid(table.tableUuid);
+    setSelectedTable(table);
+    setShowAssignWaiterModal(true);
+    setWaiterListLoading(true);
+    try {
+      const res = await employeeAPI.getAll({ role: 'WAITER', restaurantUuid: activeRestaurantId });
+      setWaiterList(Array.isArray(res.data) ? res.data : (res.data?.content || []));
+    } catch (err) {
+      console.error('Failed to fetch waiters:', err);
+      setWaiterList([]);
+    } finally {
+      setWaiterListLoading(false);
+    }
+  };
+
+  const handleAssignWaiter = async (waiterUuid) => {
+    if (!assignWaiterTableUuid || !waiterUuid) return;
+    try {
+      await dispatch(assignWaiter({ tableUuid: assignWaiterTableUuid, waiterUuid })).unwrap();
+      setShowAssignWaiterModal(false);
+      setAssignWaiterTableUuid(null);
+      // Refresh tables
+      if (hasManagerAccess) {
+        dispatch(getAllTables({ page: pagination.page, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }));
+      } else if (activeRestaurantId) {
+        dispatch(getTablesByRestaurant(activeRestaurantId));
+      }
+    } catch (err) {
+      console.error('Assign waiter failed:', err);
+    }
+  };
+
   const openEditModal = (table) => {
     // Prevent editing inactive tables
     if (table.isActive === false) {
@@ -410,6 +455,13 @@ const TableManagement = () => {
       tableUuid: table.tableUuid,
     });
     setShowStatusModal(true);
+
+    // Fetch waiter list for dropdown
+    if (hasManagerAccess) {
+      employeeAPI.getAll({ role: 'WAITER', restaurantUuid: activeRestaurantId })
+        .then(res => setWaiterList(Array.isArray(res.data) ? res.data : (res.data?.content || [])))
+        .catch(() => setWaiterList([]));
+    }
   };
 
   const resetTableForm = () => setTableForm({
@@ -594,6 +646,25 @@ const TableManagement = () => {
                   </div>
                   {table.sectionName && <span className="text-[10px] sm:text-xs opacity-60 mt-0.5 sm:mt-1">{table.sectionName}</span>}
                   
+                  {/* Waiter name for occupied/billed tables */}
+                  {!isInactive && table.currentWaiterName && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
+                    <div className="text-[10px] sm:text-xs text-blue-600 font-medium mt-0.5 flex items-center gap-0.5">
+                      <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      {table.currentWaiterName}
+                    </div>
+                  )}
+
+                  {/* Assign Waiter button for managers on occupied tables without waiter */}
+                  {!isInactive && hasManagerAccess && (table.status === 'OCCUPIED' || table.status === 'BILLED') && !table.currentWaiterName && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleOpenAssignWaiter(table); }}
+                      className="text-[10px] sm:text-xs text-slate-400 hover:text-blue-600 font-medium mt-0.5 flex items-center gap-0.5 transition-colors"
+                    >
+                      <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      Assign Waiter
+                    </button>
+                  )}
+                  
                   {isInactive && (
                     <div className="mt-2 text-xs font-medium text-slate-500">
                       Not Available
@@ -603,11 +674,11 @@ const TableManagement = () => {
                   {/* Guest count and time info for occupied/billed tables */}
                   {!isInactive && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
                     <div className="absolute bottom-1.5 sm:bottom-2 left-0 right-0 px-2 sm:px-3 flex flex-col items-center gap-0.5 sm:gap-1">
-                      {table.currentPax > 0 && (
+                      {/* {table.currentPax > 0 && (
                         <div className="bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg py-0.5 sm:py-1 px-1.5 sm:px-2 text-[10px] sm:text-xs font-semibold shadow-sm">
                           {table.currentPax} Guest{table.currentPax !== 1 ? 's' : ''}
                         </div>
-                      )}
+                      )} */}
                       {/* Show occupied time only for manager/owner/admin with seatedAt field */}
                       {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
                         <div className="bg-orange-100 text-orange-800 rounded-md sm:rounded-lg py-0.5 sm:py-1 px-1.5 sm:px-2 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1">
@@ -647,7 +718,7 @@ const TableManagement = () => {
                         onClick={(e) => {
                           e.stopPropagation();
                           setActionPopoverTable(null);
-                          navigate(`/app/tables/${table.tableUuid}`);
+                          navigate(`/app/tables/${table.tableUuid}/`);
                         }}
                       >
                         <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -740,7 +811,7 @@ const TableManagement = () => {
           <Badge variant="success">{tablesByStatus.occupied} Occupied</Badge>
         </div>
         <div className="flex-1 overflow-auto p-4 space-y-3">
-          {tables.filter(t => t.status !== 'VACANT').map(table => (
+          {displayTables.filter(t => t.status !== 'VACANT').map(table => (
             <div key={table.tableUuid} onClick={() => navigate(`/app/tables/${table.tableUuid}`)}
               className="flex justify-between items-center p-3 rounded-lg border border-slate-100 hover:border-blue-100 hover:bg-blue-50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-3">
@@ -761,7 +832,7 @@ const TableManagement = () => {
               <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
             </div>
           ))}
-          {tables.filter(t => t.status !== 'VACANT').length === 0 && (
+          {displayTables.filter(t => t.status !== 'VACANT').length === 0 && (
             <div className="text-center text-slate-400 py-8">
               <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No active tables</p>
@@ -819,7 +890,7 @@ const TableManagement = () => {
 
             {/* Active tables list */}
             <div className="flex-1 overflow-auto p-3 space-y-2 pb-safe">
-              {tables.filter(t => t.status !== 'VACANT').map(table => (
+              {displayTables.filter(t => t.status !== 'VACANT').map(table => (
                 <div key={table.tableUuid} onClick={() => { setShowMobileLiveStatus(false); navigate(`/app/tables/${table.tableUuid}`); }}
                   className="flex justify-between items-center p-3 rounded-xl border border-slate-100 hover:bg-blue-50 active:bg-blue-100 transition-colors cursor-pointer">
                   <div className="flex items-center gap-3">
@@ -839,7 +910,7 @@ const TableManagement = () => {
                   <Badge variant={getStatusBadgeVariant(table.status)} size="sm" className="text-[10px]">{table.status}</Badge>
                 </div>
               ))}
-              {tables.filter(t => t.status !== 'VACANT').length === 0 && (
+              {displayTables.filter(t => t.status !== 'VACANT').length === 0 && (
                 <div className="text-center text-slate-400 py-6">
                   <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No active tables</p>
@@ -959,10 +1030,21 @@ const TableManagement = () => {
                   placeholder="550e8400-e29b-41d4-a716-446655440000" />
               </div>
               <div>
-                <label htmlFor="waiterUuid" className="block text-sm font-medium text-slate-700 mb-1">Waiter UUID (Optional)</label>
-                <Input id="waiterUuid" name="waiterUuid" value={statusForm.waiterUuid}
+                <label htmlFor="waiterUuid" className="block text-sm font-medium text-slate-700 mb-1">Assign Waiter (Optional)</label>
+                <select
+                  id="waiterUuid"
+                  name="waiterUuid"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={statusForm.waiterUuid}
                   onChange={(e) => setStatusForm({ ...statusForm, waiterUuid: e.target.value })}
-                  placeholder="880e8400-e29b-41d4-a716-446655440000" />
+                >
+                  <option value="">-- No Waiter --</option>
+                  {waiterList.map(w => (
+                    <option key={w.userUuid || w.id} value={w.userUuid || w.id}>
+                      {w.fullName || w.username} {w.role ? `(${w.role})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </>
           )}
@@ -1104,6 +1186,63 @@ const TableManagement = () => {
               <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Assign Waiter Modal */}
+      <Modal isOpen={showAssignWaiterModal} onClose={() => { setShowAssignWaiterModal(false); setAssignWaiterTableUuid(null); }} title="Assign Waiter">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Select a waiter to assign to <span className="font-semibold">Table {selectedTable?.tableNumber}</span>.
+          </p>
+          {waiterListLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              <span className="ml-2 text-sm text-slate-500">Loading waiters...</span>
+            </div>
+          ) : waiterList.length === 0 ? (
+            <div className="text-center py-6 text-slate-400">
+              <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No waiters found</p>
+              <p className="text-xs mt-1">Add waiters to your restaurant first</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {waiterList.map(waiter => {
+                const isCurrentWaiter = (waiter.userUuid || waiter.id) === selectedTable?.currentWaiterUuid;
+                return (
+                  <button
+                    key={waiter.userUuid || waiter.id}
+                    onClick={() => !isCurrentWaiter && handleAssignWaiter(waiter.userUuid || waiter.id)}
+                    disabled={actionLoading || isCurrentWaiter}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all text-left ${
+                      isCurrentWaiter
+                        ? 'border-blue-300 bg-blue-50 cursor-default'
+                        : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center">
+                        <UserCheck className="h-4 w-4 text-slate-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{waiter.fullName || waiter.username}</div>
+                        <div className="text-xs text-slate-500">{waiter.role || 'WAITER'}</div>
+                      </div>
+                    </div>
+                    {isCurrentWaiter && (
+                      <Badge variant="info" size="sm">Current</Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setShowAssignWaiterModal(false); setAssignWaiterTableUuid(null); }}>
+              Cancel
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
