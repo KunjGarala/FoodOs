@@ -25,7 +25,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { icon: Sparkles, label: 'Modifiers', path: '/app/modifiers' },
     { icon: Receipt, label: 'Menu', path: '/app/menu' },
     { icon: Users, label: 'Staff', path: '/app/staff' },
-    // { icon: Users, label: 'CRM', path: '/app/crm' },
+    { icon: Users, label: 'CRM', path: '/app/crm' },
   ];
 
   const filteredItems = navItems.filter(item => {

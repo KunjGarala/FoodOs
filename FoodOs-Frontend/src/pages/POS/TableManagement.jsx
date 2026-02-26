@@ -718,7 +718,7 @@ const TableManagement = () => {
                         onClick={(e) => {
                           e.stopPropagation();
                           setActionPopoverTable(null);
-                          navigate(`/app/tables/${table.tableUuid}`);
+                          navigate(`/app/tables/${table.tableUuid}/`);
                         }}
                       >
                         <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

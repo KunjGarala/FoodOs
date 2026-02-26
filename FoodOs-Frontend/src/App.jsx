@@ -17,6 +17,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 // POS Components
 import TableManagement from './pages/POS/TableManagement';
 import TableDetails from './pages/POS/TableDetails';
+import TableOrderHistory from './pages/POS/TableOrderHistory';
+import OrderDetailPage from './pages/POS/OrderDetailPage';
 import OrderEntry from './pages/POS/OrderEntry';
 import AddOrderItems from './pages/POS/AddOrderItems';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
@@ -74,6 +76,18 @@ function App() {
             <Route path="tables/:tableUuid/add-items" element={
                 <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
                     <AddOrderItems />
+                </ProtectedRoute>
+            } />
+
+            <Route path="tables/:tableUuid/history" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <TableOrderHistory />
+                </ProtectedRoute>
+            } />
+
+            <Route path="orders/:orderUuid" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER', 'CASHIER']}>
+                    <OrderDetailPage />
                 </ProtectedRoute>
             } />
 

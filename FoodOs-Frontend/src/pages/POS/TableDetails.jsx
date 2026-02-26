@@ -4,9 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   ArrowLeft, Users, Clock, Plus, ChefHat, Receipt, CreditCard,
   CheckCircle, XCircle, Loader2, AlertCircle, X, Trash2, Ban,
-  UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin,
+  UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin, Settings2,
   Split as ArrowResult, // Using Split icon for Demerge
-  UserCheck, RefreshCw
+  UserCheck, RefreshCw, Edit3, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -37,6 +37,7 @@ import {
   completeOrder,
   cancelOrder,
   cancelOrderItem,
+  updateOrder,
   clearError as clearOrderError,
   clearSuccess as clearOrderSuccess,
   handleOrderWsEvent,
@@ -112,8 +113,12 @@ const TableDetails = () => {
   const [showCancelItemModal, setShowCancelItemModal] = useState(false);
   const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
   const [showAssignWaiterModal, setShowAssignWaiterModal] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerExpanded, setCustomerExpanded] = useState(false);
   const [waiterList, setWaiterList] = useState([]);
   const [waiterListLoading, setWaiterListLoading] = useState(false);
+  const [customerForm, setCustomerForm] = useState({ customerName: '', customerPhone: '', customerEmail: '' });
+  const [customerSaving, setCustomerSaving] = useState(false);
 
   // Forms
   const [occupyForm, setOccupyForm] = useState({
@@ -341,6 +346,37 @@ const TableDetails = () => {
     } catch (err) { console.error('Cancel item failed:', err); }
   };
 
+  // ── Customer Details ───────────────────────────────────
+  const handleOpenCustomerModal = () => {
+    setCustomerForm({
+      customerName: activeOrder?.customerName || '',
+      customerPhone: activeOrder?.customerPhone || '',
+      customerEmail: activeOrder?.customerEmail || '',
+    });
+    setShowCustomerModal(true);
+  };
+
+  const handleSaveCustomerDetails = async () => {
+    if (!activeOrder) return;
+    setCustomerSaving(true);
+    try {
+      await dispatch(updateOrder({
+        orderUuid: activeOrder.orderUuid,
+        orderData: {
+          customerName: customerForm.customerName.trim() || null,
+          customerPhone: customerForm.customerPhone.trim() || null,
+          customerEmail: customerForm.customerEmail.trim() || null,
+        },
+      })).unwrap();
+      setShowCustomerModal(false);
+      refreshDetails();
+    } catch (err) {
+      console.error('Update customer details failed:', err);
+    } finally {
+      setCustomerSaving(false);
+    }
+  };
+
 
 
   // ── Derived data ───────────────────────────────────────
@@ -353,10 +389,63 @@ const TableDetails = () => {
   const allItemsServed = nonCancelledItems.length > 0 && nonCancelledItems.every((i) => i.kotStatus === 'SERVED');
   const hasUnservedItems = nonCancelledItems.some((i) => i.kotStatus !== 'SERVED');
 
-  const subtotal = activeOrder?.subtotal ?? items.reduce((s, i) => s + (i.lineTotal || i.unitPrice * i.quantity || 0), 0);
+  // ── Group identical items ──────────────────────────────
+  // Items with same product, variation, modifiers, KOT status, and unit price are merged
+  const groupedItems = (() => {
+    const getModifierKey = (modifiers) => {
+      if (!modifiers || modifiers.length === 0) return '';
+      return [...modifiers]
+        .map(m => `${m.modifierName || m.name}|${m.priceAdd || m.unitPrice || 0}|${m.quantity || 1}`)
+        .sort()
+        .join(';;');
+    };
+
+    const groups = new Map();
+    items.forEach((item) => {
+      const key = [
+        item.productName || item.name || '',
+        item.variationName || '',
+        getModifierKey(item.modifiers),
+        item.kotStatus || 'PENDING',
+        item.unitPrice || item.price || 0,
+      ].join('|||');
+
+      if (groups.has(key)) {
+        const group = groups.get(key);
+        group.groupedQty += (item.quantity || 1);
+        group.originalItems.push(item);
+      } else {
+        groups.set(key, {
+          ...item,
+          groupedQty: item.quantity || 1,
+          originalItems: [item],
+        });
+      }
+    });
+    return Array.from(groups.values());
+  })();
+
+  // Grouped non-cancelled items for bill summary breakdown
+  const groupedNonCancelledItems = groupedItems.filter(
+    (g) => g.kotStatus !== 'CANCELLED' && g.status !== 'CANCELLED'
+  );
+
+  // Calculate modifier total for all non-cancelled items
+  const modifiersTotal = nonCancelledItems.reduce((sum, item) => {
+    if (!item.modifiers || item.modifiers.length === 0) return sum;
+    const itemModTotal = item.modifiers.reduce((ms, m) => ms + ((m.lineTotal || (m.priceAdd || m.unitPrice || 0) * (m.quantity || 1)) || 0), 0);
+    return sum + itemModTotal;
+  }, 0);
+
+  // Base subtotal = items only (unitPrice * quantity), excluding modifiers, for display
+  const baseSubtotal = nonCancelledItems.reduce((s, i) => s + ((Number(i.unitPrice) || 0) * (Number(i.quantity) || 0)), 0);
+
+  // Full subtotal from backend (includes modifiers in item lineTotals) or fallback
+  const subtotal = activeOrder?.subtotal ?? (baseSubtotal + modifiersTotal);
   const discount = activeOrder?.discountAmount ?? 0;
   const tax = activeOrder?.taxAmount ?? 0;
   const serviceCharge = activeOrder?.serviceCharge ?? 0;
+  // Total = subtotal (which already includes modifiers) - discount + tax + serviceCharge
   const total = activeOrder?.totalAmount ?? (subtotal - discount + tax + serviceCharge);
   const paidAmount = activeOrder?.paidAmount ?? payments.reduce((s, p) => s + (p.amount || 0), 0);
   const balance = total - paidAmount;
@@ -495,9 +584,18 @@ const TableDetails = () => {
             <UtensilsCrossed className="h-16 w-16 text-slate-300 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-slate-700 mb-2">Table is Vacant</h2>
             <p className="text-slate-500 mb-6">No active order. Occupy this table to create a new order.</p>
-            <Button onClick={() => setShowOccupyModal(true)} className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="h-4 w-4 mr-2" /> Occupy Table
-            </Button>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <Button onClick={() => setShowOccupyModal(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="h-4 w-4 mr-2" /> Occupy Table
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/app/tables/${tableUuid}/history`)}
+                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <Receipt className="h-4 w-4 mr-2" /> View Order History
+              </Button>
+            </div>
             
             {/* Demerge Button: Show if table is merged and vacant */}
             {(table?.isMerged === true || !!table?.mergedWithTableIds) && (
@@ -522,34 +620,81 @@ const TableDetails = () => {
           {/* LEFT: Items + Customer */}
           <div className="xl:col-span-2 space-y-4 sm:space-y-6">
 
-            {/* Customer Info */}
-            {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) && (
-              <Card>
-                <div className="p-4 border-b border-slate-100">
-                  <h3 className="font-semibold text-slate-800 flex items-center gap-2"><UserCircle className="h-5 w-5" /> Customer</h3>
-                </div>
-                <div className="p-4 flex flex-wrap gap-6 text-sm">
-                  {activeOrder.customerName && (
-                    <div className="flex items-center gap-2">
-                      <UserCircle className="h-4 w-4 text-slate-400" />
-                      <span className="font-medium text-slate-700">{activeOrder.customerName}</span>
-                    </div>
+            {/* Customer Info - Collapsible */}
+            <Card>
+              <div
+                className="p-3 sm:p-4 flex items-center justify-between cursor-pointer select-none hover:bg-slate-50 transition-colors rounded-t-xl"
+                onClick={() => setCustomerExpanded((v) => !v)}
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <UserCircle className="h-5 w-5 text-slate-600 shrink-0" />
+                  <h3 className="font-semibold text-slate-800 text-sm sm:text-base">Customer</h3>
+                  {/* Inline summary when collapsed */}
+                  {!customerExpanded && (activeOrder.customerName || activeOrder.customerPhone) && (
+                    <span className="hidden sm:inline-flex items-center gap-2 ml-2 text-xs text-slate-500 truncate">
+                      <span className="font-medium text-slate-600 truncate">{activeOrder.customerName || '—'}</span>
+                      {activeOrder.customerPhone && (
+                        <><span className="text-slate-300">|</span><span className="truncate">{activeOrder.customerPhone}</span></>
+                      )}
+                    </span>
                   )}
-                  {activeOrder.customerPhone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-slate-400" />
-                      <span className="text-slate-600">{activeOrder.customerPhone}</span>
-                    </div>
-                  )}
-                  {activeOrder.customerEmail && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-slate-400" />
-                      <span className="text-slate-600">{activeOrder.customerEmail}</span>
-                    </div>
+                  {!customerExpanded && !activeOrder.customerName && !activeOrder.customerPhone && !activeOrder.customerEmail && (
+                    <span className="ml-2 text-xs text-slate-400">No details</span>
                   )}
                 </div>
-              </Card>
-            )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenCustomerModal(); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) ? 'Edit' : 'Add'}
+                  </button>
+                  {customerExpanded
+                    ? <ChevronUp className="h-4 w-4 text-slate-400" />
+                    : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                </div>
+              </div>
+              {/* Expanded content */}
+              <div className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                customerExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+              }`}>
+                <div className="border-t border-slate-100">
+                  {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) ? (
+                    <div className="px-4 py-3 flex flex-wrap gap-5 text-sm">
+                      {activeOrder.customerName && (
+                        <div className="flex items-center gap-2">
+                          <UserCircle className="h-4 w-4 text-slate-400" />
+                          <span className="font-medium text-slate-700">{activeOrder.customerName}</span>
+                        </div>
+                      )}
+                      {activeOrder.customerPhone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-600">{activeOrder.customerPhone}</span>
+                        </div>
+                      )}
+                      {activeOrder.customerEmail && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-600">{activeOrder.customerEmail}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 text-center">
+                      <p className="text-sm text-slate-400">No customer details added</p>
+                      <button
+                        onClick={handleOpenCustomerModal}
+                        className="mt-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        + Add customer details
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
 
             {/* Order Items Table */}
             <Card>
@@ -579,29 +724,56 @@ const TableDetails = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((item, idx) => {
-                        const isCancelled = item.kotStatus === 'CANCELLED' || item.status === 'CANCELLED';
+                      {groupedItems.map((group, idx) => {
+                        const isCancelled = group.kotStatus === 'CANCELLED' || group.status === 'CANCELLED';
+                        const singleItemLineTotal = (() => {
+                          const basePrice = (group.unitPrice || group.price || 0) * (group.quantity || 1);
+                          const itemModTotal = (group.modifiers || []).reduce((ms, m) => ms + ((m.lineTotal || (m.priceAdd || m.unitPrice || 0) * (m.quantity || 1)) || 0), 0);
+                          return basePrice + itemModTotal;
+                        })();
+                        const groupTotal = group.originalItems.reduce((sum, oi) => {
+                          const oiBase = (oi.unitPrice || oi.price || 0) * (oi.quantity || 1);
+                          const oiMod = (oi.modifiers || []).reduce((ms, m) => ms + ((m.lineTotal || (m.priceAdd || m.unitPrice || 0) * (m.quantity || 1)) || 0), 0);
+                          return sum + (oi.lineTotal || (oiBase + oiMod));
+                        }, 0);
                         return (
-                          <tr key={item.itemUuid || idx} className={`border-b border-slate-50 ${isCancelled ? 'opacity-50 line-through' : ''}`}>
+                          <tr key={group.itemUuid || group.orderItemUuid || idx} className={`border-b border-slate-50 ${isCancelled ? 'opacity-50 line-through' : ''}`}>
                             <td className="px-4 py-3">
-                              <div className="font-medium text-slate-800">{item.productName || item.name}</div>
-                              {item.variationName && <div className="text-xs text-slate-400">{item.variationName}</div>}
-                              {item.modifiers?.length > 0 && (
-                                <div className="text-xs text-slate-400">+{item.modifiers.map(m => m.name).join(', ')}</div>
+                              <div className="font-medium text-slate-800">{group.productName || group.name}</div>
+                              {group.variationName && <div className="text-xs text-slate-400">{group.variationName}</div>}
+                              {group.modifiers?.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {group.modifiers.map((mod, mIdx) => {
+                                    const modPrice = mod.lineTotal || (mod.priceAdd || mod.unitPrice || 0) * (mod.quantity || 1);
+                                    return (
+                                      <div key={mod.orderItemModifierUuid || mIdx} className="flex items-center gap-1 text-xs text-slate-500">
+                                        <span className="text-blue-400">+</span>
+                                        <span>{mod.modifierName || mod.name}</span>
+                                        {mod.quantity > 1 && <span className="text-slate-400">x{mod.quantity}</span>}
+                                        {modPrice > 0 && <span className="ml-auto text-blue-600 font-medium">₹{modPrice.toFixed(2)}</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {group.originalItems.length > 1 && (
+                                <div className="text-xs text-slate-400 mt-1">({group.originalItems.length} identical items)</div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center font-semibold">{item.quantity}</td>
-                            <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(item.unitPrice || item.price)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatCurrency(item.lineTotal || (item.unitPrice || item.price) * item.quantity)}</td>
+                            <td className="px-4 py-3 text-center font-semibold">{group.groupedQty}</td>
+                            <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(group.unitPrice || group.price)}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                              {formatCurrency(groupTotal)}
+                            </td>
                             <td className="px-4 py-3 text-center">
-                              <Badge variant={KOT_STATUS_COLORS[item.kotStatus] || 'default'}>
-                                {item.kotStatus || 'PENDING'}
+                              <Badge variant={KOT_STATUS_COLORS[group.kotStatus] || 'default'}>
+                                {group.kotStatus || 'PENDING'}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              {!isCancelled && (item.kotStatus === 'PENDING' || !item.kotStatus) && (
+                              {!isCancelled && (group.kotStatus === 'PENDING' || !group.kotStatus) && (
                                 <button
-                                  onClick={() => { setCancelItemTarget(item); setCancelReason(''); setShowCancelItemModal(true); }}
+                                  onClick={() => { setCancelItemTarget(group.originalItems[0]); setCancelReason(''); setShowCancelItemModal(true); }}
                                   className="p-1 hover:bg-red-50 rounded-md transition-colors"
                                   title="Cancel item"
                                 >
@@ -627,18 +799,113 @@ const TableDetails = () => {
               <div className="p-4 border-b border-slate-100">
                 <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Receipt className="h-5 w-5" /> Bill Summary</h3>
               </div>
-              <div className="p-4 space-y-2 text-sm">
-                <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                {discount > 0 && <div className="flex justify-between text-emerald-600"><span>Discount</span><span>-{formatCurrency(discount)}</span></div>}
-                <div className="flex justify-between text-slate-600"><span>Tax</span><span>{formatCurrency(tax)}</span></div>
-                {serviceCharge > 0 && <div className="flex justify-between text-slate-600"><span>Service Charge</span><span>{formatCurrency(serviceCharge)}</span></div>}
-                <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between font-bold text-lg text-slate-900">
-                  <span>Total</span><span>{formatCurrency(total)}</span>
-                </div>
-                <div className="flex justify-between text-slate-600"><span>Paid</span><span className="text-emerald-600 font-semibold">{formatCurrency(paidAmount)}</span></div>
-                {balance > 0 && (
-                  <div className="flex justify-between font-semibold text-red-600"><span>Balance Due</span><span>{formatCurrency(balance)}</span></div>
+              <div className="p-4 text-sm">
+                {/* Itemized breakdown */}
+                {groupedNonCancelledItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                      <span>Item</span>
+                      <span>Amount</span>
+                    </div>
+                    <div className="space-y-0">
+                      {groupedNonCancelledItems.map((group, idx) => {
+                        const perItemTotal = (() => {
+                          const basePrice = (group.unitPrice || group.price || 0) * (group.quantity || 1);
+                          const itemModTotal = (group.modifiers || []).reduce((ms, m) => ms + ((m.lineTotal || (m.priceAdd || m.unitPrice || 0) * (m.quantity || 1)) || 0), 0);
+                          return basePrice + itemModTotal;
+                        })();
+                        const groupTotal = perItemTotal * group.originalItems.length;
+                        const productName = group.productName || group.name;
+                        const hasModifiers = (group.modifiers || []).length > 0;
+                        return (
+                          <div key={idx} className="flex items-start justify-between py-1.5 group hover:bg-slate-50 -mx-1 px-1 rounded transition-colors">
+                            <div className="min-w-0 flex-1 mr-3">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-medium text-slate-700">{productName}</span>
+                                {group.variationName && (
+                                  <span className="text-[11px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-medium">{group.variationName}</span>
+                                )}
+                                {group.groupedQty > 1 && (
+                                  <span className="text-[11px] font-bold text-white bg-slate-500 px-1.5 py-0.5 rounded-full leading-none">&times;{group.groupedQty}</span>
+                                )}
+                              </div>
+                              {hasModifiers && (
+                                <div className="flex flex-wrap gap-x-2 mt-0.5">
+                                  {(group.modifiers || []).map((m, mIdx) => (
+                                    <span key={mIdx} className="text-[11px] text-blue-500">
+                                      + {m.modifierName || m.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {group.groupedQty > 1 && (
+                                <div className="text-[11px] text-slate-400 mt-0.5">
+                                  {formatCurrency(perItemTotal)} each
+                                </div>
+                              )}
+                            </div>
+                            <span className="whitespace-nowrap font-semibold text-slate-800 tabular-nums pt-0.5">{formatCurrency(groupTotal)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="border-b border-dashed border-slate-200 mt-2 mb-3" />
+                  </div>
                 )}
+
+                {/* Totals */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Discount</span>
+                      <span className="tabular-nums">-{formatCurrency(discount)}</span>
+                    </div>
+                  )}
+                  {tax > 0 && (
+                    <div className="flex justify-between text-slate-500">
+                      <span>Tax</span>
+                      <span className="tabular-nums">{formatCurrency(tax)}</span>
+                    </div>
+                  )}
+                  {serviceCharge > 0 && (
+                    <div className="flex justify-between text-slate-500">
+                      <span>Service Charge</span>
+                      <span className="tabular-nums">{formatCurrency(serviceCharge)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Grand Total */}
+                <div className="border-t-2 border-slate-800 mt-3 pt-3 flex justify-between items-center">
+                  <span className="font-bold text-lg text-slate-900">Total</span>
+                  <span className="font-bold text-lg text-slate-900 tabular-nums">{formatCurrency(total)}</span>
+                </div>
+
+                {/* Payment Status */}
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Paid</span>
+                    <span className={`font-semibold tabular-nums ${paidAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{formatCurrency(paidAmount)}</span>
+                  </div>
+                  {balance > 0 && (
+                    <div className="flex justify-between items-center bg-red-50 -mx-4 px-4 py-2 rounded-b-xl">
+                      <span className="font-semibold text-red-700">Balance Due</span>
+                      <span className="font-bold text-red-700 tabular-nums">{formatCurrency(balance)}</span>
+                    </div>
+                  )}
+                  {balance <= 0 && paidAmount > 0 && (
+                    <div className="flex justify-between items-center bg-emerald-50 -mx-4 px-4 py-2 rounded-b-xl">
+                      <span className="font-semibold text-emerald-700 flex items-center gap-1.5">
+                        <CheckCircle className="h-4 w-4" /> Fully Paid
+                      </span>
+                      <span className="font-bold text-emerald-700 tabular-nums">{formatCurrency(paidAmount)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </Card>
 
@@ -940,6 +1207,50 @@ const TableDetails = () => {
             <Button variant="outline" onClick={() => setShowCancelOrderModal(false)}>Keep Order</Button>
             <Button variant="danger" onClick={handleCancelOrder} disabled={!cancelReason.trim() || orderActionLoading}>
               {orderActionLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling…</> : <><XCircle className="h-4 w-4 mr-2" />Cancel Order</>}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Customer Details Modal ──────────────────────── */}
+      <Modal isOpen={showCustomerModal} onClose={() => setShowCustomerModal(false)} title="Customer Details">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Add or update customer information for this order.</p>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name</label>
+            <Input
+              value={customerForm.customerName}
+              onChange={(e) => setCustomerForm({ ...customerForm, customerName: e.target.value })}
+              placeholder="Enter customer name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+            <Input
+              value={customerForm.customerPhone}
+              onChange={(e) => setCustomerForm({ ...customerForm, customerPhone: e.target.value })}
+              placeholder="+91XXXXXXXXXX"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <Input
+              type="email"
+              value={customerForm.customerEmail}
+              onChange={(e) => setCustomerForm({ ...customerForm, customerEmail: e.target.value })}
+              placeholder="customer@example.com"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowCustomerModal(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveCustomerDetails}
+              disabled={customerSaving}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {customerSaving
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
+                : <><CheckCircle className="h-4 w-4 mr-2" />Save Details</>}
             </Button>
           </div>
         </div>

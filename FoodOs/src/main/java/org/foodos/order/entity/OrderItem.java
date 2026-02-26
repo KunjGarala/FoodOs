@@ -248,6 +248,9 @@ public class OrderItem extends BaseSoftDeleteEntity {
         if (this.lineTotal == null)
             this.lineTotal = BigDecimal.ZERO;
 
+        // Ensure each modifier's lineTotal is calculated before summing
+        modifiers.forEach(OrderItemModifier::calculateLineTotal);
+
         // Calculate modifiers total
         BigDecimal modifiersTotal = modifiers.stream()
                 .map(OrderItemModifier::getLineTotal)

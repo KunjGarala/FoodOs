@@ -142,18 +142,42 @@ const AddOrderItems = () => {
   const handleModifierToggle = (group, modifierUuid) => {
     setSelectedModifiers(prev => {
       const current = prev[group.modifierGroupUuid] || [];
+      const isAlreadySelected = current.includes(modifierUuid);
+
       if (group.selectionType === 'SINGLE') {
-        // Single select: replace
+        // Single select: click again to deselect (if not required, or if required allow swap)
+        if (isAlreadySelected) {
+          // Deselect only if group is not required or has no minSelection requirement
+          if (!group.isRequired && (!group.minSelection || group.minSelection === 0)) {
+            return { ...prev, [group.modifierGroupUuid]: [] };
+          }
+          return prev; // Can't deselect required single-select
+        }
         return { ...prev, [group.modifierGroupUuid]: [modifierUuid] };
       }
+
       // Multiple select: toggle
-      if (current.includes(modifierUuid)) {
+      if (isAlreadySelected) {
         return { ...prev, [group.modifierGroupUuid]: current.filter(id => id !== modifierUuid) };
       }
-      // Check max selection
+      // Block if max selection reached
       if (group.maxSelection && current.length >= group.maxSelection) return prev;
       return { ...prev, [group.modifierGroupUuid]: [...current, modifierUuid] };
     });
+  };
+
+  // Check if all modifier group requirements are satisfied
+  const isModifierSelectionValid = () => {
+    for (const group of modifierGroups) {
+      const selected = selectedModifiers[group.modifierGroupUuid] || [];
+      if (group.isRequired && selected.length < (group.minSelection || 1)) {
+        return false;
+      }
+      if (group.minSelection && selected.length < group.minSelection) {
+        return false;
+      }
+    }
+    return true;
   };
 
   const validateModifierSelection = () => {
@@ -617,45 +641,63 @@ const AddOrderItems = () => {
             modifierGroups.map(group => {
               const selected = selectedModifiers[group.modifierGroupUuid] || [];
               const isSingle = group.selectionType === 'SINGLE';
+              const minReq = group.minSelection || (group.isRequired ? 1 : 0);
+              const maxReq = group.maxSelection || null;
+              const isMaxReached = maxReq && selected.length >= maxReq;
+              const isMinMet = selected.length >= minReq;
+
               return (
                 <div key={group.modifierGroupUuid} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-slate-800 text-sm">{group.name}</h4>
                       <p className="text-xs text-slate-500">
-                        {isSingle ? 'Select one' : `Select ${group.minSelection || 0}–${group.maxSelection || '∞'}`}
+                        {isSingle ? 'Select one' : `Select ${minReq}–${maxReq || '∞'}`}
                         {group.isRequired && <span className="text-red-500 ml-1">*Required</span>}
                       </p>
                     </div>
-                    {selected.length > 0 && (
-                      <Badge variant="info" size="sm">{selected.length} selected</Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isMaxReached && (
+                        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">Max reached</span>
+                      )}
+                      {!isMinMet && minReq > 0 && (
+                        <span className="text-[10px] font-medium text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">Pick {minReq - selected.length} more</span>
+                      )}
+                      {selected.length > 0 && (
+                        <Badge variant={isMinMet ? 'success' : 'warning'} size="sm">{selected.length}{maxReq ? `/${maxReq}` : ''}</Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     {group.modifiers.map(mod => {
                       const isSelected = selected.includes(mod.modifierUuid);
+                      // Disable if max reached and not already selected
+                      const isDisabled = !isSelected && isMaxReached;
                       return (
                         <button
                           key={mod.modifierUuid}
-                          onClick={() => handleModifierToggle(group, mod.modifierUuid)}
+                          onClick={() => !isDisabled && handleModifierToggle(group, mod.modifierUuid)}
+                          disabled={isDisabled}
                           className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-all text-left ${
-                            isSelected
-                              ? 'border-blue-400 bg-blue-50'
-                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            isDisabled
+                              ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-blue-400 bg-blue-50'
+                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
                             <div className={`h-5 w-5 rounded-${isSingle ? 'full' : 'md'} border-2 flex items-center justify-center transition-colors ${
-                              isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300'
+                              isSelected ? 'border-blue-500 bg-blue-500' : isDisabled ? 'border-slate-200' : 'border-slate-300'
                             }`}>
                               {isSelected && <Check className="h-3 w-3 text-white" />}
                             </div>
-                            <span className={`text-sm ${isSelected ? 'font-semibold text-blue-800' : 'text-slate-700'}`}>
+                            <span className={`text-sm ${isSelected ? 'font-semibold text-blue-800' : isDisabled ? 'text-slate-400' : 'text-slate-700'}`}>
                               {mod.name}
                             </span>
                           </div>
                           {mod.priceAdd > 0 && (
-                            <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-slate-500'}`}>
+                            <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : isDisabled ? 'text-slate-300' : 'text-slate-500'}`}>
                               +₹{mod.priceAdd.toFixed(2)}
                             </span>
                           )}
@@ -685,7 +727,7 @@ const AddOrderItems = () => {
             <Button variant="outline" onClick={() => { setModifierSelectionProduct(null); setModifierSelectionVariation(null); setModifierGroups([]); setSelectedModifiers({}); }}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmModifiers} disabled={modifierGroupsLoading}>
+            <Button onClick={handleConfirmModifiers} disabled={modifierGroupsLoading || (modifierGroups.length > 0 && !isModifierSelectionValid())}>
               <Plus className="h-4 w-4 mr-1" /> Add to Cart
             </Button>
           </div>

@@ -179,5 +179,10 @@ public interface OrderService {
     Order getOrderEntityByUuid(String orderUuid);
 
     KotResponse updateKotStatus(String kotUuid, String newStatus);
+
+    /**
+     * Get order history for a table with pagination, search and date filtering
+     */
+    Page<OrderResponse> getOrderHistoryByTable(String tableUuid, String searchTerm, LocalDate startDate, LocalDate endDate, Pageable pageable);
 }
 
