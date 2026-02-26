@@ -858,6 +858,7 @@ public class RestaurantTableService {
                 .numberOfGuests(request.getNumberOfGuests())
                 .customerName(request.getCustomerName())
                 .customerPhone(request.getCustomerPhone())
+                .customerEmail(request.getCustomerEmail())
                 .items(new ArrayList<>()) // empty items list
                 .build();
 
@@ -870,6 +871,16 @@ public class RestaurantTableService {
         table.setStatus(TableStatus.OCCUPIED);
         table.setSeatedAt(LocalDateTime.now());
         table.setCurrentPax(request.getNumberOfGuests());
+
+        // 4. Assign waiter if provided
+        if (request.getWaiterUuid() != null && !request.getWaiterUuid().isEmpty()) {
+            UserAuthEntity waiter = userAuthRepository
+                    .findByUserUuidAndIsDeletedFalse(request.getWaiterUuid())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Waiter not found with UUID: " + request.getWaiterUuid()));
+            table.setCurrentWaiter(waiter);
+        }
+
         tableRepository.save(table);
 
         // Broadcast table and order updates via WebSocket
@@ -882,11 +893,73 @@ public class RestaurantTableService {
         return orderResponse;
     }
 
+    /**
+     * Assign or reassign a waiter to a table.
+     * Only MANAGER, OWNER, ADMIN can call this.
+     */
+    @Transactional
+    public TableResponseDto assignWaiter(String tableUuid, String waiterUuid, UserAuthEntity currentUser) {
+        log.info("Assigning waiter {} to table {} by user {}", waiterUuid, tableUuid, currentUser.getUsername());
+
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> {
+                    log.error("Table not found with UUID: {}", tableUuid);
+                    return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
+                });
+
+        UserAuthEntity waiter = userAuthRepository.findByUserUuidAndIsDeletedFalse(waiterUuid)
+                .orElseThrow(() -> {
+                    log.error("Waiter not found with UUID: {}", waiterUuid);
+                    return new ResourceNotFoundException("Waiter not found with UUID: " + waiterUuid);
+                });
+
+        // Validate the user is actually a waiter (or at least not above manager)
+        if (waiter.getRole() == null) {
+            throw new BusinessException("User does not have a valid role");
+        }
+
+        table.setCurrentWaiter(waiter);
+        RestaurantTable updatedTable = tableRepository.save(table);
+
+        log.info("Waiter {} ({}) assigned to table {} successfully",
+                waiter.getFullName(), waiterUuid, table.getTableNumber());
+
+        TableResponseDto responseDto = tableMapper.toResponseDto(updatedTable);
+        webSocketEventService.broadcastTableUpdate(
+                updatedTable.getRestaurant().getRestaurantUuid(), responseDto);
+        return responseDto;
+    }
+
+    /**
+     * Remove waiter assignment from a table.
+     */
+    @Transactional
+    public TableResponseDto removeWaiter(String tableUuid, UserAuthEntity currentUser) {
+        log.info("Removing waiter from table {} by user {}", tableUuid, currentUser.getUsername());
+
+        RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> {
+                    log.error("Table not found with UUID: {}", tableUuid);
+                    return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
+                });
+
+        table.setCurrentWaiter(null);
+        RestaurantTable updatedTable = tableRepository.save(table);
+
+        log.info("Waiter removed from table {} successfully", table.getTableNumber());
+
+        TableResponseDto responseDto = tableMapper.toResponseDto(updatedTable);
+        webSocketEventService.broadcastTableUpdate(
+                updatedTable.getRestaurant().getRestaurantUuid(), responseDto);
+        return responseDto;
+    }
+
     public TableDetailResponse getTableDetails(String tableUuid) {
         RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
-                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found with UUID: " + tableUuid));
 
         TableResponseDto tableResponse = tableMapper.toResponseDto(table);
+
         OrderResponse activeOrder = null;
         if (table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
             try {

@@ -21,7 +21,14 @@ public class OccupyTableRequest {
     @Schema(description = "Customer name", example = "John Doe")
     private String customerName;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Invalid phone number format")
-    @Schema(description = "Customer phone", example = "+919876543210")
+    @Pattern(regexp = "^$|^\\+?[0-9]{10,15}$", message = "Invalid phone number format")
+    @Schema(description = "Customer phone (optional)", example = "+919876543210")
     private String customerPhone;
+
+    @Email(message = "Invalid email format")
+    @Schema(description = "Customer email (optional)", example = "john@example.com")
+    private String customerEmail;
+
+    @Schema(description = "UUID of the waiter to assign to this table", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String waiterUuid;
 }

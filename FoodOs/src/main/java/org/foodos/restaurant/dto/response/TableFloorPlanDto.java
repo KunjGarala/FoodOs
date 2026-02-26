@@ -55,6 +55,9 @@ public class TableFloorPlanDto {
     @Schema(description = "Is table merged with others", example = "false")
     private Boolean isMerged;
 
+    @Schema(description = "Current waiter UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String currentWaiterUuid;
+
     @Schema(description = "Current waiter name", example = "John Doe")
     private String currentWaiterName;
 }

@@ -5,7 +5,8 @@ import {
   ArrowLeft, Users, Clock, Plus, ChefHat, Receipt, CreditCard,
   CheckCircle, XCircle, Loader2, AlertCircle, X, Trash2, Ban,
   UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin,
-  Split as ArrowResult // Using Split icon for Demerge
+  Split as ArrowResult, // Using Split icon for Demerge
+  UserCheck, RefreshCw
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -24,7 +25,10 @@ import {
   occupyTable,
   clearError,
   handleTableWsEvent,
+  assignWaiter,
+  removeWaiter,
 } from '../../store/tableSlice';
+import { employeeAPI } from '../../services/api';
 import {
   addItemsToOrder,
   sendKot,
@@ -96,6 +100,7 @@ const TableDetails = () => {
   const orderError = useSelector((s) => s.orders.error);
   const orderSuccess = useSelector((s) => s.orders.success);
   const orderActionLoading = useSelector((s) => s.orders.actionLoading);
+  const currentUserUuid = useSelector((s) => s.auth.userId);
   const products = useSelector((s) => s.products.products);
   const categories = useSelector((s) => s.categories.categories);
   const productsLoading = useSelector((s) => s.products.loading);
@@ -106,10 +111,13 @@ const TableDetails = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelItemModal, setShowCancelItemModal] = useState(false);
   const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
+  const [showAssignWaiterModal, setShowAssignWaiterModal] = useState(false);
+  const [waiterList, setWaiterList] = useState([]);
+  const [waiterListLoading, setWaiterListLoading] = useState(false);
 
   // Forms
   const [occupyForm, setOccupyForm] = useState({
-    orderType: 'DINE_IN', numberOfGuests: 1, customerName: '', customerPhone: '',
+    orderType: 'DINE_IN', numberOfGuests: 1, customerName: '', customerPhone: '', customerEmail: '', waiterUuid: '',
   });
   const [paymentForm, setPaymentForm] = useState({ method: 'CASH', amount: '', transactionId: '' });
   const [cancelReason, setCancelReason] = useState('');
@@ -182,11 +190,57 @@ const TableDetails = () => {
   }, [tableError, dispatch]);
 
   // ── Actions ────────────────────────────────────────────
+  // ── Waiter Actions ──────────────────────────────────
+  const fetchWaiters = useCallback(async () => {
+    if (!activeRestaurantId) return;
+    setWaiterListLoading(true);
+    try {
+      const res = await employeeAPI.getAll({ role: 'WAITER', restaurantUuid: activeRestaurantId });
+      setWaiterList(res.data?.data || res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch waiters:', err);
+      setWaiterList([]);
+    } finally {
+      setWaiterListLoading(false);
+    }
+  }, [activeRestaurantId]);
+
+  const handleOpenAssignWaiter = () => {
+    fetchWaiters();
+    setShowAssignWaiterModal(true);
+  };
+
+  const handleAssignWaiter = async (waiterUuid) => {
+    try {
+      await dispatch(assignWaiter({ tableUuid, waiterUuid })).unwrap();
+      setShowAssignWaiterModal(false);
+      refreshDetails();
+    } catch (err) {
+      console.error('Assign waiter failed:', err);
+    }
+  };
+
+  const handleRemoveWaiter = async () => {
+    if (!window.confirm('Remove the assigned waiter from this table?')) return;
+    try {
+      await dispatch(removeWaiter(tableUuid)).unwrap();
+      refreshDetails();
+    } catch (err) {
+      console.error('Remove waiter failed:', err);
+    }
+  };
+
   const handleOccupy = async () => {
     try {
-      await dispatch(occupyTable({ tableUuid, data: occupyForm })).unwrap();
+      const data = { ...occupyForm };
+      // Remove empty optional fields to avoid backend validation errors
+      if (!data.waiterUuid) delete data.waiterUuid;
+      if (!data.customerName?.trim()) delete data.customerName;
+      if (!data.customerPhone?.trim()) delete data.customerPhone;
+      if (!data.customerEmail?.trim()) delete data.customerEmail;
+      await dispatch(occupyTable({ tableUuid, data })).unwrap();
       setShowOccupyModal(false);
-      setOccupyForm({ orderType: 'DINE_IN', numberOfGuests: 1, customerName: '', customerPhone: '' });
+      setOccupyForm({ orderType: 'DINE_IN', numberOfGuests: 1, customerName: '', customerPhone: '', customerEmail: '', waiterUuid: '' });
       refreshDetails();
     } catch (err) { console.error('Occupy failed:', err); }
   };
@@ -294,6 +348,11 @@ const TableDetails = () => {
   const payments = activeOrder?.payments || [];
   const hasPendingItems = items.some((i) => i.kotStatus === 'PENDING' || !i.kotStatus);
 
+  // Check if all non-cancelled items are SERVED
+  const nonCancelledItems = items.filter((i) => i.kotStatus !== 'CANCELLED' && i.status !== 'CANCELLED');
+  const allItemsServed = nonCancelledItems.length > 0 && nonCancelledItems.every((i) => i.kotStatus === 'SERVED');
+  const hasUnservedItems = nonCancelledItems.some((i) => i.kotStatus !== 'SERVED');
+
   const subtotal = activeOrder?.subtotal ?? items.reduce((s, i) => s + (i.lineTotal || i.unitPrice * i.quantity || 0), 0);
   const discount = activeOrder?.discountAmount ?? 0;
   const tax = activeOrder?.taxAmount ?? 0;
@@ -387,6 +446,44 @@ const TableDetails = () => {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Waiter info (if assigned) */}
+        {(isOccupied || isBilled) && (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 pl-0 sm:pl-12">
+            {table.currentWaiterName ? (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">{table.currentWaiterName}</span>
+                {hasManagerAccess && (
+                  <>
+                    <button
+                      onClick={handleOpenAssignWaiter}
+                      className="ml-1 p-1 hover:bg-blue-100 rounded transition-colors"
+                      title="Change waiter"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
+                    </button>
+                    <button
+                      onClick={handleRemoveWaiter}
+                      className="p-1 hover:bg-red-100 rounded transition-colors"
+                      title="Remove waiter"
+                    >
+                      <X className="h-3.5 w-3.5 text-red-500" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : hasManagerAccess ? (
+              <button
+                onClick={handleOpenAssignWaiter}
+                className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+              >
+                <UserCheck className="h-4 w-4" />
+                Assign Waiter
+              </button>
+            ) : null}
           </div>
         )}
       </div>
@@ -622,7 +719,21 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                {paidAmount >= total && total > 0 && (
+                {/* KOT Status Warning */}
+                {hasUnservedItems && items.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                    <div className="flex items-center justify-center gap-2 text-amber-700">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Waiting for all items to be served</span>
+                    </div>
+                    <p className="text-xs text-amber-600 mt-1">
+                      {nonCancelledItems.filter(i => i.kotStatus === 'SERVED').length}/{nonCancelledItems.length} items served
+                    </p>
+                  </div>
+                )}
+
+                {/* Complete Order - only when ALL items served AND payment complete */}
+                {allItemsServed && paidAmount >= total && total > 0 && (
                   <Button
                     variant="success"
                     className="w-full"
@@ -632,6 +743,16 @@ const TableDetails = () => {
                     {orderActionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                     Complete Order
                   </Button>
+                )}
+
+                {/* Show info when items served but payment pending */}
+                {allItemsServed && (paidAmount < total || total <= 0) && items.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <div className="flex items-center justify-center gap-2 text-blue-700">
+                      <CreditCard className="h-4 w-4" />
+                      <span className="text-sm font-medium">All items served — complete payment to finish</span>
+                    </div>
+                  </div>
                 )}
 
                 {hasManagerAccess && (
@@ -691,6 +812,34 @@ const TableDetails = () => {
               placeholder="+91..."
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email (optional)</label>
+            <Input
+              type="email"
+              value={occupyForm.customerEmail}
+              onChange={(e) => setOccupyForm({ ...occupyForm, customerEmail: e.target.value })}
+              placeholder="customer@example.com"
+            />
+          </div>
+          {hasManagerAccess && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Assign Waiter (optional)</label>
+              <select
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={occupyForm.waiterUuid}
+                onChange={(e) => setOccupyForm({ ...occupyForm, waiterUuid: e.target.value })}
+                onFocus={() => { if (waiterList.length === 0) fetchWaiters(); }}
+              >
+                <option value="">— No waiter —</option>
+                {waiterListLoading && <option disabled>Loading...</option>}
+                {waiterList.map(w => (
+                  <option key={w.userUuid || w.id} value={w.userUuid || w.id}>
+                    {w.fullName || w.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowOccupyModal(false)}>Cancel</Button>
             <Button onClick={handleOccupy} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700">
@@ -792,6 +941,60 @@ const TableDetails = () => {
             <Button variant="danger" onClick={handleCancelOrder} disabled={!cancelReason.trim() || orderActionLoading}>
               {orderActionLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling…</> : <><XCircle className="h-4 w-4 mr-2" />Cancel Order</>}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Assign Waiter Modal ─────────────────────────── */}
+      <Modal isOpen={showAssignWaiterModal} onClose={() => setShowAssignWaiterModal(false)} title="Assign Waiter">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Select a waiter to assign to <span className="font-semibold">Table {table?.tableNumber}</span>.
+          </p>
+          {waiterListLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              <span className="ml-2 text-sm text-slate-500">Loading waiters...</span>
+            </div>
+          ) : waiterList.length === 0 ? (
+            <div className="text-center py-6 text-slate-400">
+              <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No waiters found</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {waiterList.map(waiter => {
+                const isCurrentWaiter = (waiter.userUuid || waiter.id) === table?.currentWaiterUuid;
+                return (
+                  <button
+                    key={waiter.userUuid || waiter.id}
+                    onClick={() => !isCurrentWaiter && handleAssignWaiter(waiter.userUuid || waiter.id)}
+                    disabled={actionLoading || isCurrentWaiter}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all text-left ${
+                      isCurrentWaiter
+                        ? 'border-blue-300 bg-blue-50 cursor-default'
+                        : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center">
+                        <UserCheck className="h-4 w-4 text-slate-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{waiter.fullName || waiter.username}</div>
+                        <div className="text-xs text-slate-500">{waiter.role || 'WAITER'}</div>
+                      </div>
+                    </div>
+                    {isCurrentWaiter && (
+                      <Badge variant="info" size="sm">Current</Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowAssignWaiterModal(false)}>Cancel</Button>
           </div>
         </div>
       </Modal>

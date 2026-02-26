@@ -552,6 +552,17 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        // Validate all KOT items are SERVED or CANCELLED before completing
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            boolean hasUnservedItems = order.getItems().stream()
+                    .filter(item -> item.getKotStatus() != KotStatus.CANCELLED
+                            && (item.getKotStatus() == null || !item.getKotStatus().name().equals("CANCELLED")))
+                    .anyMatch(item -> item.getKotStatus() != KotStatus.SERVED);
+            if (hasUnservedItems) {
+                throw new RuntimeException("Cannot complete order: All items must be served before completing the order. Please wait for all KOT items to be served.");
+            }
+        }
+
         order.complete();
 
         // Update table status back to VACANT if this was a dine-in order

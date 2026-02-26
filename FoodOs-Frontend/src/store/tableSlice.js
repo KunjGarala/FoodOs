@@ -228,6 +228,36 @@ export const fetchTableDetails = createAsyncThunk(
   }
 );
 
+// Assign waiter to table (Manager/Owner/Admin)
+export const assignWaiter = createAsyncThunk(
+  'tables/assignWaiter',
+  async ({ tableUuid, waiterUuid }, { rejectWithValue }) => {
+    try {
+      const response = await tableAPI.assignWaiter(tableUuid, waiterUuid);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to assign waiter'
+      );
+    }
+  }
+);
+
+// Remove waiter from table (Manager/Owner/Admin)
+export const removeWaiter = createAsyncThunk(
+  'tables/removeWaiter',
+  async (tableUuid, { rejectWithValue }) => {
+    try {
+      const response = await tableAPI.removeWaiter(tableUuid);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to remove waiter'
+      );
+    }
+  }
+);
+
 // ─────────────────────────────────────────────────────────
 // Initial State
 // ─────────────────────────────────────────────────────────
@@ -635,6 +665,53 @@ const tableSlice = createSlice({
       })
       .addCase(fetchTableDetails.rejected, (state, action) => {
         state.tableDetailsLoading = false;
+        state.error = action.payload;
+      })
+
+      // Assign Waiter
+      .addCase(assignWaiter.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(assignWaiter.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const index = state.tables.findIndex(t => t.tableUuid === action.payload.tableUuid);
+        if (index !== -1) {
+          state.tables[index] = { ...state.tables[index], ...action.payload };
+        }
+        if (state.selectedTable?.tableUuid === action.payload.tableUuid) {
+          state.selectedTable = { ...state.selectedTable, ...action.payload };
+        }
+        // Update table details if viewing same table
+        if (state.tableDetails?.table?.tableUuid === action.payload.tableUuid) {
+          state.tableDetails.table = { ...state.tableDetails.table, ...action.payload };
+        }
+      })
+      .addCase(assignWaiter.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Remove Waiter
+      .addCase(removeWaiter.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(removeWaiter.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const index = state.tables.findIndex(t => t.tableUuid === action.payload.tableUuid);
+        if (index !== -1) {
+          state.tables[index] = { ...state.tables[index], ...action.payload };
+        }
+        if (state.selectedTable?.tableUuid === action.payload.tableUuid) {
+          state.selectedTable = { ...state.selectedTable, ...action.payload };
+        }
+        if (state.tableDetails?.table?.tableUuid === action.payload.tableUuid) {
+          state.tableDetails.table = { ...state.tableDetails.table, ...action.payload };
+        }
+      })
+      .addCase(removeWaiter.rejected, (state, action) => {
+        state.actionLoading = false;
         state.error = action.payload;
       });
   }
