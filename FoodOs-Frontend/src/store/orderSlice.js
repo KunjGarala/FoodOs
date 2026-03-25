@@ -317,6 +317,18 @@ const orderSlice = createSlice({
   name: 'orders',
   initialState,
   reducers: {
+    setCurrentOrderExternal: (state, action) => {
+      const incoming = action.payload;
+      if (!incoming) return;
+      const incomingUuid = incoming.orderUuid || incoming.uuid;
+      if (incomingUuid) {
+        const idx = state.orders.findIndex(o => (o.orderUuid || o.uuid) === incomingUuid);
+        if (idx !== -1) {
+          state.orders[idx] = incoming;
+        }
+      }
+      state.currentOrder = incoming;
+    },
     clearError: (state) => {
       state.error = null;
     },
@@ -636,6 +648,7 @@ export const {
   setCart,
   handleOrderWsEvent,
   handleKitchenWsEvent,
+  setCurrentOrderExternal,
 } = orderSlice.actions;
 
 export default orderSlice.reducer;

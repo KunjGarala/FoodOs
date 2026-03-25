@@ -12,7 +12,7 @@ import org.foodos.product.entity.ProductVariation;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,7 +32,7 @@ import java.util.*;
         @Index(name = "idx_oi_kot_id", columnList = "kot_id")
 })
 @SQLDelete(sql = "UPDATE order_items SET is_deleted = true, deleted_at = now() WHERE id = ? AND version = ?")
-@Where(clause = "is_deleted = false")
+@SQLRestriction("is_deleted = false")
 @Filter(name = "deletedFilter", condition = "is_deleted = :isDeleted")
 @Getter
 @Setter

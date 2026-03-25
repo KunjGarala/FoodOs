@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -6,13 +6,16 @@ import {
   CheckCircle, XCircle, Loader2, AlertCircle, X, Trash2, Ban,
   UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin, Settings2,
   Split as ArrowResult, // Using Split icon for Demerge
-  UserCheck, RefreshCw, Edit3, ChevronDown, ChevronUp
+  UserCheck, RefreshCw, Edit3, ChevronDown, ChevronUp, Tag
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { CouponInput } from '../../components/coupon/CouponInput';
+import { CouponList } from '../../components/coupon/CouponList';
+import { CouponSummary } from '../../components/coupon/CouponSummary';
 
 import {
   fetchTableDetails,
@@ -42,6 +45,15 @@ import {
   clearSuccess as clearOrderSuccess,
   handleOrderWsEvent,
 } from '../../store/orderSlice';
+import {
+  applyCouponToOrder,
+  removeCouponFromOrder,
+  fetchCouponSuggestions,
+  revalidateCoupon,
+  setCouponCode,
+  hydrateFromOrder,
+  clearCouponFeedback,
+} from '../../store/couponSlice';
 
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
 import useWebSocket from '../../hooks/useWebSocket';
@@ -105,6 +117,7 @@ const TableDetails = () => {
   const products = useSelector((s) => s.products.products);
   const categories = useSelector((s) => s.categories.categories);
   const productsLoading = useSelector((s) => s.products.loading);
+  const couponState = useSelector((s) => s.coupon);
 
   // Modals
   const [showOccupyModal, setShowOccupyModal] = useState(false);
@@ -382,12 +395,24 @@ const TableDetails = () => {
   // ── Derived data ───────────────────────────────────────
   const items = activeOrder?.items || [];
   const payments = activeOrder?.payments || [];
+  const orderUuid = activeOrder?.orderUuid;
   const hasPendingItems = items.some((i) => i.kotStatus === 'PENDING' || !i.kotStatus);
 
   // Check if all non-cancelled items are SERVED
   const nonCancelledItems = items.filter((i) => i.kotStatus !== 'CANCELLED' && i.status !== 'CANCELLED');
   const allItemsServed = nonCancelledItems.length > 0 && nonCancelledItems.every((i) => i.kotStatus === 'SERVED');
   const hasUnservedItems = nonCancelledItems.some((i) => i.kotStatus !== 'SERVED');
+  const couponRestaurantUuid = activeOrder?.restaurantUuid || table?.restaurantUuid || activeRestaurantId;
+  const couponCartSignature = useMemo(() => {
+    return JSON.stringify(
+      nonCancelledItems.map((i) => ({
+        id: i.orderItemUuid || i.itemUuid || i.productUuid || i.name,
+        qty: i.quantity,
+        price: i.unitPrice || i.price,
+        mods: (i.modifiers || []).map((m) => `${m.modifierUuid || m.modifierId || m.name}:${m.quantity}:${m.priceAdd || m.unitPrice || 0}`).sort(),
+      })).sort((a, b) => (a.id || '').localeCompare(b.id || ''))
+    );
+  }, [nonCancelledItems]);
 
   // ── Group identical items ──────────────────────────────
   // Items with same product, variation, modifiers, KOT status, and unit price are merged
@@ -450,6 +475,85 @@ const TableDetails = () => {
   const paidAmount = activeOrder?.paidAmount ?? payments.reduce((s, p) => s + (p.amount || 0), 0);
   const balance = total - paidAmount;
 
+  // ── Coupon Effects ────────────────────────────────────
+  useEffect(() => {
+    if (couponState.error || couponState.message || couponState.autoRemovedReason) {
+      const t = setTimeout(() => dispatch(clearCouponFeedback()), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [couponState.error, couponState.message, couponState.autoRemovedReason, dispatch]);
+
+  useEffect(() => {
+    if (!activeOrder) return;
+    dispatch(hydrateFromOrder({
+      couponCode: activeOrder.couponCode,
+      discountAmount: activeOrder.discountAmount,
+      orderUuid: activeOrder.orderUuid,
+      cartSignature: couponCartSignature,
+      orderAmount: subtotal,
+    }));
+  }, [activeOrder, couponCartSignature, subtotal, dispatch]);
+
+  useEffect(() => {
+    if (!orderUuid || !couponRestaurantUuid || subtotal <= 0) return;
+    dispatch(fetchCouponSuggestions({
+      restaurantUuid: couponRestaurantUuid,
+      orderAmount: subtotal,
+      orderUuid,
+      customerUuid: activeOrder?.customerUuid,
+    }));
+  }, [dispatch, orderUuid, couponRestaurantUuid, subtotal, activeOrder?.customerUuid]);
+
+  useEffect(() => {
+    if (!couponState.isApplied || !couponState.code) return;
+    if (!orderUuid || !couponRestaurantUuid) return;
+    const signatureChanged = couponState.lastCartSignature !== couponCartSignature || couponState.lastOrderAmount !== subtotal;
+    if (!signatureChanged) return;
+    dispatch(revalidateCoupon({
+      couponCode: couponState.code,
+      restaurantUuid: couponRestaurantUuid,
+      orderAmount: subtotal,
+      orderUuid,
+      customerUuid: activeOrder?.customerUuid,
+      cartSignature: couponCartSignature,
+    }));
+  }, [couponState.isApplied, couponState.code, couponState.lastCartSignature, couponState.lastOrderAmount, couponCartSignature, subtotal, orderUuid, couponRestaurantUuid, activeOrder?.customerUuid, dispatch]);
+
+  // ── Coupon Actions ────────────────────────────────────
+  const applyCouponCode = (code) => {
+    if (!orderUuid || !code) return;
+    dispatch(applyCouponToOrder({
+      orderUuid,
+      couponCode: code,
+      customerUuid: activeOrder?.customerUuid,
+      cartSignature: couponCartSignature,
+      orderAmount: subtotal,
+    }));
+  };
+
+  const handleCouponApply = () => applyCouponCode(couponState.code);
+
+  const handleCouponRemove = () => {
+    if (!orderUuid) return;
+    dispatch(removeCouponFromOrder({
+      orderUuid,
+      cartSignature: couponCartSignature,
+      orderAmount: subtotal,
+    }));
+  };
+
+  const handleApplyFromList = (code) => {
+    if (!code) return;
+    dispatch(setCouponCode(code));
+    applyCouponCode(code);
+  };
+
+  const handleApplyBest = () => {
+    if (couponState.bestCoupon?.couponCode) {
+      handleApplyFromList(couponState.bestCoupon.couponCode);
+    }
+  };
+
 
 
   // ── Loading / Error ────────────────────────────────────
@@ -482,12 +586,18 @@ const TableDetails = () => {
   return (
     <div className="space-y-4 sm:space-y-6 pb-8">
       {/* Toast */}
-      {(orderError || orderSuccess || tableError) && (
+      {(orderError || orderSuccess || tableError || couponState.error || couponState.message || couponState.autoRemovedReason) && (
         <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
-          (orderError || tableError) ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'
+          (orderError || tableError || couponState.error || couponState.autoRemovedReason)
+            ? 'bg-red-50 text-red-800 border border-red-200'
+            : 'bg-green-50 text-green-800 border border-green-200'
         }`}>
-          {(orderError || tableError) ? <AlertCircle className="h-5 w-5 flex-shrink-0" /> : <CheckCircle className="h-5 w-5 flex-shrink-0" />}
-          <span className="text-xs sm:text-sm font-medium line-clamp-2">{orderError || tableError || orderSuccess}</span>
+          {(orderError || tableError || couponState.error || couponState.autoRemovedReason)
+            ? <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            : <CheckCircle className="h-5 w-5 flex-shrink-0" />}
+          <span className="text-xs sm:text-sm font-medium line-clamp-2">
+            {orderError || tableError || couponState.error || couponState.autoRemovedReason || orderSuccess || couponState.message}
+          </span>
         </div>
       )}
 
@@ -852,6 +962,48 @@ const TableDetails = () => {
                     <div className="border-b border-dashed border-slate-200 mt-2 mb-3" />
                   </div>
                 )}
+
+                {/* Coupons */}
+                <div className="mt-3 mb-4 p-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                      <Tag className="h-4 w-4 text-slate-500" />
+                      <span>Coupons & Offers</span>
+                    </div>
+                    {couponState.autoRemovedReason && (
+                      <span className="text-xs text-red-600 font-medium">{couponState.autoRemovedReason}</span>
+                    )}
+                  </div>
+
+                  <CouponSummary
+                    code={couponState.code}
+                    discountAmount={discount}
+                    onRemove={handleCouponRemove}
+                  />
+
+                  <CouponInput
+                    code={couponState.code}
+                    onCodeChange={(value) => dispatch(setCouponCode(value))}
+                    onApply={handleCouponApply}
+                    onRemove={handleCouponRemove}
+                    onApplyBest={handleApplyBest}
+                    loading={couponState.loading}
+                    removing={couponState.removing}
+                    isApplied={couponState.isApplied}
+                    error={couponState.error}
+                    message={couponState.message}
+                    warning={couponState.warning}
+                    bestCoupon={couponState.bestCoupon}
+                    disabled={!orderUuid}
+                    revalidating={couponState.revalidating}
+                  />
+
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span>Available Offers</span>
+                    <span className="text-slate-400">Auto picks best savings</span>
+                  </div>
+                  <CouponList coupons={couponState.suggestions} onApply={handleApplyFromList} />
+                </div>
 
                 {/* Totals */}
                 <div className="space-y-1.5">

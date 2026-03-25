@@ -27,6 +27,8 @@ import ProductForm from './pages/Management/ProductForm';
 import CategoryManagement from './pages/Management/CategoryManagement';
 import ModifierManagement from './pages/Management/ModifierManagement';
 import StaffManagement from './pages/Management/StaffManagement';
+import CouponManagement from './pages/Management/CouponManagement';
+import CouponEditor from './pages/Management/CouponEditor';
 import CustomerCRM from './pages/CRM/CustomerCRM';
 import { MainLayout } from './components/layout/MainLayout';
 
@@ -137,6 +139,24 @@ function App() {
             <Route path="staff" element={
                 <ProtectedRoute allowedRoles={['OWNER' , "MANAGER"]}>
                     <StaffManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="coupons" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CouponManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="coupons/new" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CouponEditor />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="coupons/:couponUuid/edit" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CouponEditor />
                 </ProtectedRoute>
             } />
             

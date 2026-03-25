@@ -11,6 +11,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.coupon.dto.request.ApplyCouponRequest;
+import org.foodos.coupon.service.CouponService;
 import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
@@ -54,6 +56,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final CouponService couponService;
 
     // ===== CREATE ORDER =====
 
@@ -216,6 +219,33 @@ public class OrderController {
 
         log.info("REST: Cancelling item {} from order: {}", itemUuid, orderUuid);
         OrderResponse response = orderService.cancelOrderItem(orderUuid, itemUuid, request, currentUser.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    // ===== COUPONS =====
+
+    @Operation(summary = "Apply coupon to order", description = "Validates and applies a coupon to the order")
+    @PostMapping("/{orderUuid}/apply-coupon")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<OrderResponse> applyCoupon(
+            @PathVariable String orderUuid,
+            @Valid @RequestBody ApplyCouponRequest request,
+            @AuthenticationPrincipal UserAuthEntity currentUser) {
+
+        log.info("REST: Applying coupon {} to order {}", request.getCouponCode(), orderUuid);
+        OrderResponse response = couponService.applyCoupon(orderUuid, request, currentUser.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Remove coupon from order", description = "Detaches any applied coupon and recalculates totals")
+    @DeleteMapping("/{orderUuid}/coupon")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<OrderResponse> removeCoupon(
+            @PathVariable String orderUuid,
+            @AuthenticationPrincipal UserAuthEntity currentUser) {
+
+        log.info("REST: Removing coupon from order {}", orderUuid);
+        OrderResponse response = couponService.removeCoupon(orderUuid, currentUser.getId());
         return ResponseEntity.ok(response);
     }
 

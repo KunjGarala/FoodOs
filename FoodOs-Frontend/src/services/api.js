@@ -401,4 +401,47 @@ export const productModifierGroupAPI = {
     api.get(`/api/restaurants/${restaurantUuid}/products/${productUuid}/modifier-groups`),
 };
 
+// ─────────────────────────────────────────────────────────
+// Coupons
+// ─────────────────────────────────────────────────────────
+export const couponAPI = {
+  apply: ({ orderUuid, couponCode, customerUuid }) =>
+    api.post(`/api/v1/orders/${orderUuid}/apply-coupon`, {
+      couponCode,
+      customerUuid: customerUuid || null,
+    }),
+
+  remove: (orderUuid) =>
+    api.delete(`/api/v1/orders/${orderUuid}/coupon`),
+
+  validate: ({ couponCode, restaurantUuid, orderAmount, orderUuid, customerUuid }) =>
+    api.post('/api/v1/coupons/validate', {
+      couponCode,
+      restaurantUuid,
+      orderAmount,
+      orderUuid,
+      customerUuid: customerUuid || null,
+    }),
+
+  suggest: ({ restaurantUuid, orderAmount, orderUuid, customerUuid }) =>
+    api.post('/api/v1/coupons/suggest', {
+      restaurantUuid,
+      orderAmount,
+      orderUuid,
+      customerUuid: customerUuid || null,
+    }),
+
+  getAll: (params) => api.get('/api/v1/coupons', { params }),
+  
+  getById: (couponUuid) => api.get(`/api/v1/coupons/${couponUuid}`),
+  
+  create: (data) => api.post('/api/v1/coupons', data),
+  
+  update: (couponUuid, data) => api.put(`/api/v1/coupons/${couponUuid}`, data),
+  
+  delete: (couponUuid) => api.delete(`/api/v1/coupons/${couponUuid}`),
+  
+  toggleStatus: (couponUuid, isActive) => api.patch(`/api/v1/coupons/${couponUuid}/toggle-status?isActive=${isActive}`),
+};
+
 export default api;

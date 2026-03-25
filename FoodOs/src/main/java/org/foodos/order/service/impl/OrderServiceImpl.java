@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.coupon.service.CouponService;
 import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
@@ -71,6 +72,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final WebSocketEventService webSocketEventService;
     private final CustomerCrmService customerCrmService;
+    private final CouponService couponService;
 
     // ===== CREATE ORDER =====
 
@@ -238,6 +240,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Update discounts
+        if (order.getCoupon() != null && (request.getDiscountPercentage() != null
+                || request.getDiscountAmount() != null
+                || request.getDiscountReason() != null)) {
+            throw new RuntimeException("Cannot modify discounts while a coupon is applied. Remove coupon first.");
+        }
         if (request.getDiscountPercentage() != null) {
             order.setDiscountPercentage(request.getDiscountPercentage());
         }
@@ -250,6 +257,10 @@ public class OrderServiceImpl implements OrderService {
 
         // Recalculate totals
         order.calculateTotals();
+
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
 
         order = orderRepository.save(order);
         log.info("Order updated successfully: {}", orderUuid);
@@ -403,6 +414,10 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
 
         // Ensure all items are served or ready
         boolean allItemsReady = order.getActiveItems().stream()
@@ -634,6 +649,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.calculateTotals();
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
         order = orderRepository.save(order);
         log.info("Successfully added items to order {}", orderUuid);
 
@@ -667,6 +685,9 @@ public class OrderServiceImpl implements OrderService {
 
         order.removeItem(itemToRemove);
         order.calculateTotals();
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
         order = orderRepository.save(order);
         log.info("Successfully removed item {} from order {}", orderItemUuid, orderUuid);
 
@@ -695,6 +716,9 @@ public class OrderServiceImpl implements OrderService {
 //        itemToCancel.cancel(request.getReason(), request.getNotes());
 
         order.calculateTotals();
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
         order = orderRepository.save(order);
         log.info("Successfully cancelled item {} from order {}", orderItemUuid, orderUuid);
 

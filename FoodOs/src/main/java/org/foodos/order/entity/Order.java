@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.common.entity.BaseSoftDeleteEntity;
+import org.foodos.coupon.entity.Coupon;
 import org.foodos.order.entity.enums.OrderStatus;
 import org.foodos.order.entity.enums.OrderType;
 import org.foodos.restaurant.entity.Restaurant;
@@ -37,8 +38,9 @@ import java.util.*;
         @Index(name = "idx_order_type",           columnList = "order_type"),
         @Index(name = "idx_order_restaurant_id",  columnList = "restaurant_id"),
         @Index(name = "idx_order_table_id",       columnList = "table_id"),
-        @Index(name = "idx_order_waiter_id",      columnList = "waiter_id"),
-        @Index(name = "idx_order_customer_phone", columnList = "customer_phone")
+    @Index(name = "idx_order_waiter_id",      columnList = "waiter_id"),
+    @Index(name = "idx_order_customer_phone", columnList = "customer_phone"),
+    @Index(name = "idx_order_coupon_id",      columnList = "coupon_id")
 })
 @SQLDelete(sql = "UPDATE orders SET is_deleted = true, deleted_at = now() WHERE id = ? AND version = ?")
 @Filter(name = "deletedFilter", condition = "is_deleted = :isDeleted")
@@ -87,6 +89,10 @@ public class Order extends BaseSoftDeleteEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cashier_id")
     private UserAuthEntity cashier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @BatchSize(size = 25)
@@ -309,7 +315,7 @@ public class Order extends BaseSoftDeleteEntity {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        if (discountPercentage != null && discountPercentage.compareTo(BigDecimal.ZERO) > 0) {
+        if (coupon == null && discountPercentage != null && discountPercentage.compareTo(BigDecimal.ZERO) > 0) {
             this.discountAmount = subtotal.multiply(discountPercentage)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         }
