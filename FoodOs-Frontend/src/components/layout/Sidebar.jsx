@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { LayoutDashboard, Armchair, UtensilsCrossed, ChefHat, Receipt, Users, Settings, LogOut, Store, Layers, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Armchair, UtensilsCrossed, ChefHat, Receipt, Users, UserCheck, Settings, LogOut, Store, Layers, Sparkles } from 'lucide-react';
 import { logout } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
 
@@ -25,7 +25,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { icon: Sparkles, label: 'Modifiers', path: '/app/modifiers' },
     { icon: Receipt, label: 'Menu', path: '/app/menu' },
     { icon: Users, label: 'Staff', path: '/app/staff' },
-    { icon: Users, label: 'CRM', path: '/app/crm' },
+    { icon: UserCheck, label: 'CRM', path: '/app/crm' },
   ];
 
   const filteredItems = navItems.filter(item => {

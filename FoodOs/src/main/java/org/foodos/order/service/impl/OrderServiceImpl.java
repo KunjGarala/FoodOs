@@ -20,6 +20,7 @@ import org.foodos.product.entity.ProductVariation;
 import org.foodos.product.repository.ModifierRepo;
 import org.foodos.product.repository.ProductRepo;
 import org.foodos.product.repository.ProductVariationRepo;
+import org.foodos.customer.service.CustomerCrmService;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.entity.RestaurantTable;
 import org.foodos.restaurant.entity.enums.TableStatus;
@@ -29,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -68,6 +70,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
     private final WebSocketEventService webSocketEventService;
+    private final CustomerCrmService customerCrmService;
 
     // ===== CREATE ORDER =====
 
@@ -135,6 +138,21 @@ public class OrderServiceImpl implements OrderService {
                     request.getRestaurantUuid(), tableMapper_buildTableBroadcast(table));
         }
 
+        // Sync customer CRM data
+        try {
+            customerCrmService.syncCustomerFromOrder(
+                    restaurant.getId(),
+                    order.getCustomerName(),
+                    order.getCustomerPhone(),
+                    order.getCustomerEmail(),
+                    order.getDeliveryAddress(),
+                    order.getTotalAmount(),
+                    order.getOrderDate(),
+                    order.getOrderType() != null ? order.getOrderType().name() : null);
+        } catch (Exception e) {
+            log.warn("Failed to sync customer CRM data for order: {}", order.getOrderUuid(), e);
+        }
+
         // Broadcast order creation via WebSocket
         OrderResponse response = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(request.getRestaurantUuid(), response);
@@ -172,6 +190,9 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        String previousCustomerPhone = order.getCustomerPhone();
+        String previousCustomerEmail = order.getCustomerEmail();
+
         // Check if order can be modified
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
@@ -189,6 +210,9 @@ public class OrderServiceImpl implements OrderService {
         }
         if (request.getCustomerEmail() != null) {
             order.setCustomerEmail(request.getCustomerEmail());
+        }
+        if (request.getDeliveryAddress() != null) {
+            order.setDeliveryAddress(request.getDeliveryAddress());
         }
         if (request.getOrderNotes() != null) {
             order.setOrderNotes(request.getOrderNotes());
@@ -229,6 +253,10 @@ public class OrderServiceImpl implements OrderService {
 
         order = orderRepository.save(order);
         log.info("Order updated successfully: {}", orderUuid);
+
+        if (hasCustomerDetailsInRequest(request)) {
+            syncCustomerAfterOrderEdit(order, previousCustomerPhone, previousCustomerEmail);
+        }
 
         OrderResponse response = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), response);
@@ -592,6 +620,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Adding {} items to order {}", items.size(), orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        boolean wasDraft = order.getStatus().equals(OrderStatus.DRAFT);
 
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
@@ -607,6 +636,10 @@ public class OrderServiceImpl implements OrderService {
         order.calculateTotals();
         order = orderRepository.save(order);
         log.info("Successfully added items to order {}", orderUuid);
+
+        if (wasDraft && hasCustomerIdentity(order)) {
+            syncCustomerFromOrderSafely(order, "activating draft order");
+        }
 
         OrderResponse addItemsResponse = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), addItemsResponse);
@@ -818,6 +851,10 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
         log.info("Empty order created successfully: {}", order.getOrderUuid());
 
+        if (hasAnyCustomerDetails(order)) {
+            syncCustomerProfileFromOrderSafely(order, null, null, "creating draft order");
+        }
+
         return order;
     }
 
@@ -891,5 +928,71 @@ public class OrderServiceImpl implements OrderService {
             map.put("currentWaiterName", table.getCurrentWaiter().getFullName());
         }
         return map;
+    }
+
+    private void syncCustomerAfterOrderEdit(Order order, String previousCustomerPhone, String previousCustomerEmail) {
+        boolean hadPreviousIdentity = StringUtils.hasText(previousCustomerPhone) || StringUtils.hasText(previousCustomerEmail);
+        boolean hasCurrentIdentity = hasCustomerIdentity(order);
+        boolean hasCountableOrder = order.getTotalAmount() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0;
+
+        if (!hadPreviousIdentity && hasCurrentIdentity && hasCountableOrder) {
+            syncCustomerFromOrderSafely(order, "adding customer details to an existing order");
+            return;
+        }
+
+        syncCustomerProfileFromOrderSafely(order, previousCustomerPhone, previousCustomerEmail,
+                "updating customer details on an order");
+    }
+
+    private void syncCustomerFromOrderSafely(Order order, String context) {
+        try {
+            customerCrmService.syncCustomerFromOrder(
+                    order.getRestaurant().getId(),
+                    order.getCustomerName(),
+                    order.getCustomerPhone(),
+                    order.getCustomerEmail(),
+                    order.getDeliveryAddress(),
+                    order.getTotalAmount(),
+                    order.getOrderDate(),
+                    order.getOrderType() != null ? order.getOrderType().name() : null);
+        } catch (Exception e) {
+            log.warn("Failed to sync customer CRM data while {} for order: {}", context, order.getOrderUuid(), e);
+        }
+    }
+
+    private void syncCustomerProfileFromOrderSafely(Order order, String previousCustomerPhone,
+                                                    String previousCustomerEmail, String context) {
+        try {
+            customerCrmService.syncCustomerProfileFromOrder(
+                    order.getRestaurant().getId(),
+                    previousCustomerPhone,
+                    previousCustomerEmail,
+                    order.getCustomerName(),
+                    order.getCustomerPhone(),
+                    order.getCustomerEmail(),
+                    order.getDeliveryAddress(),
+                    order.getOrderDate(),
+                    order.getOrderType() != null ? order.getOrderType().name() : null);
+        } catch (Exception e) {
+            log.warn("Failed to sync customer CRM profile while {} for order: {}", context, order.getOrderUuid(), e);
+        }
+    }
+
+    private boolean hasCustomerDetailsInRequest(UpdateOrderRequest request) {
+        return request.getCustomerName() != null
+                || request.getCustomerPhone() != null
+                || request.getCustomerEmail() != null
+                || request.getDeliveryAddress() != null;
+    }
+
+    private boolean hasAnyCustomerDetails(Order order) {
+        return StringUtils.hasText(order.getCustomerName())
+                || StringUtils.hasText(order.getCustomerPhone())
+                || StringUtils.hasText(order.getCustomerEmail())
+                || StringUtils.hasText(order.getDeliveryAddress());
+    }
+
+    private boolean hasCustomerIdentity(Order order) {
+        return StringUtils.hasText(order.getCustomerPhone()) || StringUtils.hasText(order.getCustomerEmail());
     }
 }

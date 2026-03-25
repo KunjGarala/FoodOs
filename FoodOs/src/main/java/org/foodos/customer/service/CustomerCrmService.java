@@ -52,4 +52,12 @@ public interface CustomerCrmService {
     void syncCustomerFromOrder(Long restaurantId, String customerName, String customerPhone,
                                 String customerEmail, String deliveryAddress,
                                 java.math.BigDecimal orderTotal, java.time.LocalDate orderDate, String orderType);
+
+    /**
+     * Sync customer profile data captured while taking/editing an order without
+     * incrementing CRM order statistics.
+     */
+    void syncCustomerProfileFromOrder(Long restaurantId, String previousCustomerPhone, String previousCustomerEmail,
+                                      String customerName, String customerPhone, String customerEmail,
+                                      String deliveryAddress, java.time.LocalDate orderDate, String orderType);
 }
