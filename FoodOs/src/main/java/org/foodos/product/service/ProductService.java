@@ -338,6 +338,7 @@ public class ProductService {
 
         // Assign modifier group to product
         product.addModifierGroup(modifierGroup);
+        product.setHasModifiers(true);
         productRepo.save(product);
 
         log.info("Successfully assigned modifier group: {} to product: {}", modifierGroupUuid, productUuid);
@@ -371,6 +372,10 @@ public class ProductService {
 
         // Remove modifier group from product
         product.removeModifierGroup(modifierGroup);
+        // Update hasModifiers flag based on remaining active modifier groups
+        boolean stillHasModifiers = product.getModifierGroups().stream()
+                .anyMatch(mg -> !mg.getIsDeleted() && mg.getIsActive());
+        product.setHasModifiers(stillHasModifiers);
         productRepo.save(product);
 
         log.info("Successfully removed modifier group: {} from product: {}", modifierGroupUuid, productUuid);

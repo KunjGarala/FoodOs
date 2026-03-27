@@ -17,6 +17,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 // POS Components
 import TableManagement from './pages/POS/TableManagement';
 import TableDetails from './pages/POS/TableDetails';
+import TableOrderHistory from './pages/POS/TableOrderHistory';
+import OrderDetailPage from './pages/POS/OrderDetailPage';
 import OrderEntry from './pages/POS/OrderEntry';
 import AddOrderItems from './pages/POS/AddOrderItems';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
@@ -25,6 +27,8 @@ import ProductForm from './pages/Management/ProductForm';
 import CategoryManagement from './pages/Management/CategoryManagement';
 import ModifierManagement from './pages/Management/ModifierManagement';
 import StaffManagement from './pages/Management/StaffManagement';
+import CouponManagement from './pages/Management/CouponManagement';
+import CouponEditor from './pages/Management/CouponEditor';
 import CustomerCRM from './pages/CRM/CustomerCRM';
 import { MainLayout } from './components/layout/MainLayout';
 
@@ -77,6 +81,18 @@ function App() {
                 </ProtectedRoute>
             } />
 
+            <Route path="tables/:tableUuid/history" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <TableOrderHistory />
+                </ProtectedRoute>
+            } />
+
+            <Route path="orders/:orderUuid" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER', 'CASHIER']}>
+                    <OrderDetailPage />
+                </ProtectedRoute>
+            } />
+
             
             <Route path="order" element={
                 <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
@@ -123,6 +139,24 @@ function App() {
             <Route path="staff" element={
                 <ProtectedRoute allowedRoles={['OWNER' , "MANAGER"]}>
                     <StaffManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="coupons" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CouponManagement />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="coupons/new" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CouponEditor />
+                </ProtectedRoute>
+            } />
+            
+            <Route path="coupons/:couponUuid/edit" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER']}>
+                    <CouponEditor />
                 </ProtectedRoute>
             } />
             

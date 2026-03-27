@@ -20,7 +20,7 @@ import {
   Building2,
   Loader2,
 } from 'lucide-react';
-import { employeeAPI } from '../../services/api';
+import { employeeAPI, restaurantAPI } from '../../services/api';
 import AddEmployee from './AddEmployee';
 import EditEmployee from './EditEmployee';
 
@@ -50,6 +50,9 @@ const StaffManagement = () => {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    
+    // Restaurant Names Map
+    const [restaurantNames, setRestaurantNames] = useState({});
 
     // Initial Setup
     useEffect(() => {
@@ -61,6 +64,24 @@ const StaffManagement = () => {
             setSelectedRestaurantId(activeRestaurantId || restaurantIds[0]);
         }
     }, [userRole, restaurantIds, activeRestaurantId]);
+
+    // Fetch Restaurant Names
+    useEffect(() => {
+        const fetchRestaurantNames = async () => {
+            if (!restaurantIds || restaurantIds.length === 0) return;
+            const names = {};
+            await Promise.all(restaurantIds.map(async (id) => {
+                try {
+                    const response = await restaurantAPI.getRestaurantDetail(id);
+                    names[id] = response.data.name;
+                } catch (error) {
+                    names[id] = `Restaurant ${id}`; // Fallback
+                }
+            }));
+            setRestaurantNames(names);
+        };
+        fetchRestaurantNames();
+    }, [restaurantIds]);
 
     // Fetch Data
     const fetchEmployees = useCallback(async () => {
@@ -182,7 +203,7 @@ const StaffManagement = () => {
                                         onChange={(e) => setSelectedRestaurantId(e.target.value)}
                                     >
                                         {restaurantIds && restaurantIds.map(id => (
-                                            <option key={id} value={id}>Restaurant {id}</option>
+                                            <option key={id} value={id}>{restaurantNames[id] || 'Loading...*'}</option>
                                         ))}
                                     </select>
                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">

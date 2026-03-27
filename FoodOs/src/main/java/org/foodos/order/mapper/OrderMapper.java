@@ -27,6 +27,11 @@ public interface OrderMapper {
     @Mapping(target = "kotSent", expression = "java(order.hasKotSent())")
     @Mapping(target = "kotCount", expression = "java(order.getKitchenOrderTickets() != null ? order.getKitchenOrderTickets().size() : 0)")
     @Mapping(target = "cancelledBy", source = "cancelledBy.username")
+    @Mapping(target = "couponUuid", source = "coupon.couponUuid")
+    @Mapping(target = "couponName", source = "coupon.name")
+    @Mapping(target = "couponDiscountValue", source = "coupon.discountValue")
+    @Mapping(target = "couponDiscountType", expression = "java(order.getCoupon() != null ? order.getCoupon().getDiscountType().name() : null)")
+    @Mapping(target = "couponMaxDiscountAmount", source = "coupon.maxDiscountAmount")
     OrderResponse toOrderResponse(Order order);
 
     List<OrderResponse> toOrderResponseList(List<Order> orders);

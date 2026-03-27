@@ -154,6 +154,21 @@ public class OrderResponse {
     @Schema(description = "Coupon code")
     private String couponCode;
 
+    @Schema(description = "Coupon UUID")
+    private String couponUuid;
+
+    @Schema(description = "Coupon name")
+    private String couponName;
+
+    @Schema(description = "Coupon discount value")
+    private BigDecimal couponDiscountValue;
+
+    @Schema(description = "Coupon discount type")
+    private String couponDiscountType;
+
+    @Schema(description = "Coupon max discount cap")
+    private BigDecimal couponMaxDiscountAmount;
+
     // ===== CANCELLATION =====
 
     @Schema(description = "Cancellation reason")

@@ -293,6 +293,26 @@ export const tableAPI = {
 
   // Get combined table + active order details
   getTableDetails: (tableUuid) => api.get(`/api/v1/tables/${tableUuid}/details`),
+
+  // Assign waiter to table (Manager/Owner/Admin)
+  assignWaiter: (tableUuid, waiterUuid) => api.patch(`/api/v1/tables/${tableUuid}/assign-waiter`, { waiterUuid }),
+
+  // Remove waiter from table (Manager/Owner/Admin)
+  removeWaiter: (tableUuid) => api.delete(`/api/v1/tables/${tableUuid}/assign-waiter`),
+};
+
+export const orderAPI = {
+  // Get paginated order history for a table
+  getTableOrderHistory: (tableUuid, { page = 0, size = 10, search, startDate, endDate } = {}) => {
+    const params = { page, size };
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    return api.get(`/api/v1/orders/table/${tableUuid}/history`, { params });
+  },
+
+  // Get single order by UUID
+  getOrderByUuid: (orderUuid) => api.get(`/api/v1/orders/${orderUuid}`),
 };
 
 export const variationAPI = {
@@ -379,6 +399,49 @@ export const productModifierGroupAPI = {
   // Get all modifier groups assigned to a product
   getAll:       (restaurantUuid, productUuid) =>
     api.get(`/api/restaurants/${restaurantUuid}/products/${productUuid}/modifier-groups`),
+};
+
+// ─────────────────────────────────────────────────────────
+// Coupons
+// ─────────────────────────────────────────────────────────
+export const couponAPI = {
+  apply: ({ orderUuid, couponCode, customerUuid }) =>
+    api.post(`/api/v1/orders/${orderUuid}/apply-coupon`, {
+      couponCode,
+      customerUuid: customerUuid || null,
+    }),
+
+  remove: (orderUuid) =>
+    api.delete(`/api/v1/orders/${orderUuid}/coupon`),
+
+  validate: ({ couponCode, restaurantUuid, orderAmount, orderUuid, customerUuid }) =>
+    api.post('/api/v1/coupons/validate', {
+      couponCode,
+      restaurantUuid,
+      orderAmount,
+      orderUuid,
+      customerUuid: customerUuid || null,
+    }),
+
+  suggest: ({ restaurantUuid, orderAmount, orderUuid, customerUuid }) =>
+    api.post('/api/v1/coupons/suggest', {
+      restaurantUuid,
+      orderAmount,
+      orderUuid,
+      customerUuid: customerUuid || null,
+    }),
+
+  getAll: (params) => api.get('/api/v1/coupons', { params }),
+  
+  getById: (couponUuid) => api.get(`/api/v1/coupons/${couponUuid}`),
+  
+  create: (data) => api.post('/api/v1/coupons', data),
+  
+  update: (couponUuid, data) => api.put(`/api/v1/coupons/${couponUuid}`, data),
+  
+  delete: (couponUuid) => api.delete(`/api/v1/coupons/${couponUuid}`),
+  
+  toggleStatus: (couponUuid, isActive) => api.patch(`/api/v1/coupons/${couponUuid}/toggle-status?isActive=${isActive}`),
 };
 
 export default api;

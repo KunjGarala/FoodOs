@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.coupon.service.CouponService;
 import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.KotResponse;
 import org.foodos.order.dto.response.OrderResponse;
@@ -20,6 +21,7 @@ import org.foodos.product.entity.ProductVariation;
 import org.foodos.product.repository.ModifierRepo;
 import org.foodos.product.repository.ProductRepo;
 import org.foodos.product.repository.ProductVariationRepo;
+import org.foodos.customer.service.CustomerCrmService;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.entity.RestaurantTable;
 import org.foodos.restaurant.entity.enums.TableStatus;
@@ -29,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -68,6 +71,8 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
     private final WebSocketEventService webSocketEventService;
+    private final CustomerCrmService customerCrmService;
+    private final CouponService couponService;
 
     // ===== CREATE ORDER =====
 
@@ -135,6 +140,21 @@ public class OrderServiceImpl implements OrderService {
                     request.getRestaurantUuid(), tableMapper_buildTableBroadcast(table));
         }
 
+        // Sync customer CRM data
+        try {
+            customerCrmService.syncCustomerFromOrder(
+                    restaurant.getId(),
+                    order.getCustomerName(),
+                    order.getCustomerPhone(),
+                    order.getCustomerEmail(),
+                    order.getDeliveryAddress(),
+                    order.getTotalAmount(),
+                    order.getOrderDate(),
+                    order.getOrderType() != null ? order.getOrderType().name() : null);
+        } catch (Exception e) {
+            log.warn("Failed to sync customer CRM data for order: {}", order.getOrderUuid(), e);
+        }
+
         // Broadcast order creation via WebSocket
         OrderResponse response = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(request.getRestaurantUuid(), response);
@@ -172,6 +192,9 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        String previousCustomerPhone = order.getCustomerPhone();
+        String previousCustomerEmail = order.getCustomerEmail();
+
         // Check if order can be modified
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
@@ -186,6 +209,12 @@ public class OrderServiceImpl implements OrderService {
         }
         if (request.getCustomerPhone() != null) {
             order.setCustomerPhone(request.getCustomerPhone());
+        }
+        if (request.getCustomerEmail() != null) {
+            order.setCustomerEmail(request.getCustomerEmail());
+        }
+        if (request.getDeliveryAddress() != null) {
+            order.setDeliveryAddress(request.getDeliveryAddress());
         }
         if (request.getOrderNotes() != null) {
             order.setOrderNotes(request.getOrderNotes());
@@ -211,6 +240,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Update discounts
+        if (order.getCoupon() != null && (request.getDiscountPercentage() != null
+                || request.getDiscountAmount() != null
+                || request.getDiscountReason() != null)) {
+            throw new RuntimeException("Cannot modify discounts while a coupon is applied. Remove coupon first.");
+        }
         if (request.getDiscountPercentage() != null) {
             order.setDiscountPercentage(request.getDiscountPercentage());
         }
@@ -224,8 +258,16 @@ public class OrderServiceImpl implements OrderService {
         // Recalculate totals
         order.calculateTotals();
 
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
+
         order = orderRepository.save(order);
         log.info("Order updated successfully: {}", orderUuid);
+
+        if (hasCustomerDetailsInRequest(request)) {
+            syncCustomerAfterOrderEdit(order, previousCustomerPhone, previousCustomerEmail);
+        }
 
         OrderResponse response = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), response);
@@ -373,6 +415,10 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
+
         // Ensure all items are served or ready
         boolean allItemsReady = order.getActiveItems().stream()
                 .allMatch(item -> item.getKotStatus() == KotStatus.SERVED ||
@@ -463,6 +509,7 @@ public class OrderServiceImpl implements OrderService {
                 itemModifier.setModifierGroupName(modifier.getModifierGroup().getName());
                 itemModifier.setQuantity(modRequest.getQuantity());
                 itemModifier.setUnitPrice(modifier.getPriceAdd());
+                itemModifier.calculateLineTotal();
 
                 orderItem.addModifier(itemModifier);
             }
@@ -552,6 +599,17 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        // Validate all KOT items are SERVED or CANCELLED before completing
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            boolean hasUnservedItems = order.getItems().stream()
+                    .filter(item -> item.getKotStatus() != KotStatus.CANCELLED
+                            && (item.getKotStatus() == null || !item.getKotStatus().name().equals("CANCELLED")))
+                    .anyMatch(item -> item.getKotStatus() != KotStatus.SERVED);
+            if (hasUnservedItems) {
+                throw new RuntimeException("Cannot complete order: All items must be served before completing the order. Please wait for all KOT items to be served.");
+            }
+        }
+
         order.complete();
 
         // Update table status back to VACANT if this was a dine-in order
@@ -577,6 +635,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Adding {} items to order {}", items.size(), orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        boolean wasDraft = order.getStatus().equals(OrderStatus.DRAFT);
 
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
@@ -590,8 +649,15 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.calculateTotals();
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
         order = orderRepository.save(order);
         log.info("Successfully added items to order {}", orderUuid);
+
+        if (wasDraft && hasCustomerIdentity(order)) {
+            syncCustomerFromOrderSafely(order, "activating draft order");
+        }
 
         OrderResponse addItemsResponse = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), addItemsResponse);
@@ -619,6 +685,9 @@ public class OrderServiceImpl implements OrderService {
 
         order.removeItem(itemToRemove);
         order.calculateTotals();
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
         order = orderRepository.save(order);
         log.info("Successfully removed item {} from order {}", orderItemUuid, orderUuid);
 
@@ -647,6 +716,9 @@ public class OrderServiceImpl implements OrderService {
 //        itemToCancel.cancel(request.getReason(), request.getNotes());
 
         order.calculateTotals();
+        if (order.getCoupon() != null) {
+            couponService.revalidateAppliedCoupon(order);
+        }
         order = orderRepository.save(order);
         log.info("Successfully cancelled item {} from order {}", orderItemUuid, orderUuid);
 
@@ -675,6 +747,28 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Page<OrderResponse> searchOrders(String restaurantUuid, String searchTerm, Pageable pageable) {
         Page<Order> orders = orderRepository.searchOrdersByRestaurantUuid(restaurantUuid, searchTerm, pageable);
+        return orders.map(orderMapper::toOrderResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrderHistoryByTable(String tableUuid, String searchTerm,
+            java.time.LocalDate startDate, java.time.LocalDate endDate, Pageable pageable) {
+        Page<Order> orders;
+
+        boolean hasSearch = searchTerm != null && !searchTerm.trim().isEmpty();
+        boolean hasDateRange = startDate != null && endDate != null;
+
+        if (hasSearch && hasDateRange) {
+            orders = orderRepository.searchOrdersByTableUuidAndDateRange(tableUuid, searchTerm.trim(), startDate, endDate, pageable);
+        } else if (hasSearch) {
+            orders = orderRepository.searchOrdersByTableUuid(tableUuid, searchTerm.trim(), pageable);
+        } else if (hasDateRange) {
+            orders = orderRepository.findAllByTableUuidAndOrderDateBetween(tableUuid, startDate, endDate, pageable);
+        } else {
+            orders = orderRepository.findAllByTableUuid(tableUuid, pageable);
+        }
+
         return orders.map(orderMapper::toOrderResponse);
     }
 
@@ -781,6 +875,10 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
         log.info("Empty order created successfully: {}", order.getOrderUuid());
 
+        if (hasAnyCustomerDetails(order)) {
+            syncCustomerProfileFromOrderSafely(order, null, null, "creating draft order");
+        }
+
         return order;
     }
 
@@ -854,5 +952,71 @@ public class OrderServiceImpl implements OrderService {
             map.put("currentWaiterName", table.getCurrentWaiter().getFullName());
         }
         return map;
+    }
+
+    private void syncCustomerAfterOrderEdit(Order order, String previousCustomerPhone, String previousCustomerEmail) {
+        boolean hadPreviousIdentity = StringUtils.hasText(previousCustomerPhone) || StringUtils.hasText(previousCustomerEmail);
+        boolean hasCurrentIdentity = hasCustomerIdentity(order);
+        boolean hasCountableOrder = order.getTotalAmount() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0;
+
+        if (!hadPreviousIdentity && hasCurrentIdentity && hasCountableOrder) {
+            syncCustomerFromOrderSafely(order, "adding customer details to an existing order");
+            return;
+        }
+
+        syncCustomerProfileFromOrderSafely(order, previousCustomerPhone, previousCustomerEmail,
+                "updating customer details on an order");
+    }
+
+    private void syncCustomerFromOrderSafely(Order order, String context) {
+        try {
+            customerCrmService.syncCustomerFromOrder(
+                    order.getRestaurant().getId(),
+                    order.getCustomerName(),
+                    order.getCustomerPhone(),
+                    order.getCustomerEmail(),
+                    order.getDeliveryAddress(),
+                    order.getTotalAmount(),
+                    order.getOrderDate(),
+                    order.getOrderType() != null ? order.getOrderType().name() : null);
+        } catch (Exception e) {
+            log.warn("Failed to sync customer CRM data while {} for order: {}", context, order.getOrderUuid(), e);
+        }
+    }
+
+    private void syncCustomerProfileFromOrderSafely(Order order, String previousCustomerPhone,
+                                                    String previousCustomerEmail, String context) {
+        try {
+            customerCrmService.syncCustomerProfileFromOrder(
+                    order.getRestaurant().getId(),
+                    previousCustomerPhone,
+                    previousCustomerEmail,
+                    order.getCustomerName(),
+                    order.getCustomerPhone(),
+                    order.getCustomerEmail(),
+                    order.getDeliveryAddress(),
+                    order.getOrderDate(),
+                    order.getOrderType() != null ? order.getOrderType().name() : null);
+        } catch (Exception e) {
+            log.warn("Failed to sync customer CRM profile while {} for order: {}", context, order.getOrderUuid(), e);
+        }
+    }
+
+    private boolean hasCustomerDetailsInRequest(UpdateOrderRequest request) {
+        return request.getCustomerName() != null
+                || request.getCustomerPhone() != null
+                || request.getCustomerEmail() != null
+                || request.getDeliveryAddress() != null;
+    }
+
+    private boolean hasAnyCustomerDetails(Order order) {
+        return StringUtils.hasText(order.getCustomerName())
+                || StringUtils.hasText(order.getCustomerPhone())
+                || StringUtils.hasText(order.getCustomerEmail())
+                || StringUtils.hasText(order.getDeliveryAddress());
+    }
+
+    private boolean hasCustomerIdentity(Order order) {
+        return StringUtils.hasText(order.getCustomerPhone()) || StringUtils.hasText(order.getCustomerEmail());
     }
 }

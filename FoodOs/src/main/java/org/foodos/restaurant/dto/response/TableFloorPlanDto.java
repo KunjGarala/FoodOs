@@ -40,6 +40,9 @@ public class TableFloorPlanDto {
     @Schema(description = "Time when guests were seated")
     private LocalDateTime seatedAt;
 
+    @Schema(description = "Current order UUID when table is occupied")
+    private String currentOrderId;
+
     @Schema(description = "X-coordinate for floor plan", example = "120")
     private Integer posX;
 
@@ -51,6 +54,9 @@ public class TableFloorPlanDto {
 
     @Schema(description = "Is table merged with others", example = "false")
     private Boolean isMerged;
+
+    @Schema(description = "Current waiter UUID", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String currentWaiterUuid;
 
     @Schema(description = "Current waiter name", example = "John Doe")
     private String currentWaiterName;
