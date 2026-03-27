@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -30,5 +31,30 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     @Query("SELECT oi FROM OrderItem oi WHERE oi.product.id = :productId AND oi.order.orderDate >= :startDate AND oi.isCancelled = false AND oi.isDeleted = false")
     List<OrderItem> findRecentOrderItemsByProduct(@Param("productId") Long productId, @Param("startDate") LocalDate startDate);
+
+
+    /**
+     * Returns [productName, SUM(quantity), SUM(lineTotal)] for non-cancelled items
+     * within the given date range, grouped by product name, ordered by quantity desc.
+     */
+    @Query("SELECT oi.productName, SUM(oi.quantity), SUM(oi.lineTotal) " +
+            "FROM OrderItem oi " +
+            "WHERE oi.order.restaurant.restaurantUuid = :restaurantUuid " +
+            "  AND oi.order.orderDate BETWEEN :startDate AND :endDate " +
+            "  AND oi.isCancelled = false " +
+            "  AND oi.isDeleted = false " +
+            "GROUP BY oi.productName " +
+            "ORDER BY SUM(oi.quantity) DESC")
+    List<Object[]> findTopSellingItems(
+            @Param("restaurantUuid") String restaurantUuid,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable
+    );
+
+    /**
+    * Returns today's orders for a restaurant so we can group by hour in Java.
+    * (Reuses the existing query pattern — no new query needed for hourly data.)
+    */
 }
 

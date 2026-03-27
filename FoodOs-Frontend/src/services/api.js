@@ -444,4 +444,9 @@ export const couponAPI = {
   toggleStatus: (couponUuid, isActive) => api.patch(`/api/v1/coupons/${couponUuid}/toggle-status?isActive=${isActive}`),
 };
 
+export const analyticsAPI = {
+  getDashboardAnalytics: (restaurantUuid, days = 7) =>
+    api.get(`/api/v1/analytics/${restaurantUuid}/dashboard?days=${days}`)
+};
+
 export default api;
