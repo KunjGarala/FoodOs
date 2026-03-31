@@ -182,5 +182,10 @@ public interface OrderService {
      * Get order history for a table with pagination, search and date filtering
      */
     Page<OrderResponse> getOrderHistoryByTable(String tableUuid, String searchTerm, LocalDate startDate, LocalDate endDate, Pageable pageable);
+
+    /**
+     * Get the order entity by UUID for internal use cases.
+     */
+    Order getOrderEntityByUuid(String orderUuid);
 }
 

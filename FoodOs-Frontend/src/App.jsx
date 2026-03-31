@@ -21,6 +21,7 @@ import TableOrderHistory from './pages/POS/TableOrderHistory';
 import OrderDetailPage from './pages/POS/OrderDetailPage';
 import OrderEntry from './pages/POS/OrderEntry';
 import AddOrderItems from './pages/POS/AddOrderItems';
+import AllOffers from './pages/POS/AllOffers';
 import KitchenDisplay from './pages/Kitchen/KitchenDisplay';
 import MenuManagement from './pages/Management/MenuManagement';
 import ProductForm from './pages/Management/ProductForm';
@@ -78,6 +79,12 @@ function App() {
             <Route path="tables/:tableUuid/add-items" element={
                 <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
                     <AddOrderItems />
+                </ProtectedRoute>
+            } />
+
+            <Route path="tables/:tableUuid/offers" element={
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
+                    <AllOffers />
                 </ProtectedRoute>
             } />
 

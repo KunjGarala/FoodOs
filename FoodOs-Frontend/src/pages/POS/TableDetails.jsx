@@ -49,6 +49,7 @@ import {
   applyCouponToOrder,
   removeCouponFromOrder,
   fetchCouponSuggestions,
+  fetchAvailableCoupons,
   revalidateCoupon,
   setCouponCode,
   hydrateFromOrder,
@@ -483,16 +484,21 @@ const TableDetails = () => {
     }
   }, [couponState.error, couponState.message, couponState.autoRemovedReason, dispatch]);
 
+  // Memoize stable order properties to avoid re-running hydrate on every activeOrder ref change
+  const orderCouponCode = activeOrder?.couponCode;
+  const orderDiscountAmount = activeOrder?.discountAmount;
+  const orderOrderUuid = activeOrder?.orderUuid;
+
   useEffect(() => {
-    if (!activeOrder) return;
+    if (!orderOrderUuid) return;
     dispatch(hydrateFromOrder({
-      couponCode: activeOrder.couponCode,
-      discountAmount: activeOrder.discountAmount,
-      orderUuid: activeOrder.orderUuid,
+      couponCode: orderCouponCode,
+      discountAmount: orderDiscountAmount,
+      orderUuid: orderOrderUuid,
       cartSignature: couponCartSignature,
       orderAmount: subtotal,
     }));
-  }, [activeOrder, couponCartSignature, subtotal, dispatch]);
+  }, [orderCouponCode, orderDiscountAmount, orderOrderUuid, couponCartSignature, subtotal, dispatch]);
 
   useEffect(() => {
     if (!orderUuid || !couponRestaurantUuid || subtotal <= 0) return;
@@ -503,6 +509,12 @@ const TableDetails = () => {
       customerUuid: activeOrder?.customerUuid,
     }));
   }, [dispatch, orderUuid, couponRestaurantUuid, subtotal, activeOrder?.customerUuid]);
+
+  // Fetch all available coupons for the restaurant
+  useEffect(() => {
+    if (!couponRestaurantUuid) return;
+    dispatch(fetchAvailableCoupons({ restaurantUuid: couponRestaurantUuid }));
+  }, [dispatch, couponRestaurantUuid]);
 
   useEffect(() => {
     if (!couponState.isApplied || !couponState.code) return;
@@ -998,11 +1010,20 @@ const TableDetails = () => {
                     revalidating={couponState.revalidating}
                   />
 
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    <span>Available Offers</span>
-                    <span className="text-slate-400">Auto picks best savings</span>
-                  </div>
-                  <CouponList coupons={couponState.suggestions} onApply={handleApplyFromList} />
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (orderUuid) params.set('orderUuid', orderUuid);
+                      if (subtotal > 0) params.set('subtotal', subtotal.toFixed(2));
+                      if (activeOrder?.customerUuid) params.set('customerUuid', activeOrder.customerUuid);
+                      navigate(`/app/tables/${tableUuid}/offers?${params.toString()}`);
+                    }}
+                    disabled={!orderUuid}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Tag className="h-4 w-4" />
+                    Show All Offers
+                  </button>
                 </div>
 
                 {/* Totals */}

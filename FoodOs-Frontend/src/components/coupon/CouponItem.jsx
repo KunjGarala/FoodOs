@@ -4,6 +4,9 @@ import { Button } from '../ui/Button';
 
 export const CouponItem = ({ coupon, onApply, isBest }) => {
   const savings = Number(coupon.computedDiscount || coupon.discountValue || 0).toFixed(0);
+  const discountLabel = coupon.discountType === 'PERCENTAGE'
+    ? `${coupon.discountValue}% off`
+    : `₹${savings} off`;
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white hover:border-blue-300 transition-colors">
       <div className="flex items-start gap-3">
@@ -19,7 +22,10 @@ export const CouponItem = ({ coupon, onApply, isBest }) => {
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">Save ₹{savings}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{discountLabel} · Save ₹{savings}</p>
+          {coupon.minOrderAmount > 0 && (
+            <p className="text-[11px] text-slate-400 mt-0.5">Min order: ₹{Number(coupon.minOrderAmount).toFixed(0)}</p>
+          )}
           {coupon.reason && !coupon.valid && (
             <p className="text-[11px] text-red-600 mt-0.5">{coupon.reason}</p>
           )}

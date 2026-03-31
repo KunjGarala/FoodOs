@@ -62,6 +62,12 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(400, "BUSINESS_RULE_VIOLATION", ex.getMessage()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiError> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiError(409, "CONFLICT", ex.getMessage()));
+    }
+
     @ExceptionHandler({
             IllegalArgumentException.class,
             FileIsNotImageException.class

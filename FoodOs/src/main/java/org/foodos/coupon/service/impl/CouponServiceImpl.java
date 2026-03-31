@@ -40,6 +40,7 @@ import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -275,6 +276,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @CacheEvict(value = "couponByCode", allEntries = true)
     public CouponResponse updateCoupon(String couponUuid, UpdateCouponRequest request) {
         Coupon coupon = couponRepository.findByCouponUuidAndIsDeletedFalse(couponUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
@@ -302,6 +304,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @CacheEvict(value = "couponByCode", allEntries = true)
     public void deleteCoupon(String couponUuid) {
         Coupon coupon = couponRepository.findByCouponUuidAndIsDeletedFalse(couponUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
@@ -309,6 +312,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @CacheEvict(value = "couponByCode", allEntries = true)
     public CouponResponse toggleCouponStatus(String couponUuid, boolean isActive) {
         Coupon coupon = couponRepository.findByCouponUuidAndIsDeletedFalse(couponUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
@@ -385,7 +389,8 @@ public class CouponServiceImpl implements CouponService {
         if (now.isBefore(coupon.getStartDate())) {
             return result.invalid("Coupon not started yet");
         }
-        if (now.isAfter(coupon.getEndDate())) {
+        LocalDateTime inclusiveEnd = normalizeEndBoundary(coupon.getEndDate());
+        if (now.isAfter(inclusiveEnd)) {
             return result.invalid("Coupon expired");
         }
 
@@ -463,7 +468,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     private void upsertCouponUsage(Order order, Coupon coupon, Customer customer, BigDecimal discountApplied, Long appliedByUserId) {
-        Optional<CouponUsage> existing = usageRepository.findByCouponIdAndOrderIdAndIsDeletedFalse(coupon.getId(), order.getId());
+        Optional<CouponUsage> existing = usageRepository.findByCouponIdAndOrderId(coupon.getId(), order.getId());
         CouponUsage usage = existing.orElseGet(() -> CouponUsage.builder()
                 .coupon(coupon)
                 .order(order)
@@ -471,6 +476,8 @@ public class CouponServiceImpl implements CouponService {
                 .customer(customer)
                 .build());
 
+        usage.setIsDeleted(false);
+        usage.setDeletedAt(null);
         usage.setDiscountApplied(discountApplied);
         if (appliedByUserId != null) {
             userAuthRepository.findById(appliedByUserId).ifPresent(usage::setUsedBy);
@@ -567,6 +574,19 @@ public class CouponServiceImpl implements CouponService {
 
     private BigDecimal defaultZero(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    /**
+     * Treat endDate as inclusive through the end of the specified minute.
+     * Many coupons are entered with a date-only value (00:00 time); this bumps
+     * midnight boundaries to 23:59:59.999 to avoid premature expiry.
+     */
+    private LocalDateTime normalizeEndBoundary(LocalDateTime endDate) {
+        if (endDate == null) return LocalDateTime.MAX;
+        if (endDate.toLocalTime().equals(LocalTime.MIDNIGHT)) {
+            return endDate.with(LocalTime.MAX);
+        }
+        return endDate;
     }
 
     private static class ValidationResult {

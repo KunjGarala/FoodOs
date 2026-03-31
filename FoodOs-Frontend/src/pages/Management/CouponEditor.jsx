@@ -67,8 +67,7 @@ const CouponEditor = () => {
             code: coupon.code || '',
             name: coupon.name || '',
             description: coupon.description || '',
-            // Map FIXED back to FLAT_AMOUNT for frontend UI state if the backend returned FIXED
-            discountType: coupon.discountType === 'FIXED' ? 'FLAT_AMOUNT' : (coupon.discountType || 'PERCENTAGE'),
+            discountType: coupon.discountType || 'PERCENTAGE',
             discountValue: coupon.discountValue !== null ? String(coupon.discountValue) : '',
             maxDiscountAmount: coupon.maxDiscountAmount !== null ? String(coupon.maxDiscountAmount) : '',
             minOrderAmount: coupon.minOrderAmount !== null ? String(coupon.minOrderAmount) : '0.00',
@@ -119,10 +118,9 @@ const CouponEditor = () => {
 
       const payload = {
         ...formData,
-        // Send FIXED instead of FLAT_AMOUNT to backend
-        discountType: formData.discountType === 'FLAT_AMOUNT' ? 'FIXED' : formData.discountType,
+        discountType: formData.discountType,
         discountValue: parseFloat(formData.discountValue),
-        maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null,
+        maxDiscountAmount: formData.discountType === 'FIXED' ? null : (formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null),
         minOrderAmount: formData.minOrderAmount ? parseFloat(formData.minOrderAmount) : 0,
         startDate: finalStartDate,
         endDate: finalEndDate,
@@ -131,6 +129,12 @@ const CouponEditor = () => {
         restaurantUuids: isChainScope ? [] : [activeRestaurantId],
         ownerRestaurantUuid: isChainScope ? activeRestaurantId : null,
       };
+
+      // CreateCouponRequest uses 'active', UpdateCouponRequest uses 'isActive'
+      if (!isEditMode) {
+        payload.active = formData.isActive;
+        delete payload.isActive;
+      }
 
       if (isEditMode) {
         // Exclude code on update, backend UpdateCouponRequest might not need it, or it ignores it
@@ -250,7 +254,7 @@ const CouponEditor = () => {
                   onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
                 >
                   <option value="PERCENTAGE">Percentage (%)</option>
-                  <option value="FLAT_AMOUNT">Flat Amount ($)</option>
+                  <option value="FIXED">Fixed Amount (₹)</option>
                 </select>
                 <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                   {formData.discountType === 'PERCENTAGE' ? <Percent className="w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
@@ -267,14 +271,14 @@ const CouponEditor = () => {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  placeholder={formData.discountType === 'PERCENTAGE' ? "20" : "15.00"}
+                  placeholder={formData.discountType === 'PERCENTAGE' ? "20" : "150.00"}
                   value={formData.discountValue}
                   onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
                   required
                   className="pl-9"
                 />
                 <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                  {formData.discountType === 'PERCENTAGE' ? '%' : '$'}
+                  {formData.discountType === 'PERCENTAGE' ? '%' : '₹'}
                 </div>
               </div>
             </div>
@@ -291,7 +295,7 @@ const CouponEditor = () => {
                   required
                   className="pl-9"
                 />
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">$</div>
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">₹</div>
               </div>
             </div>
 
@@ -305,10 +309,10 @@ const CouponEditor = () => {
                   placeholder="Optional max cap"
                   value={formData.maxDiscountAmount}
                   onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
-                  disabled={formData.discountType === 'FLAT_AMOUNT'}
-                  className={`pl-9 ${formData.discountType === 'FLAT_AMOUNT' ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+                  disabled={formData.discountType === 'FIXED'}
+                  className={`pl-9 ${formData.discountType === 'FIXED' ? 'bg-slate-100 cursor-not-allowed' : ''}`}
                 />
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">$</div>
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">₹</div>
               </div>
               {formData.discountType === 'PERCENTAGE' && (
                 <p className="text-xs text-slate-500 mt-1.5">Maximum discount a customer can receive.</p>

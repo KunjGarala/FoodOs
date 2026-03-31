@@ -3,6 +3,7 @@ import authReducer           from './authSlice';
 import tableReducer          from './tableSlice';
 import productReducer        from './productSlice';
 import categoryReducer       from './categorySlice';
+import menuReducer           from './menuSlice';
 import orderReducer          from './orderSlice';
 import variationReducer      from './variationSlice';
 import modifierGroupReducer  from './modifierGroupSlice';
@@ -40,6 +41,7 @@ export const store = configureStore({
     auth: authReducer,
     tables: tableReducer,
     products: productReducer,
+    menu: menuReducer,
     categories: categoryReducer,
     orders: orderReducer,
     variations: variationReducer,

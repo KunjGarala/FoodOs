@@ -1,5 +1,6 @@
 package org.foodos.coupon.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -38,9 +39,11 @@ public class UpdateCouponRequest {
     private BigDecimal minOrderAmount;
 
     @NotNull(message = "Start date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startDate;
 
     @NotNull(message = "End date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime endDate;
 
     @Min(value = 1, message = "Global usage limit must be at least 1")

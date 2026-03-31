@@ -37,6 +37,7 @@ const initialState = {
   validating: false,
   revalidating: false,
   suggestions: [],
+  availableCoupons: [],
   bestCoupon: null,
   error: null,
   message: null,
@@ -116,6 +117,34 @@ export const revalidateCoupon = createAsyncThunk(
       return { removed: false, validation, cartSignature, orderAmount };
     } catch (error) {
       return rejectWithValue(deriveErrorMessage(error, orderAmount));
+    }
+  }
+);
+
+export const fetchAvailableCoupons = createAsyncThunk(
+  'coupon/fetchAvailable',
+  async ({ restaurantUuid }, { rejectWithValue }) => {
+    try {
+      const response = await couponAPI.getAll({ restaurantUuid, size: 50, page: 0 });
+      const data = response.data;
+      // Handle both paginated format { content: [...] } and raw array
+      const coupons = data?.content || data || [];
+      // Transform to CouponItem-compatible shape
+      return coupons
+        .filter(c => c.active !== false)
+        .map(c => ({
+          couponCode: c.code,
+          couponName: c.name,
+          discountType: c.discountType,
+          discountValue: c.discountValue,
+          computedDiscount: c.discountValue,
+          maxDiscountAmount: c.maxDiscountAmount,
+          minOrderAmount: c.minOrderAmount,
+          valid: true,
+          description: c.description,
+        }));
+    } catch (error) {
+      return rejectWithValue(deriveErrorMessage(error));
     }
   }
 );
@@ -234,6 +263,12 @@ const couponSlice = createSlice({
       .addCase(revalidateCoupon.rejected, (state, action) => {
         state.revalidating = false;
         state.warning = action.payload || 'Could not revalidate coupon';
+      })
+      .addCase(fetchAvailableCoupons.fulfilled, (state, action) => {
+        state.availableCoupons = action.payload || [];
+      })
+      .addCase(fetchAvailableCoupons.rejected, (state) => {
+        state.availableCoupons = [];
       });
   },
 });

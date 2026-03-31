@@ -164,11 +164,11 @@ const CouponManagement = () => {
                       <div className="font-medium text-slate-900">
                         {coupon.discountType === 'PERCENTAGE' 
                           ? `${coupon.discountValue}% off` 
-                          : `$${coupon.discountValue} off`}
+                          : `₹${coupon.discountValue} off`}
                       </div>
                       <div className="text-xs text-slate-500">
-                        Min: ${coupon.minOrderAmount}
-                        {coupon.maxDiscountAmount ? ` | Max: $${coupon.maxDiscountAmount}` : ''}
+                        Min: ₹{coupon.minOrderAmount}
+                        {coupon.maxDiscountAmount ? ` | Max: ₹${coupon.maxDiscountAmount}` : ''}
                       </div>
                     </td>
                     <td className="px-6 py-4">

@@ -20,6 +20,8 @@ public interface CouponUsageRepository extends JpaRepository<CouponUsage, Long> 
 
     Optional<CouponUsage> findByCouponIdAndOrderIdAndIsDeletedFalse(Long couponId, Long orderId);
 
+    Optional<CouponUsage> findByCouponIdAndOrderId(Long couponId, Long orderId);
+
     @Query("SELECT COUNT(cu) FROM CouponUsage cu WHERE cu.coupon.id = :couponId AND cu.order.id = :orderId AND cu.isDeleted = false")
     long countUsageForOrder(@Param("couponId") Long couponId, @Param("orderId") Long orderId);
 
