@@ -1133,7 +1133,7 @@ const TableDetails = () => {
                   </Button>
                 )}
 
-                {hasBillingAccess && isOccupied && items.length > 0 && (
+                {/* {hasBillingAccess && isOccupied && items.length > 0 && (
                   <Button
                     variant="outline"
                     className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
@@ -1143,7 +1143,7 @@ const TableDetails = () => {
                     {orderActionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Receipt className="h-4 w-4 mr-2" />}
                     Generate Bill
                   </Button>
-                )}
+                )} */}
 
                 {hasBillingAccess && (
                   <Button
