@@ -124,15 +124,16 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const { authAPI } = await import('../services/api');
-      console.log("asidgash");
-      debugger;
       const response    = await authAPI.login(credentials);
-      
-      // Extract access token from the Authorization header.
+
+      // Extract the access token. The backend returns it in the JSON body
+      // (accessToken) and also in the Authorization header. Prefer the body,
+      // fall back to the header for backward compatibility.
       const authHeader = response.headers?.['authorization'] || '';
-      const token      = authHeader.startsWith('Bearer ')
-        ? authHeader.substring(7)
-        : null;
+      const token =
+        response.data?.accessToken ||
+        response.data?.token ||
+        (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null);
 
       if (!token) {
         return rejectWithValue('No authentication token received from server');

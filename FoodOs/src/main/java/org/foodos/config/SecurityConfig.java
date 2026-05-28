@@ -2,16 +2,16 @@ package org.foodos.config;
 
 import org.foodos.auth.utils.JwtUtil;
 import org.foodos.auth.authenticationProviders.JWTAuthenticationProvider;
-import org.foodos.auth.filters.JWTAuthenticationFilter;
 import org.foodos.auth.filters.JWTRefreshFilter;
 import org.foodos.auth.filters.JwtValidationFilter;
-import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.auth.utils.RestaurantGetUtil;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -39,18 +39,20 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
-    private final UserAuthRepository userAuthRepository;
     private final RestaurantGetUtil restaurantGetUtil;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Value("${frontend.port.url}")
     private String frontendUrl;
 
-    public SecurityConfig(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService,
-            UserAuthRepository userAuthRepository, RestaurantGetUtil restaurantGetUtil) {
+    public SecurityConfig(JwtUtil jwtUtil,
+                          @Lazy UserDetailsService userDetailsService,
+                          RestaurantGetUtil restaurantGetUtil,
+                          ApplicationEventPublisher applicationEventPublisher) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
-        this.userAuthRepository = userAuthRepository;
         this.restaurantGetUtil = restaurantGetUtil;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Bean
@@ -68,9 +70,18 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager() {
-        return new ProviderManager(
+        ProviderManager providerManager = new ProviderManager(
                 daoAuthenticationProvider(),
                 jwtAuthenticationProvider());
+
+        // Publish authentication success/failure events so the
+        // AuthenticationSuccessListener / AuthenticationFailureListener fire.
+        // This is what makes account lockout (5 failed attempts -> 30 min lock)
+        // and lastLoginAt tracking actually work for the controller-based login.
+        providerManager.setAuthenticationEventPublisher(
+                new DefaultAuthenticationEventPublisher(applicationEventPublisher));
+
+        return providerManager;
     }
 
     @Bean
@@ -101,9 +112,6 @@ public class SecurityConfig {
             HttpSecurity http,
             AuthenticationManager authenticationManager) throws Exception {
 
-        JWTAuthenticationFilter jwtAuthenticationFilter = new JWTAuthenticationFilter(authenticationManager, jwtUtil,
-                userAuthRepository, restaurantGetUtil);
-
         JwtValidationFilter jwtValidationFilter = new JwtValidationFilter(authenticationManager);
 
         JWTRefreshFilter jwtRefreshFilter = new JWTRefreshFilter(authenticationManager, jwtUtil, restaurantGetUtil);
@@ -117,6 +125,7 @@ public class SecurityConfig {
                                 "/api/auth/signup", "/auth/google/**",
                                 "/actuator/**", "/api/auth/verify-email",
                                 "/api/auth/login",
+                                "/refresh-token",
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api/auth/request-password-reset/**",
@@ -125,8 +134,7 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtValidationFilter, JWTAuthenticationFilter.class)
+                .addFilterBefore(jwtValidationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtRefreshFilter, JwtValidationFilter.class);
 
         return http.build();

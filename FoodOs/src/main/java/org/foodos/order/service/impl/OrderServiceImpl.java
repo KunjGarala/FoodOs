@@ -882,7 +882,6 @@ public class OrderServiceImpl implements OrderService {
         return order;
     }
 
-    @Override
     @Transactional(readOnly = true)
     public Order getOrderEntityByUuid(String orderUuid) {
         log.info("Fetching order entity by UUID: {}", orderUuid);
