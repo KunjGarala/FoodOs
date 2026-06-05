@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { fetchMeContext } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
 
 export const MainLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const dispatch = useDispatch();
+
+  // Refresh identity + accessible outlets from /api/me/context whenever the
+  // authenticated shell mounts (login redirect, page reload). This is the
+  // source of truth for the outlet picker now that it's no longer in the JWT.
+  useEffect(() => {
+    dispatch(fetchMeContext());
+  }, [dispatch]);
 
   // Connect WebSocket when any /app route mounts, disconnect on unmount
   useEffect(() => {

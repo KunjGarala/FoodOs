@@ -173,7 +173,8 @@ public class RestaurantTableService {
                 }
 
                 // Fetch the order entity and set it on the table
-                Order order = orderService.getOrderEntityByUuid(requestDto.getCurrentOrderId());
+                Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(requestDto.getCurrentOrderId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Order not found with UUID: " + requestDto.getCurrentOrderId()));
                 table.setCurrentOrder(order);
                 table.setSeatedAt(LocalDateTime.now());
                 table.setCurrentPax(requestDto.getCurrentPax());

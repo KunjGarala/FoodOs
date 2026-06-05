@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { setGoogleAuthTokens } from '../store/authSlice';
+import { setGoogleAuthTokens, fetchMeContext } from '../store/authSlice';
 
 const GoogleCallback = () => {
   const [searchParams] = useSearchParams();
@@ -30,20 +30,19 @@ const GoogleCallback = () => {
         const tokenPayload = JSON.parse(atob(accessToken.split('.')[1]));
         const username = tokenPayload.sub || 'User';
         const roles = tokenPayload.roles || [];
-        const restaurantIds = tokenPayload.restaurantIds || null;
 
-        
-        // Update Redux state
-        dispatch(setGoogleAuthTokens({ 
-          token: accessToken, 
+        // Update Redux state with identity (outlets are NOT in the token).
+        dispatch(setGoogleAuthTokens({
+          token: accessToken,
           user: {
             username,
             roles,
-            restaurantIds
           }
-
         }));
-        
+
+        // Load the outlet list from /api/me/context, then redirect.
+        dispatch(fetchMeContext());
+
         // Redirect to dashboard
         navigate('/dashboard', { replace: true });
       } catch (err) {
