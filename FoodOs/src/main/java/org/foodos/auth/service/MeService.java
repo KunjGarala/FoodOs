@@ -14,8 +14,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Serves the frontend bootstrap context (identity + accessible outlets) that used to ride
@@ -44,17 +45,22 @@ public class MeService {
         Restaurant primary = user.getPrimaryRestaurant();
         boolean primaryActive = primary != null && Boolean.TRUE.equals(primary.getIsActive());
 
-        // Active outlets, primary first, no duplicates — mirrors RestaurantGetUtil's ordering.
-        List<RestaurantBasicDTO> outlets = new ArrayList<>();
+        // Collect every outlet the user can see: their directly-assigned outlets
+        // (user_restaurants) AND the active child outlets of each. Traversing the
+        // parent → childRestaurants tree means a chain owner sees every outlet on
+        // the picker even if a child was never written into the join table.
+        // Primary first, then assigned outlets, then their children; deduped by UUID.
+        Map<String, Restaurant> byUuid = new LinkedHashMap<>();
         if (primaryActive) {
-            outlets.add(userProfileMapper.toRestaurantBasicDTO(primary));
+            collectWithActiveChildren(primary, byUuid);
         }
-        user.getRestaurants().stream()
-                .filter(r -> Boolean.TRUE.equals(r.getIsActive()))
-                .filter(r -> !primaryActive
-                        || !r.getRestaurantUuid().equals(primary.getRestaurantUuid()))
+        for (Restaurant r : user.getRestaurants()) {
+            collectWithActiveChildren(r, byUuid);
+        }
+
+        List<RestaurantBasicDTO> outlets = byUuid.values().stream()
                 .map(userProfileMapper::toRestaurantBasicDTO)
-                .forEach(outlets::add);
+                .toList();
 
         MeContextResponse.UserContext identity = MeContextResponse.UserContext.builder()
                 .userUuid(user.getUserUuid())
@@ -71,6 +77,25 @@ public class MeService {
                 .primaryRestaurant(primaryActive ? userProfileMapper.toRestaurantBasicDTO(primary) : null)
                 .primaryRestaurantUuid(primaryActive ? primary.getRestaurantUuid() : null)
                 .build();
+    }
+
+    /**
+     * Adds {@code restaurant} and its active child outlets to {@code acc} (keyed by
+     * UUID, so order is preserved and duplicates are skipped). Inactive restaurants
+     * are ignored. Chains are one level deep (a child outlet has no children of its
+     * own), so a single pass over {@link Restaurant#getAllActiveChildRestaurants()}
+     * is enough.
+     */
+    private void collectWithActiveChildren(Restaurant restaurant, Map<String, Restaurant> acc) {
+        if (restaurant == null || !Boolean.TRUE.equals(restaurant.getIsActive())) {
+            return;
+        }
+        acc.putIfAbsent(restaurant.getRestaurantUuid(), restaurant);
+        for (Restaurant child : restaurant.getAllActiveChildRestaurants()) {
+            if (child != null) {
+                acc.putIfAbsent(child.getRestaurantUuid(), child);
+            }
+        }
     }
 
     /**

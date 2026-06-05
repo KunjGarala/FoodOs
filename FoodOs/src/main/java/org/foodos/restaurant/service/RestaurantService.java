@@ -7,6 +7,7 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.mapper.UserProfileMapper;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.auth.service.MeService;
 import org.foodos.common.utils.S3Service;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
@@ -41,6 +42,8 @@ public class RestaurantService {
 
     private final S3Service s3Service;
 
+    private final MeService meService;
+
     @Transactional
     public RestaurantResponseDto createParentRestaurant(
             UserAuthEntity currentUser,
@@ -71,6 +74,9 @@ public class RestaurantService {
         Restaurant savedRestaurant = restaurantRepo.save(restaurant);
 
         owner.addRestaurant(savedRestaurant); // managed → auto flushed
+
+        // New outlet list → refresh the owner's cached /me/context picker.
+        meService.evictContext(currentUser.getUserUuid());
 
         log.info("Restaurant created with ID: {}", savedRestaurant.getId());
         return restaurantMapper.toResponseDto(savedRestaurant);
@@ -118,6 +124,10 @@ public class RestaurantService {
         Restaurant savedChild = restaurantRepo.save(child);
 
         owner.addRestaurant(savedChild);
+
+        // New child outlet → refresh the owner's cached /me/context picker so the
+        // outlet appears on the dashboard immediately, without re-login.
+        meService.evictContext(requestingUser.getUserUuid());
 
         log.info("Outlet restaurant created with ID: {}", savedChild.getId());
         return restaurantMapper.toResponseDto(savedChild);
