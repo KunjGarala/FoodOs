@@ -249,6 +249,16 @@ export const authAPI = {
   logout:                ()          => api.post('/api/auth/logout'), // clears HttpOnly cookie server-side
 };
 
+// ─────────────────────────────────────────────────────────
+// "Me" — identity + accessible outlets, fetched on app mount.
+// Replaces the old JWT `restaurantIds` claim: the outlet list is now
+// served fresh (and cached server-side) instead of frozen into the token.
+// ─────────────────────────────────────────────────────────
+export const meAPI = {
+  getContext:     () => api.get('/api/me/context'),
+  getRestaurants: () => api.get('/api/me/restaurants'),
+};
+
 export const restaurantAPI = {
   createFirstRestaurant: (formData)                  => api.post('/api/restaurants/create-first', formData),
   createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),

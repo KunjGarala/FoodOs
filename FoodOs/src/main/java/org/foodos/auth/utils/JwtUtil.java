@@ -11,7 +11,6 @@ import org.springframework.util.StringUtils;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.List;
 
 @Component
 public class JwtUtil {
@@ -26,13 +25,10 @@ public class JwtUtil {
     private final long accessTokenMinutes;
     private final long refreshTokenMinutes;
 
-    private final RestaurantGetUtil restaurantGetUtil;
-
     public JwtUtil(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token.expiration-minutes:15}") long accessTokenMinutes,
-            @Value("${jwt.refresh-token.expiration-minutes:10080}") long refreshTokenMinutes,
-            RestaurantGetUtil restaurantGetUtil
+            @Value("${jwt.refresh-token.expiration-minutes:10080}") long refreshTokenMinutes
     ) {
         if (!StringUtils.hasText(secret) || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException(
@@ -42,7 +38,6 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenMinutes = accessTokenMinutes;
         this.refreshTokenMinutes = refreshTokenMinutes;
-        this.restaurantGetUtil = restaurantGetUtil;
     }
 
     /**
@@ -53,13 +48,16 @@ public class JwtUtil {
         String username = user.getUsername();
         String userId = user.getUserUuid();
         String role = user.getRole().name();
-        List<String> restaurantIds = restaurantGetUtil.getRestaurantUuids(user);
+        // The token deliberately carries only identity + coarse role. The outlet
+        // list is NOT a claim anymore — it is served fresh (and cached) from
+        // GET /api/me/context, so the token stays small and the picker never goes
+        // stale relative to user_restaurants. Authorization is still enforced
+        // per-request via UserAuthEntity.canAccessRestaurant(...).
         return Jwts.builder()
                 .subject(username)
                 .claim("username", username)
                 .claim("role", role)
                 .claim("userId", userId)
-                .claim("restaurantIds", restaurantIds)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiryMinutes * 60 * 1000))
                 .signWith(key)

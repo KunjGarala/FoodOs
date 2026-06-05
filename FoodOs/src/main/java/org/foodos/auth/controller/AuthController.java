@@ -20,7 +20,6 @@ import org.foodos.auth.entity.LoginRequest;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.service.AuthService;
 import org.foodos.auth.utils.JwtUtil;
-import org.foodos.auth.utils.RestaurantGetUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,7 +32,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import java.util.List;
 import java.util.Set;
 
 
@@ -49,7 +47,6 @@ public class AuthController {
     // --- added for login ---
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final RestaurantGetUtil restaurantGetUtil;
 
     @PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SignupResponse> signup(
@@ -104,15 +101,14 @@ public class AuthController {
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
         GoogleAuthController.generateCookie(response, refreshToken);
 
-        List<String> restaurantIds = restaurantGetUtil.getRestaurantUuids(user);
-
+        // Outlet list is no longer returned here — the frontend fetches it from
+        // GET /api/me/context on app mount (keeps the picker fresh, token small).
         LoginResponse body = new LoginResponse(
                 accessToken,
                 "Bearer",
                 user.getUsername(),
                 user.getUserUuid(),
-                user.getRole().name(),
-                restaurantIds
+                user.getRole().name()
         );
 
         return ResponseEntity.ok(body);
