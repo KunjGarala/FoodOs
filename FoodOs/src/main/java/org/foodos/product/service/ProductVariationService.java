@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.product.dto.request.BulkCreateVariationsRequest;
 import org.foodos.product.dto.request.CreateVariationRequest;
 import org.foodos.product.dto.request.UpdateVariationRequest;
@@ -28,10 +29,12 @@ public class ProductVariationService {
     private final ProductVariationRepo variationRepo;
     private final ProductRepo productRepo;
     private final ProductVariationMapper variationMapper;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     @Transactional
     public ProductVariationResponseDto createVariation(String restaurantUuid, String productUuid,
                                                        CreateVariationRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Creating variation for product: {}", productUuid);
 
         // Validate product
@@ -84,6 +87,7 @@ public class ProductVariationService {
     @Transactional
     public List<ProductVariationResponseDto> createVariationsBulk(String restaurantUuid, String productUuid,
                                                                   BulkCreateVariationsRequest request) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Creating {} variations in bulk for product: {}", request.getVariations().size(), productUuid);
 
         // Validate product
@@ -153,6 +157,7 @@ public class ProductVariationService {
     @Transactional(readOnly = true)
     public List<ProductVariationResponseDto> getVariationsByProduct(String restaurantUuid, String productUuid,
                                                                     boolean includeInactive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching variations for product: {}", productUuid);
 
         // Validate product exists and belongs to restaurant
@@ -177,6 +182,7 @@ public class ProductVariationService {
 
     @Transactional(readOnly = true)
     public ProductVariationResponseDto getVariationById(String restaurantUuid, String variationUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching variation: {}", variationUuid);
 
         ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
@@ -193,6 +199,7 @@ public class ProductVariationService {
     @Transactional
     public ProductVariationResponseDto updateVariation(String restaurantUuid, String variationUuid,
                                                        UpdateVariationRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Updating variation: {}", variationUuid);
 
         // Find variation
@@ -227,6 +234,7 @@ public class ProductVariationService {
 
     @Transactional
     public void deleteVariation(String restaurantUuid, String variationUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Deleting variation: {}", variationUuid);
 
         ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
@@ -268,6 +276,7 @@ public class ProductVariationService {
 
     @Transactional
     public void toggleVariationStatus(String restaurantUuid, String variationUuid, boolean isActive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Toggling variation status: {} to {}", variationUuid, isActive);
 
         ProductVariation variation = variationRepo.findByVariationUuidAndIsDeletedFalse(variationUuid)
@@ -285,6 +294,7 @@ public class ProductVariationService {
 
     @Transactional
     public ProductVariationResponseDto setDefaultVariation(String restaurantUuid, String productUuid, String variationUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Setting variation {} as default for product: {}", variationUuid, productUuid);
 
         // Validate variation

@@ -21,6 +21,7 @@ import org.foodos.coupon.repository.CouponRepository;
 import org.foodos.coupon.repository.CouponRestaurantMappingRepository;
 import org.foodos.coupon.repository.CouponUsageRepository;
 import org.foodos.coupon.service.CouponService;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.customer.entity.Customer;
 import org.foodos.customer.repository.CustomerRepository;
 import org.foodos.order.dto.response.OrderResponse;
@@ -59,11 +60,19 @@ public class CouponServiceImpl implements CouponService {
     private final UserAuthRepository userAuthRepository;
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     @Override
     @CacheEvict(value = "couponByCode", key = "#request.code.toUpperCase()")
     public CouponResponse createCoupon(CreateCouponRequest request, Long creatorUserId) {
         validateCreateRequest(request);
+
+        // Only let the creator attach a coupon to outlets they actually belong to.
+        if (request.getScopeType() == CouponScopeType.GLOBAL_CHAIN) {
+            restaurantAccessGuard.assertCanAccess(request.getOwnerRestaurantUuid());
+        } else if (request.getRestaurantUuids() != null) {
+            request.getRestaurantUuids().forEach(restaurantAccessGuard::assertCanAccess);
+        }
 
         if (couponRepository.existsByCodeIgnoreCaseAndIsDeletedFalse(request.getCode())) {
             throw new IllegalArgumentException("Coupon code already exists");
@@ -105,6 +114,7 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional(readOnly = true)
     public CouponValidationResponse validateCoupon(ValidateCouponRequest request) {
+        restaurantAccessGuard.assertCanAccess(request.getRestaurantUuid());
         LocalDateTime evalTime = request.getEvaluationTime() != null ? request.getEvaluationTime() : LocalDateTime.now();
         Coupon coupon = findActiveCouponCached(request.getCouponCode())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid coupon code"));
@@ -123,6 +133,7 @@ public class CouponServiceImpl implements CouponService {
         String normalizedCode = normalizeCode(request.getCouponCode());
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         ensureOrderMutable(order);
 
@@ -159,6 +170,7 @@ public class CouponServiceImpl implements CouponService {
     public OrderResponse removeCoupon(String orderUuid, Long currentUserId) {
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
         ensureOrderMutable(order);
 
         if (order.getCoupon() == null) {
@@ -220,6 +232,7 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional(readOnly = true)
     public CouponValidationResponse suggestBestCoupon(SuggestCouponRequest request) {
+        restaurantAccessGuard.assertCanAccess(request.getRestaurantUuid());
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(request.getRestaurantUuid())
                 .orElseThrow(() -> new IllegalArgumentException("Restaurant not found"));
 
@@ -251,6 +264,7 @@ public class CouponServiceImpl implements CouponService {
     public Page<CouponResponse> getAllCoupons(String restaurantUuid, Pageable pageable) {
         Page<Coupon> coupons;
         if (StringUtils.hasText(restaurantUuid)) {
+            restaurantAccessGuard.assertCanAccess(restaurantUuid);
             coupons = couponRepository.findAllRelevantForRestaurant(restaurantUuid, CouponScopeType.GLOBAL_CHAIN, pageable);
         } else {
             coupons = couponRepository.findAllByIsDeletedFalse(pageable);

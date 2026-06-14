@@ -283,6 +283,14 @@ public class UserAuthEntity extends BaseSoftDeleteEntity implements UserDetails 
                 .anyMatch(r -> r.getId().equals(restaurantId));
     }
 
+    public boolean canAccessRestaurantUuid(String restaurantUuid) {
+        if (restaurantUuid == null) {
+            return false;
+        }
+        return restaurants.stream()
+                .anyMatch(r -> restaurantUuid.equals(r.getRestaurantUuid()));
+    }
+
     public boolean isOwner() {
         return role == UserRole.OWNER;
     }

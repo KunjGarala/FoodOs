@@ -7,6 +7,7 @@ import org.foodos.customer.dto.response.*;
 import org.foodos.customer.entity.Customer;
 import org.foodos.customer.repository.CustomerRepository;
 import org.foodos.customer.service.CustomerCrmService;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.order.entity.Order;
 import org.foodos.order.repository.OrderItemRepository;
 import org.foodos.order.repository.OrderRepository;
@@ -40,12 +41,14 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final RestaurantRepo restaurantRepository;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     // ===== LIST & SEARCH =====
 
     @Override
     @Transactional(readOnly = true)
     public Page<CustomerSummaryResponse> getCustomersByRestaurant(String restaurantUuid, Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.debug("Fetching customers for restaurant: {}", restaurantUuid);
         Page<Customer> customers = customerRepository.findAllByRestaurantUuid(restaurantUuid, pageable);
         return customers.map(this::toSummaryResponse);
@@ -54,6 +57,7 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
     @Override
     @Transactional(readOnly = true)
     public Page<CustomerSummaryResponse> searchCustomers(String restaurantUuid, String searchTerm, Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.debug("Searching customers for restaurant: {} with term: {}", restaurantUuid, searchTerm);
         Page<Customer> customers = customerRepository.searchCustomers(restaurantUuid, searchTerm, pageable);
         return customers.map(this::toSummaryResponse);
@@ -70,6 +74,7 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
 
         // Get recent orders for this customer by phone + restaurant
         String restaurantUuid = customer.getRestaurant().getRestaurantUuid();
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Page<Order> recentOrders = orderRepository.searchOrdersByRestaurantUuid(
                 restaurantUuid, customer.getPhone(), PageRequest.of(0, 20));
 
@@ -108,6 +113,7 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
         log.info("Updating customer CRM data: {}", customerUuid);
         Customer customer = customerRepository.findByCustomerUuidAndIsDeletedFalse(customerUuid)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + customerUuid));
+        restaurantAccessGuard.assertCanAccess(customer.getRestaurant().getRestaurantUuid());
 
         if (request.getName() != null) customer.setName(request.getName());
         if (request.getEmail() != null) customer.setEmail(request.getEmail());
@@ -124,6 +130,7 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
     @Override
     @Transactional(readOnly = true)
     public CrmStatsResponse getCrmStats(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.debug("Fetching CRM stats for restaurant: {}", restaurantUuid);
         Long totalCustomers = customerRepository.countByRestaurantUuid(restaurantUuid);
         Long returningCustomers = customerRepository.countReturningCustomers(restaurantUuid);
@@ -149,12 +156,14 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
     @Override
     @Transactional(readOnly = true)
     public Page<CustomerSummaryResponse> getTopCustomersBySpending(String restaurantUuid, Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         return customerRepository.findTopBySpending(restaurantUuid, pageable).map(this::toSummaryResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<CustomerSummaryResponse> getTopCustomersByVisits(String restaurantUuid, Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         return customerRepository.findTopByVisits(restaurantUuid, pageable).map(this::toSummaryResponse);
     }
 

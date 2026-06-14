@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.product.dto.request.CreateCategoryRequest;
 import org.foodos.product.dto.request.UpdateCategoryRequest;
 import org.foodos.product.dto.response.CategoryResponseDto;
@@ -25,9 +26,11 @@ public class CategoryService {
     private final CategoryRepo categoryRepo;
     private final RestaurantRepo restaurantRepo;
     private final CategoryMapper categoryMapper;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
 
     public CategoryResponseDto createCategory(String restaurantUuid, CreateCategoryRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with id" ));
 
@@ -53,6 +56,7 @@ public class CategoryService {
 
 
     public List<CategoryResponseDto> getAllCategories(String restaurantUuid){
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         List<Category> categories = categoryRepo.findByRestaurant_RestaurantUuidAndParentCategoryIsNullAndIsDeletedFalseOrderBySortOrderAsc(
                 restaurantUuid
         );
@@ -63,6 +67,7 @@ public class CategoryService {
     }
 
     public CategoryResponseDto getCategoryById(String restaurantUuid, String categoryUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryUuid));
 
@@ -74,6 +79,7 @@ public class CategoryService {
     }
 
     public CategoryResponseDto updateCategory(String restaurantUuid, String categoryUuid, UpdateCategoryRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryUuid));
 
@@ -105,6 +111,7 @@ public class CategoryService {
     }
 
     public void deleteCategory(String restaurantUuid, String categoryUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Category category = categoryRepo.findByCategoryUuidAndIsDeletedFalse(categoryUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryUuid));
 
@@ -121,6 +128,7 @@ public class CategoryService {
     }
 
     public void toggleActiveStatus(String restaurantUuid, String categoryUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid));
 

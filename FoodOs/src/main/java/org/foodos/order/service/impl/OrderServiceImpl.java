@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.coupon.service.CouponService;
 import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.KotResponse;
@@ -73,11 +74,13 @@ public class OrderServiceImpl implements OrderService {
     private final WebSocketEventService webSocketEventService;
     private final CustomerCrmService customerCrmService;
     private final CouponService couponService;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     // ===== CREATE ORDER =====
 
     @Override
     public OrderResponse createOrder(CreateOrderRequest request, Long currentUserId) {
+        restaurantAccessGuard.assertCanAccess(request.getRestaurantUuid());
         log.info("Creating order for restaurant: {}", request.getRestaurantUuid());
 
         // 1. Validate and fetch restaurant
@@ -170,6 +173,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderUuid));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         return orderMapper.toOrderResponse(order);
     }
@@ -179,6 +183,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse getOrderById(Long orderId) {
         Order order = orderRepository.findByIdWithFullDetails(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         return orderMapper.toOrderResponse(order);
     }
@@ -191,6 +196,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         String previousCustomerPhone = order.getCustomerPhone();
         String previousCustomerEmail = order.getCustomerEmail();
@@ -282,6 +288,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         // Generate KOT number
         String kotNumber = generateKotNumber(order.getRestaurant().getId(), LocalDate.now());
@@ -352,6 +359,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse sendAllPendingItemsToKitchen(String orderUuid, Long currentUserId) {
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         List<String> pendingItemUuids = order.getItems().stream()
                 .filter(item -> item.getKotStatus() == KotStatus.PENDING)
@@ -377,6 +385,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         // Validate payment amount
         if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
@@ -419,6 +428,8 @@ public class OrderServiceImpl implements OrderService {
             couponService.revalidateAppliedCoupon(order);
         }
 
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
+
         // Ensure all items are served or ready
         boolean allItemsReady = order.getActiveItems().stream()
                 .allMatch(item -> item.getKotStatus() == KotStatus.SERVED ||
@@ -450,6 +461,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByRestaurant(String restaurantUuid, Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Page<Order> orders = orderRepository.findByRestaurantUuid(restaurantUuid, pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
@@ -458,6 +470,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Page<OrderResponse> getOrdersByRestaurantAndStatus(String restaurantUuid, OrderStatus status,
             Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Page<Order> orders = orderRepository.findByRestaurantUuidAndStatusIn(restaurantUuid, List.of(status), pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
@@ -465,6 +478,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getActiveOrders(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         List<Order> orders = orderRepository.findActiveOrdersByRestaurantUuid(restaurantUuid);
         return orderMapper.toOrderResponseList(orders);
     }
@@ -542,6 +556,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Deleting order: {}", orderUuid);
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         if (!order.canBeDeleted()) {
             throw new RuntimeException("Order cannot be deleted in its current state: " + order.getStatus());
@@ -555,6 +570,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Changing status of order {} to {}", orderUuid, newStatus);
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         // You might want to add more sophisticated status transition logic here
         order.transitionTo(newStatus);
@@ -572,6 +588,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Cancelling order: {}", orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         order.cancel(cancellationReason);
 
@@ -598,6 +615,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Completing order: {}", orderUuid);
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         // Validate all KOT items are SERVED or CANCELLED before completing
         if (order.getItems() != null && !order.getItems().isEmpty()) {
@@ -635,6 +653,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Adding {} items to order {}", items.size(), orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
         boolean wasDraft = order.getStatus().equals(OrderStatus.DRAFT);
 
         if (!order.canBeModified()) {
@@ -669,6 +688,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Removing item {} from order {}", orderItemUuid, orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         if (!order.canBeModified()) {
             throw new RuntimeException("Order cannot be modified in current status: " + order.getStatus());
@@ -702,6 +722,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Cancelling item {} from order {}", orderItemUuid, orderUuid);
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         OrderItem itemToCancel = order.getItems().stream()
                 .filter(item -> item.getOrderItemUuid().equals(orderItemUuid))
@@ -730,6 +751,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByRestaurantAndDate(String restaurantUuid, LocalDate orderDate) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         List<Order> orders = orderRepository.findByRestaurantUuidAndOrderDate(restaurantUuid, orderDate);
         return orderMapper.toOrderResponseList(orders);
     }
@@ -738,6 +760,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByRestaurantDateAndType(String restaurantUuid, LocalDate orderDate,
             OrderType orderType) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         List<Order> orders = orderRepository.findByRestaurantUuidAndOrderTypeAndOrderDate(restaurantUuid, orderType,
                 orderDate);
         return orderMapper.toOrderResponseList(orders);
@@ -746,6 +769,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Page<OrderResponse> searchOrders(String restaurantUuid, String searchTerm, Pageable pageable) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Page<Order> orders = orderRepository.searchOrdersByRestaurantUuid(restaurantUuid, searchTerm, pageable);
         return orders.map(orderMapper::toOrderResponse);
     }
@@ -754,6 +778,10 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Page<OrderResponse> getOrderHistoryByTable(String tableUuid, String searchTerm,
             java.time.LocalDate startDate, java.time.LocalDate endDate, Pageable pageable) {
+        RestaurantTable historyTable = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
+                .orElseThrow(() -> new RuntimeException("Table not found"));
+        restaurantAccessGuard.assertCanAccess(historyTable.getRestaurant().getRestaurantUuid());
+
         Page<Order> orders;
 
         boolean hasSearch = searchTerm != null && !searchTerm.trim().isEmpty();
@@ -775,6 +803,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public List<KotResponse> getKitchenOrders(String restaurantUuid, UserAuthEntity user) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         UserRole role = user.getRole();
 
         if (role.equals(UserRole.CHEF)) {
@@ -799,6 +828,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersWithPendingPayments(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         List<Order> orders = orderRepository.findOrdersWithPendingPaymentsByRestaurantUuid(restaurantUuid);
         return orderMapper.toOrderResponseList(orders);
     }
@@ -809,6 +839,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderStatus> excludeStatuses = List.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.VOID);
         Order order = orderRepository.findActiveOrderByTableUuid(tableUuid, excludeStatuses)
                 .orElseThrow(() -> new RuntimeException("No active order found for table"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
         return orderMapper.toOrderResponse(order);
     }
 
@@ -822,23 +853,27 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Long getTotalOrdersCount(String restaurantUuid, LocalDate orderDate) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         return orderRepository.countOrdersByRestaurantUuidAndDate(restaurantUuid, orderDate);
     }
 
     @Override
     @Transactional(readOnly = true)
     public BigDecimal getTotalSales(String restaurantUuid, LocalDate orderDate) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         return orderRepository.calculateTotalSalesByRestaurantUuidAndDate(restaurantUuid, orderDate);
     }
 
     @Override
     @Transactional(readOnly = true)
     public BigDecimal getAverageOrderValue(String restaurantUuid, LocalDate orderDate) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         return orderRepository.calculateAverageOrderValueByRestaurantUuid(restaurantUuid, orderDate);
     }
 
     @Override
     public Order createEmptyOrder(CreateOrderRequest orderRequest, Long userId) {
+        restaurantAccessGuard.assertCanAccess(orderRequest.getRestaurantUuid());
         log.info("Creating empty order for restaurant: {}", orderRequest.getRestaurantUuid());
 
         // 1. Validate and fetch restaurant
@@ -885,8 +920,10 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Order getOrderEntityByUuid(String orderUuid) {
         log.info("Fetching order entity by UUID: {}", orderUuid);
-        return orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
+        Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found with UUID: " + orderUuid));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
+        return order;
     }
 
     @Override
@@ -895,6 +932,7 @@ public class OrderServiceImpl implements OrderService {
 
         KitchenOrderTicket kot = kitchenOrderTicketRepository.findByKotUuidAndIsDeletedFalse(kotUuid)
                 .orElseThrow(() -> new RuntimeException("KOT not found"));
+        restaurantAccessGuard.assertCanAccess(kot.getRestaurant().getRestaurantUuid());
 
         List<OrderItem> items = kot.getKotItems().stream()
                 .map(KotItem::getOrderItem)
