@@ -68,4 +68,7 @@ public class UpdateProductRequest {
     @Pattern(regexp = "^(MON|TUE|WED|THU|FRI|SAT|SUN)(,(MON|TUE|WED|THU|FRI|SAT|SUN))*$",
              message = "Available days must be comma-separated day codes (e.g., MON,TUE,WED)")
     private String availableDays;
+
+    @jakarta.validation.constraints.Size(max = 50, message = "Default kitchen station must not exceed 50 characters")
+    private String defaultKitchenStation;
 }

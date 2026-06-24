@@ -142,6 +142,9 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderDate = :orderDate AND o.status IN ('PAID', 'COMPLETED') AND o.isDeleted = false")
     BigDecimal calculateAverageOrderValueByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid, @Param("orderDate") LocalDate orderDate);
 
+    @Query("SELECT COALESCE(SUM(o.numberOfGuests), 0) FROM Order o WHERE o.restaurant.restaurantUuid = :restaurantUuid AND o.orderDate = :orderDate AND o.status <> 'CANCELLED' AND o.isDeleted = false")
+    Long sumGuestsByRestaurantUuidAndDate(@Param("restaurantUuid") String restaurantUuid, @Param("orderDate") LocalDate orderDate);
+
     // ===== ORDER NUMBER GENERATION =====
 
     @Query("SELECT MAX(CAST(SUBSTRING(o.orderNumber, LENGTH(:prefix) + 1) AS integer)) FROM Order o WHERE o.restaurant.id = :restaurantId AND o.orderNumber LIKE CONCAT(:prefix, '%') AND o.orderDate = :orderDate")

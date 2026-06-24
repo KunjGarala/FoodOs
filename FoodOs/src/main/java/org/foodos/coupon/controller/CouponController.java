@@ -11,6 +11,7 @@ import org.foodos.coupon.dto.request.SuggestCouponRequest;
 import org.foodos.coupon.dto.request.ValidateCouponRequest;
 import org.foodos.coupon.dto.request.UpdateCouponRequest;
 import org.foodos.coupon.dto.response.CouponResponse;
+import org.foodos.coupon.dto.response.CouponStatsResponse;
 import org.foodos.coupon.dto.response.CouponValidationResponse;
 import org.foodos.coupon.dto.response.CouponUsageSummaryResponse;
 import org.foodos.coupon.service.CouponService;
@@ -56,6 +57,13 @@ public class CouponController {
     public ResponseEntity<CouponValidationResponse> suggestCoupon(@Valid @RequestBody SuggestCouponRequest request) {
         CouponValidationResponse response = couponService.suggestBestCoupon(request);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Coupon dashboard stats", description = "Restaurant-scoped active/redemptions/avg-discount/revenue-influenced for the current month")
+    @GetMapping("/stats")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+    public ResponseEntity<CouponStatsResponse> getCouponStats(@RequestParam String restaurantUuid) {
+        return ResponseEntity.ok(couponService.getCouponStats(restaurantUuid));
     }
 
     @Operation(summary = "Coupon usage summary", description = "Aggregated usage counts and discount value for reporting")

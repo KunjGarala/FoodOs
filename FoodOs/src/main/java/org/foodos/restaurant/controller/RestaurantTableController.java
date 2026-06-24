@@ -247,6 +247,25 @@ public class RestaurantTableController {
         }
 
         /**
+         * Live Floor pressure-band summary (covers seated, tables turning, avg dwell, KOTs late)
+         */
+        @Operation(summary = "Get live floor summary", description = "Real-time KPIs for the Live Floor header strip")
+        @ApiResponses({
+                        @ApiResponse(responseCode = "200", description = "Summary fetched successfully", content = @Content(schema = @Schema(implementation = TableLiveSummaryDto.class))),
+                        @ApiResponse(responseCode = "404", description = "Restaurant not found"),
+                        @ApiResponse(responseCode = "403", description = "Access denied")
+        })
+        @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+        @GetMapping("/restaurant/{restaurantUuid}/live-summary")
+        public ResponseEntity<TableLiveSummaryDto> getLiveSummary(
+                        @Parameter(description = "Restaurant UUID", required = true) @PathVariable String restaurantUuid,
+                        @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser) {
+                log.info("GET /api/v1/tables/restaurant/{}/live-summary - user: {}",
+                                restaurantUuid, currentUser.getUsername());
+                return ResponseEntity.ok(tableService.getLiveSummary(restaurantUuid));
+        }
+
+        /**
          * 1️⃣1️⃣ Get Table Analytics
          */
         @Operation(summary = "Get table analytics", description = "Fetches table utilization analytics including occupancy rate, average turn time, and most used tables")

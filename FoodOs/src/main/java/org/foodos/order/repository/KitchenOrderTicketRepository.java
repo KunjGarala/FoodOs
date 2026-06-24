@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,5 +51,14 @@ public interface KitchenOrderTicketRepository extends JpaRepository<KitchenOrder
     Long countByRestaurantAndDate(@Param("restaurantId") Long restaurantId, @Param("kotDate") LocalDate kotDate);
 
     boolean existsByKotNumberAndIsDeletedFalse(String kotNumber);
+
+    @Query("SELECT COUNT(kot) FROM KitchenOrderTicket kot " +
+           "WHERE kot.restaurant.restaurantUuid = :restaurantUuid " +
+           "AND kot.status IN :statuses " +
+           "AND kot.kotTime < :threshold " +
+           "AND kot.isDeleted = false")
+    Long countLateByRestaurantUuid(@Param("restaurantUuid") String restaurantUuid,
+                                   @Param("statuses") List<KotTicketStatus> statuses,
+                                   @Param("threshold") LocalDateTime threshold);
 }
 

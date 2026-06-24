@@ -52,6 +52,7 @@ public interface RestaurantTableMapper {
     @Mapping(target = "currentWaiterUuid", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getUserUuid() : null)")
     @Mapping(target = "currentWaiterName", expression = "java(table.getCurrentWaiter() != null ? table.getCurrentWaiter().getFullName() : null)")
     @Mapping(target = "currentOrderId", expression = "java(table.getCurrentOrder() != null ? table.getCurrentOrder().getOrderUuid() : null)")
+    @Mapping(target = "currentOrderTotal", expression = "java(table.getCurrentOrder() != null ? table.getCurrentOrder().getTotalAmount() : null)")
     TableFloorPlanDto toFloorPlanDto(RestaurantTable table);
 
     @Mapping(target = "positionX", source = "posX")

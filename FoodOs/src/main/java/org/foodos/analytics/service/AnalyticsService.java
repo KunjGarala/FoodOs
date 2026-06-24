@@ -8,6 +8,7 @@ import org.foodos.order.entity.Order;
 import org.foodos.order.entity.enums.OrderStatus;
 import org.foodos.order.repository.OrderItemRepository;
 import org.foodos.order.repository.OrderRepository;
+import org.foodos.restaurant.repository.RestaurantTableRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +24,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnalyticsService {
 
-    private final OrderRepository     orderRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final OrderRepository           orderRepository;
+    private final OrderItemRepository       orderItemRepository;
+    private final RestaurantTableRepository tableRepository;
 
     /**
      * Build the full dashboard analytics for a restaurant.
@@ -51,17 +53,29 @@ public class AnalyticsService {
 
     // ─── Private helpers ─────────────────────────────────────────────────────
 
-    private DaySummary buildDaySummary(String restaurantUuid, LocalDate date) {
+    public DaySummary buildDaySummary(String restaurantUuid, LocalDate date) {
         BigDecimal revenue = orZero(
                 orderRepository.calculateTotalSalesByRestaurantUuidAndDate(restaurantUuid, date));
         Long count = orderRepository.countOrdersByRestaurantUuidAndDate(restaurantUuid, date);
         BigDecimal avg = orZero(
                 orderRepository.calculateAverageOrderValueByRestaurantUuid(restaurantUuid, date));
 
+        Long covers = orderRepository.sumGuestsByRestaurantUuidAndDate(restaurantUuid, date);
+        if (covers == null) covers = 0L;
+
+        Integer activeTables = tableRepository.countByRestaurantUuid(restaurantUuid);
+        BigDecimal tablesTurned = BigDecimal.ZERO;
+        if (activeTables != null && activeTables > 0) {
+            tablesTurned = BigDecimal.valueOf(covers)
+                    .divide(BigDecimal.valueOf(activeTables), 2, RoundingMode.HALF_UP);
+        }
+
         return DaySummary.builder()
                 .revenue(revenue)
                 .orderCount(count)
                 .avgOrderValue(avg.setScale(2, RoundingMode.HALF_UP))
+                .covers(covers)
+                .tablesTurned(tablesTurned)
                 .build();
     }
 
@@ -102,21 +116,28 @@ public class AnalyticsService {
         List<Order> orders = orderRepository.findByRestaurantUuidAndOrderDate(restaurantUuid, date);
 
         // Initialize all 24 hours with 0
-        Map<Integer, Long> hourMap = new LinkedHashMap<>();
-        for (int h = 0; h < 24; h++) hourMap.put(h, 0L);
+        Map<Integer, Long> countMap = new LinkedHashMap<>();
+        Map<Integer, BigDecimal> revenueMap = new LinkedHashMap<>();
+        for (int h = 0; h < 24; h++) {
+            countMap.put(h, 0L);
+            revenueMap.put(h, BigDecimal.ZERO);
+        }
 
         orders.stream()
                 .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
                 .filter(o -> o.getOrderTime() != null)
                 .forEach(o -> {
                     int hour = o.getOrderTime().getHour();
-                    hourMap.merge(hour, 1L, Long::sum);
+                    countMap.merge(hour, 1L, Long::sum);
+                    BigDecimal amount = o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO;
+                    revenueMap.merge(hour, amount, BigDecimal::add);
                 });
 
-        return hourMap.entrySet().stream()
+        return countMap.entrySet().stream()
                 .map(e -> HourlyData.builder()
                         .hour(e.getKey())
                         .orderCount(e.getValue())
+                        .revenue(revenueMap.get(e.getKey()).setScale(2, RoundingMode.HALF_UP))
                         .build())
                 .collect(Collectors.toList());
     }

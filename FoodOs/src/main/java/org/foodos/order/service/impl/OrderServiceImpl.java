@@ -301,6 +301,11 @@ public class OrderServiceImpl implements OrderService {
         kot.setOrderNumber(order.getOrderNumber());
         kot.setTableNumber(order.getTable() != null ? order.getTable().getTableNumber() : null);
         kot.setWaiterName(order.getWaiter() != null ? order.getWaiter().getUsername() : null);
+        // The request may already carry an explicit station from the mapper;
+        // otherwise we'll fall back to the first item's product default below.
+        if (kot.getKitchenStation() == null && request.getKitchenStation() != null) {
+            kot.setKitchenStation(request.getKitchenStation());
+        }
 
         // Add items to KOT
         for (String itemUuid : request.getOrderItemUuids()) {
@@ -320,6 +325,13 @@ public class OrderServiceImpl implements OrderService {
             // Create KOT item using mapper
             KotItem kotItem = orderMapper.toKotItem(orderItem);
             kot.addKotItem(kotItem);
+
+            // Default the KOT's station from the first item's product, if not already set.
+            if (kot.getKitchenStation() == null
+                    && orderItem.getProduct() != null
+                    && orderItem.getProduct().getDefaultKitchenStation() != null) {
+                kot.setKitchenStation(orderItem.getProduct().getDefaultKitchenStation());
+            }
 
             // Update order item status
             orderItem.setKotStatus(KotStatus.FIRED);

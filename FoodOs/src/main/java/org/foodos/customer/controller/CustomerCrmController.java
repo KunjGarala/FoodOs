@@ -84,6 +84,19 @@ public class CustomerCrmController {
         return ResponseEntity.ok(detail);
     }
 
+    // ===== CUSTOMER ORDER HISTORY =====
+
+    @Operation(summary = "Get customer recent visits", description = "Paginated order history for a customer")
+    @GetMapping("/{customerUuid}/orders")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
+    public ResponseEntity<Page<CustomerOrderResponse>> getCustomerOrders(
+            @Parameter(description = "Customer UUID") @PathVariable String customerUuid,
+            @PageableDefault(size = 20, sort = "orderTime", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("REST: Fetching order history for customer: {}", customerUuid);
+        return ResponseEntity.ok(customerCrmService.getCustomerOrders(customerUuid, pageable));
+    }
+
     // ===== UPDATE CUSTOMER =====
 
     @Operation(summary = "Update customer CRM data", description = "Update notes, tags, and other CRM fields")

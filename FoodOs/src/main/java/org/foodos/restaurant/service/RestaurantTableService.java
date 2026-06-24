@@ -13,6 +13,7 @@ import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.KitchenOrderTicket;
 import org.foodos.order.entity.Order;
 import org.foodos.order.mapper.OrderMapper;
+import org.foodos.order.entity.enums.KotTicketStatus;
 import org.foodos.order.repository.KitchenOrderTicketRepository;
 import org.foodos.order.repository.OrderRepository;
 import org.foodos.order.service.OrderService;
@@ -690,6 +691,42 @@ public class RestaurantTableService {
                 .totalOrdersToday(occupiedTables.size())
                 .peakHour(LocalDateTime.now().getHour())
                 .averageGuestsPerTable(calculateAverageGuestsPerTable(occupiedTables))
+                .build();
+    }
+
+    /**
+     * Live "pressure band" KPIs for the floor view header strip.
+     */
+    @Transactional(readOnly = true)
+    public TableLiveSummaryDto getLiveSummary(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
+
+        List<RestaurantTable> occupied = tableRepository.findOccupiedTablesByRestaurantUuid(restaurantUuid);
+
+        int coversSeated = occupied.stream()
+                .filter(t -> t.getCurrentPax() != null)
+                .mapToInt(RestaurantTable::getCurrentPax)
+                .sum();
+
+        Integer tablesTurning = tableRepository.countByRestaurantUuidAndStatus(restaurantUuid, TableStatus.BILLED);
+
+        LocalDateTime now = LocalDateTime.now();
+        double avgDwellMinutes = occupied.stream()
+                .filter(t -> t.getSeatedAt() != null)
+                .mapToLong(t -> Duration.between(t.getSeatedAt(), now).toMinutes())
+                .average()
+                .orElse(0.0);
+
+        Long kotsLate = kitchenOrderTicketRepository.countLateByRestaurantUuid(
+                restaurantUuid,
+                List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS),
+                now.minusMinutes(20));
+
+        return TableLiveSummaryDto.builder()
+                .coversSeated(coversSeated)
+                .tablesTurning(tablesTurning != null ? tablesTurning : 0)
+                .avgDwellMinutes(avgDwellMinutes)
+                .kotsLate(kotsLate != null ? kotsLate : 0L)
                 .build();
     }
 

@@ -10,6 +10,7 @@ import org.foodos.coupon.dto.request.SuggestCouponRequest;
 import org.foodos.coupon.dto.request.ValidateCouponRequest;
 import org.foodos.coupon.dto.request.UpdateCouponRequest;
 import org.foodos.coupon.dto.response.CouponResponse;
+import org.foodos.coupon.dto.response.CouponStatsResponse;
 import org.foodos.coupon.dto.response.CouponValidationResponse;
 import org.foodos.coupon.dto.response.CouponUsageSummaryResponse;
 import org.foodos.coupon.entity.Coupon;
@@ -40,7 +41,9 @@ import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -329,6 +332,37 @@ public class CouponServiceImpl implements CouponService {
         coupon.setIsActive(isActive);
         coupon = couponRepository.save(coupon);
         return buildCouponResponse(coupon, getMappedRestaurants(coupon));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CouponStatsResponse getCouponStats(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
+
+        LocalDateTime now = LocalDateTime.now();
+        YearMonth currentMonth = YearMonth.from(now);
+        LocalDateTime monthStart = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime monthEnd = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+
+        Long activeCoupons = couponRepository.countActiveForRestaurant(
+                restaurantUuid, CouponScopeType.GLOBAL_CHAIN, now);
+        Long redemptions = usageRepository.countByRestaurantUuidAndUsedAtBetween(
+                restaurantUuid, monthStart, monthEnd);
+        BigDecimal avgDiscount = usageRepository.avgDiscountByRestaurantUuidAndUsedAtBetween(
+                restaurantUuid, monthStart, monthEnd);
+        BigDecimal revenueInfluenced = usageRepository.sumOrderTotalsByRestaurantUuidAndUsedAtBetween(
+                restaurantUuid, monthStart, monthEnd);
+
+        return CouponStatsResponse.builder()
+                .activeCoupons(activeCoupons != null ? activeCoupons : 0L)
+                .redemptionsThisMonth(redemptions != null ? redemptions : 0L)
+                .avgDiscount(avgDiscount != null
+                        ? avgDiscount.setScale(2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO)
+                .revenueInfluenced(revenueInfluenced != null
+                        ? revenueInfluenced.setScale(2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO)
+                .build();
     }
 
     // ===== INTERNAL HELPERS =====

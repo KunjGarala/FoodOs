@@ -167,6 +167,23 @@ public class CustomerCrmServiceImpl implements CustomerCrmService {
         return customerRepository.findTopByVisits(restaurantUuid, pageable).map(this::toSummaryResponse);
     }
 
+    // ===== CUSTOMER ORDER HISTORY =====
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CustomerOrderResponse> getCustomerOrders(String customerUuid, Pageable pageable) {
+        Customer customer = customerRepository.findByCustomerUuidAndIsDeletedFalse(customerUuid)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerUuid));
+
+        String restaurantUuid = customer.getRestaurant().getRestaurantUuid();
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
+
+        Page<Order> orders = orderRepository.searchOrdersByRestaurantUuid(
+                restaurantUuid, customer.getPhone(), pageable);
+
+        return orders.map(this::toCustomerOrderResponse);
+    }
+
     // ===== SYNC FROM ORDER =====
 
     @Override

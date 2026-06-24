@@ -11,17 +11,24 @@ import org.foodos.auth.service.MeService;
 import org.foodos.common.utils.S3Service;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.analytics.dto.DashboardAnalyticsDto;
+import org.foodos.analytics.service.AnalyticsService;
 import org.foodos.restaurant.dto.request.UpdateRestaurantRequestDto;
+import org.foodos.restaurant.dto.response.HierarchySummaryResponseDto;
 import org.foodos.restaurant.dto.response.RestaurantHierarchyResponseDto;
 import org.foodos.restaurant.dto.response.RestaurantResponseDto;
 import org.foodos.restaurant.entity.Restaurant;
 import org.foodos.restaurant.mapper.RestaurantMapper;
 import org.foodos.restaurant.repository.RestaurantRepo;
+import org.foodos.restaurant.repository.RestaurantTableRepository;
 import org.foodos.restaurant.dto.request.CreateRestaurantRequestDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +50,10 @@ public class RestaurantService {
     private final S3Service s3Service;
 
     private final MeService meService;
+
+    private final AnalyticsService analyticsService;
+
+    private final RestaurantTableRepository tableRepository;
 
     @Transactional
     public RestaurantResponseDto createParentRestaurant(
@@ -169,6 +180,58 @@ public class RestaurantService {
                         new ResourceNotFoundException("Restaurant not found"));
 
         return restaurantMapper.toHierarchyResponseDto(restaurant);
+    }
+
+    /**
+     * Per-outlet live KPIs for the multi-outlet dashboard. The {@code restaurantUuid}
+     * may be either the parent (HQ) or any outlet under the same parent — we always
+     * roll up from the chain root, so an outlet caller sees the whole group.
+     */
+    @Transactional(readOnly = true)
+    public HierarchySummaryResponseDto getHierarchySummary(String restaurantUuid) {
+        Restaurant restaurant = restaurantRepo
+                .findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Restaurant not found"));
+
+        Restaurant root = restaurant.getRootRestaurant();
+
+        List<Restaurant> outlets = new ArrayList<>();
+        outlets.add(root);
+        outlets.addAll(root.getAllActiveChildRestaurants());
+
+        LocalDate today = LocalDate.now();
+        BigDecimal groupSales = BigDecimal.ZERO;
+        long groupCovers = 0L;
+        List<HierarchySummaryResponseDto.OutletKpi> outletKpis = new ArrayList<>();
+
+        for (Restaurant outlet : outlets) {
+            DashboardAnalyticsDto.DaySummary day =
+                    analyticsService.buildDaySummary(outlet.getRestaurantUuid(), today);
+            BigDecimal salesToday = day.getRevenue() != null ? day.getRevenue() : BigDecimal.ZERO;
+            Long coversToday = day.getCovers() != null ? day.getCovers() : 0L;
+            Integer tableCount = tableRepository.countByRestaurantUuid(outlet.getRestaurantUuid());
+
+            groupSales = groupSales.add(salesToday);
+            groupCovers += coversToday;
+
+            outletKpis.add(HierarchySummaryResponseDto.OutletKpi.builder()
+                    .restaurantUuid(outlet.getRestaurantUuid())
+                    .name(outlet.getName())
+                    .city(outlet.getCity())
+                    .status(Boolean.TRUE.equals(outlet.getIsActive()) ? "ACTIVE" : "INACTIVE")
+                    .salesToday(salesToday)
+                    .coversToday(coversToday)
+                    .tableCount(tableCount != null ? tableCount : 0)
+                    .build());
+        }
+
+        return HierarchySummaryResponseDto.builder()
+                .groupSalesToday(groupSales)
+                .groupCoversToday(groupCovers)
+                .outletCount(outletKpis.size())
+                .outlets(outletKpis)
+                .build();
     }
 
     public void deleteRestaurant(String restaurantUuid, UserAuthEntity currentUser) {

@@ -159,6 +159,9 @@ public class Product extends BaseSoftDeleteEntity {
     @Column(name = "available_days", length = 50)
     private String availableDays;
 
+    @Column(name = "default_kitchen_station", length = 50)
+    private String defaultKitchenStation; // Defaults the KOT routing (e.g., GRILL, FRY, COLD)
+
     @Column(name = "sold_count", nullable = false)
     @Builder.Default
     private Long soldCount = 0L; // Total number of units sold

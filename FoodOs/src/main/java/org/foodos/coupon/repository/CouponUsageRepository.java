@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -25,4 +26,28 @@ public interface CouponUsageRepository extends JpaRepository<CouponUsage, Long> 
 
     @Query("SELECT COALESCE(SUM(cu.discountApplied), 0) FROM CouponUsage cu WHERE cu.coupon.id = :couponId AND cu.isDeleted = false")
     BigDecimal sumDiscountByCouponId(@Param("couponId") Long couponId);
+
+    @Query("SELECT COUNT(cu) FROM CouponUsage cu " +
+           "WHERE cu.restaurant.restaurantUuid = :restaurantUuid " +
+           "AND cu.usedAt >= :start AND cu.usedAt < :end " +
+           "AND cu.isDeleted = false")
+    Long countByRestaurantUuidAndUsedAtBetween(@Param("restaurantUuid") String restaurantUuid,
+                                               @Param("start") LocalDateTime start,
+                                               @Param("end") LocalDateTime end);
+
+    @Query("SELECT COALESCE(AVG(cu.discountApplied), 0) FROM CouponUsage cu " +
+           "WHERE cu.restaurant.restaurantUuid = :restaurantUuid " +
+           "AND cu.usedAt >= :start AND cu.usedAt < :end " +
+           "AND cu.isDeleted = false")
+    BigDecimal avgDiscountByRestaurantUuidAndUsedAtBetween(@Param("restaurantUuid") String restaurantUuid,
+                                                            @Param("start") LocalDateTime start,
+                                                            @Param("end") LocalDateTime end);
+
+    @Query("SELECT COALESCE(SUM(cu.order.totalAmount), 0) FROM CouponUsage cu " +
+           "WHERE cu.restaurant.restaurantUuid = :restaurantUuid " +
+           "AND cu.usedAt >= :start AND cu.usedAt < :end " +
+           "AND cu.isDeleted = false")
+    BigDecimal sumOrderTotalsByRestaurantUuidAndUsedAtBetween(@Param("restaurantUuid") String restaurantUuid,
+                                                               @Param("start") LocalDateTime start,
+                                                               @Param("end") LocalDateTime end);
 }
