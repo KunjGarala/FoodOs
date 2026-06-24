@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { MoreHorizontal, LogOut, Check, X } from 'lucide-react';
 import { logout, setActiveRestaurant } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
-import { navForRole, resolvePath } from './navItems';
+import { navForRole, resolvePath, isNavActive } from './navItems';
 
 const PRIMARY_KEYS = ['home', 'floor', 'kitchen', 'menu'];
 
@@ -13,6 +13,7 @@ export const BottomTabs = () => {
   const { user, role, restaurants, restaurantIds, activeRestaurantId } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const all = navForRole(role);
@@ -30,16 +31,16 @@ export const BottomTabs = () => {
     return r ? (r.businessName || r.name) : 'Outlet';
   };
 
-  const tabClass = ({ isActive }) =>
+  const tabClass = (active) =>
     `flex flex-col items-center justify-center gap-0.5 flex-1 h-full ${
-      isActive ? 'text-marigold' : 'text-txt-faintDark'
+      active ? 'text-marigold' : 'text-txt-faintDark'
     }`;
 
   return (
     <>
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 bg-ink-700 border-t border-ink-line flex items-stretch px-1 pb-safe">
         {primary.map((item) => (
-          <NavLink key={item.key} to={resolvePath(item, activeRestaurantId)} end={item.path === '/app'} className={tabClass}>
+          <NavLink key={item.key} to={resolvePath(item, activeRestaurantId)} className={tabClass(isNavActive(item, pathname))}>
             <item.icon strokeWidth={1.8} className="h-[20px] w-[20px]" />
             <span className="text-[10px] font-medium">{item.label}</span>
           </NavLink>

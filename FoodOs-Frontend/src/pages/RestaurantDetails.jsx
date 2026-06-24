@@ -217,7 +217,7 @@ const RestaurantDetails = () => {
         title={name}
         subtitle={businessName}
         actions={
-          <BtnPrimary onClick={() => navigate('/app/create-outlet')}>
+          <BtnPrimary onClick={() => navigate('/create-outlet')}>
             <Plus className="h-4 w-4" /> Add Outlet
           </BtnPrimary>
         }
@@ -367,7 +367,7 @@ const RestaurantDetails = () => {
             {/* Add-outlet tile */}
             <button
               type="button"
-              onClick={() => navigate('/app/create-outlet')}
+              onClick={() => navigate('/create-outlet')}
               className="flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-input bg-paper-2 p-4 text-txt-muted hover:border-marigold hover:text-ink-text transition min-h-[140px]"
             >
               <Plus className="h-6 w-6" />
@@ -381,7 +381,7 @@ const RestaurantDetails = () => {
             </div>
             <p className="font-display font-semibold text-ink-text">No outlets yet</p>
             <p className="text-sm text-txt-muted mt-1 mb-5">Add your first outlet to start building the hierarchy.</p>
-            <BtnPrimary onClick={() => navigate('/app/create-outlet')}>
+            <BtnPrimary onClick={() => navigate('/create-outlet')}>
               <Plus className="h-4 w-4" /> Add Outlet
             </BtnPrimary>
           </Panel>

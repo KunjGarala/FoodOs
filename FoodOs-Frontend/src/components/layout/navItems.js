@@ -1,6 +1,6 @@
 import {
   LayoutGrid, Armchair, ChefHat, UtensilsCrossed,
-  User, Users, BarChart3, Ticket, Layers, Sparkles,
+  User, Users, BarChart3, Ticket,
 } from 'lucide-react';
 
 /**
@@ -12,12 +12,11 @@ export const NAV_ITEMS = [
   { key: 'home', icon: LayoutGrid, label: 'Home', path: '/app' },
   { key: 'floor', icon: Armchair, label: 'Floor', path: '/app/tables', roles: ['OWNER', 'MANAGER', 'WAITER', 'ADMIN'] },
   { key: 'kitchen', icon: ChefHat, label: 'Kitchen', path: '/app/kitchen', roles: ['OWNER', 'MANAGER', 'CHEF', 'WAITER', 'ADMIN'] },
-  { key: 'menu', icon: UtensilsCrossed, label: 'Menu', path: '/app/menu', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
-  { key: 'categories', icon: Layers, label: 'Categories', path: '/app/categories', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
-  { key: 'modifiers', icon: Sparkles, label: 'Modifiers', path: '/app/modifiers', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
+  // Menu also covers its sub-pages (Categories, Modifier groups) for active state.
+  { key: 'menu', icon: UtensilsCrossed, label: 'Menu', path: '/app/menu', match: ['/app/menu', '/app/categories', '/app/modifiers'], roles: ['OWNER', 'MANAGER', 'ADMIN'] },
   { key: 'guests', icon: User, label: 'Guests', path: '/app/crm', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
   { key: 'team', icon: Users, label: 'Team', path: '/app/staff', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
-  { key: 'outlets', icon: BarChart3, label: 'Outlets', outlet: true, roles: ['OWNER', 'MANAGER', 'ADMIN'] },
+  { key: 'outlets', icon: BarChart3, label: 'Outlets', outlet: true, match: ['/app/restaurant'], roles: ['OWNER', 'MANAGER', 'ADMIN'] },
   { key: 'offers', icon: Ticket, label: 'Offers', path: '/app/coupons', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
 ];
 
@@ -31,4 +30,14 @@ export const resolvePath = (item, activeRestaurantId) =>
 export const navForRole = (role) => {
   const r = (role || '').toUpperCase();
   return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(r));
+};
+
+/** Whether a nav item should render as active for the current pathname. */
+export const isNavActive = (item, pathname) => {
+  const paths = item.match || (item.path ? [item.path] : []);
+  return paths.some((p) => {
+    if (!p) return false;
+    if (p === '/app') return pathname === '/app';
+    return pathname === p || pathname.startsWith(p + '/');
+  });
 };

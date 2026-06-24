@@ -116,6 +116,7 @@ const TableManagement = () => {
   const [floorSelected, setFloorSelected] = useState(null); // table selected into detail panel
   const [floorView, setFloorView] = useState('map');         // 'map' | 'list'
   const [liveSummary, setLiveSummary] = useState(null);      // pressure-band KPIs from backend
+  const [seatPax, setSeatPax] = useState(2);                 // guest count for "Seat guests"
 
   const sections = ['All', ...new Set(tables.map(t => t.sectionName).filter(Boolean))];
 
@@ -598,10 +599,20 @@ const TableManagement = () => {
           <div className="grid grid-cols-2 gap-2">
             {t.status === 'VACANT' ? (
               <>
+                <div className="col-span-2 flex items-center justify-between rounded-input bg-ink-card2 px-3 py-2">
+                  <span className="eyebrow text-[10px] text-txt-faintDark">Guests</span>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setSeatPax((p) => Math.max(1, p - 1))}
+                      className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">−</button>
+                    <span className="font-display font-bold text-white w-6 text-center tabular-nums">{seatPax}</span>
+                    <button type="button" onClick={() => setSeatPax((p) => Math.min(t.capacity || 99, p + 1))}
+                      className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">+</button>
+                  </div>
+                </div>
                 <Action icon={HandMetal} label="Seat guests" primary disabled={actionLoading}
                   onClick={async () => {
                     try {
-                      await dispatch(occupyTable({ tableUuid: t.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: 1 } })).unwrap();
+                      await dispatch(occupyTable({ tableUuid: t.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: seatPax } })).unwrap();
                       navigate(`/app/tables/${t.tableUuid}`);
                     } catch (err) { console.error('Failed to occupy table:', err); }
                   }} />
@@ -635,14 +646,27 @@ const TableManagement = () => {
     occupiedTables.reduce((a, t) => a + (t.currentPax || 0), 0);
   const tablesTurning = liveSummary?.tablesTurning ??
     displayTables.filter((t) => t.status === 'BILLED').length;
-  const avgDwell = liveSummary?.avgDwellMinutes ?? (() => {
-    const seated = occupiedTables.filter((t) => t.seatedAt);
-    if (!seated.length) return 0;
-    return Math.round(seated.reduce((a, t) => a + Math.floor((currentTime - new Date(t.seatedAt)) / 60000), 0) / seated.length);
-  })();
+  const avgDwellMin = Math.round(Number(
+    liveSummary?.avgDwellMinutes ?? (() => {
+      const seated = occupiedTables.filter((t) => t.seatedAt);
+      if (!seated.length) return 0;
+      return seated.reduce((a, t) => a + Math.floor((currentTime - new Date(t.seatedAt)) / 60000), 0) / seated.length;
+    })()
+  ) || 0);
+  const fmtMinutes = (m) => {
+    if (!m || m < 1) return '0m';
+    if (m < 60) return `${m}m`;
+    if (m < 1440) return `${Math.floor(m / 60)}h ${m % 60}m`;
+    return `${Math.floor(m / 1440)}d ${Math.floor((m % 1440) / 60)}h`;
+  };
   const kotsLate = liveSummary?.kotsLate;
 
-  const hasLayout = displayTables.some((t) => (t.posX || 0) !== 0 || (t.posY || 0) !== 0);
+  // Use the spatial map only when every active table has a unique, non-zero
+  // position; otherwise fall back to a flowing grid so cards never overlap.
+  const uniquePositions = new Set(displayTables.map((t) => `${t.posX || 0},${t.posY || 0}`));
+  const hasLayout = displayTables.length > 0
+    && displayTables.every((t) => (t.posX || 0) !== 0 || (t.posY || 0) !== 0)
+    && uniquePositions.size === displayTables.length;
 
   return (
     <DarkScreen className="flex flex-col">
@@ -689,7 +713,7 @@ const TableManagement = () => {
             {[
               { label: 'Covers Seated', value: coversSeated },
               { label: 'Tables Turning', value: tablesTurning },
-              { label: 'Avg Dwell', value: `${avgDwell}m` },
+              { label: 'Avg Dwell', value: fmtMinutes(avgDwellMin) },
               { label: 'KOTs Late', value: kotsLate ?? '—', danger: true },
             ].map((tile) => (
               <div key={tile.label}
@@ -842,18 +866,20 @@ const TableManagement = () => {
         )}
       </div>
 
-      {/* Desktop Live Status Sidebar */}
       {/* Detail panel (desktop) */}
       <aside className="hidden lg:flex w-[340px] shrink-0 flex-col bg-ink-panel rounded-card border border-ink-line overflow-hidden">
         {renderDetail()}
       </aside>
 
-      {/* Detail panel (mobile bottom sheet) */}
-      <Sheet open={!!floorSelected} onClose={() => setFloorSelected(null)} side="bottom" className="lg:hidden bg-ink-panel">
-        <div className="max-h-[80vh] overflow-auto text-txt-light">
-          {renderDetail()}
-        </div>
-      </Sheet>
+      {/* Detail panel (mobile bottom sheet) — wrapper is hidden on lg so its
+          full-screen backdrop never overlays/intercepts the desktop panel. */}
+      <div className="lg:hidden">
+        <Sheet open={!!floorSelected} onClose={() => setFloorSelected(null)} side="bottom" className="bg-ink-panel">
+          <div className="max-h-[80vh] overflow-auto text-txt-light">
+            {renderDetail()}
+          </div>
+        </Sheet>
+      </div>
 
       {/* Create/Edit Modal */}
       <Modal isOpen={showCreateModal || showEditModal} onClose={() => {

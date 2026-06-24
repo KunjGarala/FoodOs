@@ -163,6 +163,21 @@ const MenuManagement = () => {
 
   const allCategories = flattenCategories(categories);
 
+  // Map each parent category → its child category uuids, so selecting a parent
+  // ("fast food") also surfaces items that live in its sub-categories ("pizzaa").
+  const childCategoryMap = {};
+  categories.forEach((cat) => {
+    const pUuid = cat.categoryUuid || cat.uuid;
+    if (cat.subCategories && cat.subCategories.length > 0) {
+      childCategoryMap[pUuid] = cat.subCategories.map((sc) => sc.categoryUuid);
+    }
+  });
+
+  const acceptableCategoryUuids =
+    categoryFilter === 'all'
+      ? null
+      : new Set([categoryFilter, ...(childCategoryMap[categoryFilter] || [])]);
+
   // Filter products
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -171,8 +186,7 @@ const MenuManagement = () => {
       (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCategory =
-      categoryFilter === 'all' ||
-      product.categoryUuid === categoryFilter;
+      !acceptableCategoryUuids || acceptableCategoryUuids.has(product.categoryUuid);
 
     return matchesSearch && matchesCategory;
   });
@@ -578,15 +592,14 @@ const MenuManagement = () => {
               <>
                 {/* Table header (desktop) */}
                 <div className="hidden md:flex items-center gap-4 px-5 py-3 bg-paper-2 border-b border-line-light eyebrow text-[10px] text-txt-faint">
-                  <span className="w-6" />
-                  <span className="w-10" />
-                  <span className="flex-1">Item</span>
-                  <span className="w-40">Category</span>
-                  <span className="w-24 text-right">Price</span>
-                  <span className="w-24 text-center">Mods</span>
-                  <span className="w-16 text-center">Featured</span>
-                  <span className="w-28 text-center">Available</span>
-                  <span className="w-20 text-right">Actions</span>
+                  <span className="w-6 shrink-0" />
+                  <span className="flex-1 min-w-0">Item</span>
+                  <span className="w-36 shrink-0">Category</span>
+                  <span className="w-24 shrink-0 text-right">Price</span>
+                  <span className="w-20 shrink-0 text-center">Mods</span>
+                  <span className="w-16 shrink-0 text-center">Featured</span>
+                  <span className="w-24 shrink-0 text-center">Available</span>
+                  <span className="w-20 shrink-0 text-right">Actions</span>
                 </div>
 
                 <div className="divide-y divide-line-light">
@@ -610,11 +623,10 @@ const MenuManagement = () => {
                         <div className="hidden md:flex items-center gap-4 px-5 py-3 hover:bg-paper-2/50">
                           <button
                             onClick={() => toggleProductExpansion(product.productUuid)}
-                            className="w-6 flex justify-center p-1 -m-1 rounded-input hover:bg-paper-3 text-txt-faint"
+                            className="w-6 shrink-0 flex justify-center p-1 -m-1 rounded-input hover:bg-paper-3 text-txt-faint"
                           >
                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </button>
-                          <Thumb product={product} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <DietMark type={product.dietaryType} />
@@ -625,14 +637,14 @@ const MenuManagement = () => {
                               <span className="text-xs text-txt-faint font-mono">{product.sku}</span>
                             )}
                           </div>
-                          <span className="w-40 text-sm text-txt-muted truncate">
+                          <span className="w-36 shrink-0 text-sm text-txt-muted truncate">
                             {product.categoryName || 'Uncategorized'}
                           </span>
-                          <span className="w-24 text-right font-mono font-semibold text-ink-text">₹{price}</span>
-                          <span className="w-24 text-center text-sm text-txt-muted font-mono">
+                          <span className="w-24 shrink-0 text-right font-mono font-semibold text-ink-text">₹{price}</span>
+                          <span className="w-20 shrink-0 text-center text-sm text-txt-muted font-mono">
                             {modCount > 0 ? `${modCount} grp` : '—'}
                           </span>
-                          <div className="w-16 flex justify-center">
+                          <div className="w-16 shrink-0 flex justify-center">
                             <button
                               onClick={() => handleToggleFeatured(product.productUuid)}
                               disabled={actionLoading}
@@ -646,7 +658,7 @@ const MenuManagement = () => {
                               />
                             </button>
                           </div>
-                          <div className="w-28 flex justify-center">
+                          <div className="w-24 shrink-0 flex justify-center">
                             <Toggle
                               checked={isActive}
                               onChange={() => handleToggleAvailability(product.productUuid)}
@@ -654,7 +666,7 @@ const MenuManagement = () => {
                               size="sm"
                             />
                           </div>
-                          <div className="w-20 flex gap-1 justify-end">
+                          <div className="w-20 shrink-0 flex gap-1 justify-end">
                             <button
                               onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
                               disabled={actionLoading}
@@ -675,7 +687,6 @@ const MenuManagement = () => {
                         {/* Mobile card */}
                         <div className="md:hidden p-4">
                           <div className="flex items-start gap-3">
-                            <Thumb product={product} />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <DietMark type={product.dietaryType} />

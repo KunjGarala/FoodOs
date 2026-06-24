@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { PageHeader, Panel } from '../../components/ui/kit';
+import { cn } from '../../utils/cn';
 import ModifierGroupManager from '../../components/ModifierGroupManager';
 import ModifierManagerModal from '../../components/ModifierManagerModal';
 import {
@@ -10,8 +12,15 @@ import {
   clearSuccess,
 } from '../../store/modifierGroupSlice';
 
+const MENU_TABS = [
+  { label: 'Items', path: '/app/menu' },
+  { label: 'Categories', path: '/app/categories' },
+  { label: 'Modifier groups', path: '/app/modifiers' },
+];
+
 const ModifierManagement = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { activeRestaurantId } = useSelector((state) => state.auth);
   const { error, success } = useSelector((state) => state.modifierGroups);
 
@@ -57,6 +66,29 @@ const ModifierManagement = () => {
         title="Modifier Groups & Add-ons"
         subtitle="Build option groups like Toppings, Spice Level or Add-ons for your menu items."
       />
+
+      {/* Menu sub-tabs */}
+      <div className="border-b border-line-light">
+        <nav className="flex gap-1 -mb-px overflow-x-auto">
+          {MENU_TABS.map((tab) => {
+            const active = tab.path === '/app/modifiers';
+            return (
+              <button
+                key={tab.path}
+                onClick={() => navigate(tab.path)}
+                className={cn(
+                  'whitespace-nowrap px-3 py-2.5 text-sm font-medium border-b-2 transition-colors',
+                  active
+                    ? 'border-marigold text-ink-text'
+                    : 'border-transparent text-txt-muted hover:text-ink-text',
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
       {/* Global Notifications */}
       {error && (

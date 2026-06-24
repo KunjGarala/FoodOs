@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { LogOut, ChevronDown, Check } from 'lucide-react';
+import { LogOut, Check } from 'lucide-react';
 import { logout, setActiveRestaurant } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
-import { navForRole, resolvePath } from './navItems';
+import { navForRole, resolvePath, isNavActive } from './navItems';
 import logoUrl from '../../assets/foodos-logo.svg';
 
 /**
@@ -15,6 +15,7 @@ export const Rail = () => {
   const { user, role, restaurants, restaurantIds, activeRestaurantId } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const popRef = useRef(null);
 
@@ -51,18 +52,16 @@ export const Rail = () => {
       <nav className="flex-1 mt-6 flex flex-col items-center gap-1.5 overflow-y-auto scrollbar-hide w-full">
         {items.map((item) => {
           const to = resolvePath(item, activeRestaurantId);
+          const active = isNavActive(item, pathname);
           return (
             <NavLink
               key={item.key}
               to={to}
-              end={item.path === '/app'}
-              className={({ isActive }) =>
-                `group flex flex-col items-center justify-center w-[50px] h-[50px] rounded-[15px] transition-colors ${
-                  isActive
-                    ? 'bg-marigold/[0.16] text-marigold'
-                    : 'text-txt-faintDark hover:text-txt-mutedDark hover:bg-white/5'
-                }`
-              }
+              className={`group flex flex-col items-center justify-center w-[50px] h-[50px] rounded-[15px] transition-colors ${
+                active
+                  ? 'bg-marigold/[0.16] text-marigold'
+                  : 'text-txt-faintDark hover:text-txt-mutedDark hover:bg-white/5'
+              }`}
             >
               <item.icon strokeWidth={1.8} className="h-[18px] w-[18px]" />
               <span className="mt-0.5 text-[9px] font-medium tracking-tight">{item.label}</span>
