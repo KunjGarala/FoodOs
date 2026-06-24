@@ -27,6 +27,7 @@ public class CouponResponse {
     private LocalDateTime endDate;
     private Integer usageLimitGlobal;
     private Integer usageLimitPerUser;
+    private Long usageCount;
     private Boolean active;
     private Boolean allowStacking;
     private CouponScopeType scopeType;

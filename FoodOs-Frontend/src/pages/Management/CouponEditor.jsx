@@ -176,7 +176,7 @@ const CouponEditor = () => {
   const discountLabel = formData.discountValue
     ? isPercent
       ? `${formData.discountValue}% OFF`
-      : `$${formData.discountValue} OFF`
+      : `₹${formData.discountValue} OFF`
     : '—';
   const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
 
@@ -504,12 +504,12 @@ const CouponEditor = () => {
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-txt-muted">Min. order</dt>
-                <dd className="font-medium text-ink-text font-mono">${formData.minOrderAmount || '0.00'}</dd>
+                <dd className="font-medium text-ink-text font-mono">₹{formData.minOrderAmount || '0.00'}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-txt-muted">Max cap</dt>
                 <dd className="font-medium text-ink-text font-mono">
-                  {formData.maxDiscountAmount ? `$${formData.maxDiscountAmount}` : '—'}
+                  {formData.maxDiscountAmount ? `₹${formData.maxDiscountAmount}` : '—'}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">

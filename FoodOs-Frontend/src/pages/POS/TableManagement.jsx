@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { 
   Users, Clock, Plus, Edit, Trash2, Shuffle, ArrowRightLeft, BarChart3,
   AlertCircle, X, Check, Loader2, Power, Eye, HandMetal, Activity, ChevronUp, ChevronDown as ChevronDownIcon,
-  Wifi, WifiOff, UserCheck
+  Wifi, WifiOff, UserCheck, Star
 } from 'lucide-react';
 import {
   getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
@@ -79,10 +79,12 @@ const TableManagement = () => {
   const hasManagerAccess = ['MANAGER', 'OWNER', 'ADMIN'].includes(userRole);
   const isWaiter = userRole === 'WAITER';
 
-  // For WAITER role: only show tables assigned to them + vacant tables
-  const displayTables = isWaiter
-    ? tables.filter(t => t.status === 'VACANT' || t.currentWaiterUuid === currentUserUuid)
-    : tables;
+  // Everyone on the floor view sees every table (vacant, occupied, billing, etc.).
+  const displayTables = tables;
+
+  // A waiter may only ACT on tables assigned to them; managers/owners act on any.
+  const canActOnTable = (table) =>
+    !isWaiter || table.currentWaiterUuid === currentUserUuid;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -504,6 +506,7 @@ const TableManagement = () => {
     const round = (table.shape || '').toUpperCase() === 'ROUND';
     const busy = table.status === 'OCCUPIED' || table.status === 'BILLED';
     const selected = floorSelected?.tableUuid === table.tableUuid;
+    const mine = isWaiter && table.currentWaiterUuid === currentUserUuid;
     return (
       <button
         key={table.tableUuid}
@@ -517,13 +520,17 @@ const TableManagement = () => {
           isInactive
             ? 'bg-ink-card2/40 text-txt-faintDark border border-dashed border-ink-line opacity-60'
             : cn(FLOOR_CARD[table.status] || FLOOR_CARD.VACANT, 'hover:brightness-105'),
+          mine && !selected && 'ring-2 ring-marigold/70',
           selected && 'ring-2 ring-marigold ring-offset-2 ring-offset-ink-panel',
         )}
       >
         <div className="flex items-center justify-between w-full gap-1">
-          <span className="font-display font-bold text-[22px] leading-none">{table.tableNumber}</span>
+          <span className="flex items-center gap-1 min-w-0">
+            {mine && <Star className="h-3.5 w-3.5 fill-current shrink-0" />}
+            <span className="font-display font-bold text-[22px] leading-none">{table.tableNumber}</span>
+          </span>
           {!round && busy && (
-            <span className={cn('font-mono text-[10px] px-1.5 py-0.5 rounded-full', late ? 'bg-danger text-white' : 'bg-black/15')}>
+            <span className={cn('font-mono text-[10px] leading-none px-1.5 py-1 rounded-full whitespace-nowrap shrink-0', late ? 'bg-danger text-white' : 'bg-black/15')}>
               {calculateOccupiedTime(table.seatedAt) || '—'}
             </span>
           )}
@@ -560,6 +567,7 @@ const TableManagement = () => {
       );
     }
     const busy = t.status === 'OCCUPIED' || t.status === 'BILLED';
+    const canAct = canActOnTable(t);
     const Stat = ({ label, value, highlight }) => (
       <div className="rounded-tile bg-ink-card2 p-3">
         <p className="eyebrow text-[9px] text-txt-faintDark">{label}</p>
@@ -596,44 +604,57 @@ const TableManagement = () => {
             <Stat label="Running" value={busy && t.currentOrderTotal != null ? formatINR(t.currentOrderTotal) : '—'} highlight />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            {t.status === 'VACANT' ? (
-              <>
-                <div className="col-span-2 flex items-center justify-between rounded-input bg-ink-card2 px-3 py-2">
-                  <span className="eyebrow text-[10px] text-txt-faintDark">Guests</span>
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setSeatPax((p) => Math.max(1, p - 1))}
-                      className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">−</button>
-                    <span className="font-display font-bold text-white w-6 text-center tabular-nums">{seatPax}</span>
-                    <button type="button" onClick={() => setSeatPax((p) => Math.min(t.capacity || 99, p + 1))}
-                      className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">+</button>
-                  </div>
-                </div>
-                <Action icon={HandMetal} label="Seat guests" primary disabled={actionLoading}
-                  onClick={async () => {
-                    try {
-                      await dispatch(occupyTable({ tableUuid: t.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: seatPax } })).unwrap();
-                      navigate(`/app/tables/${t.tableUuid}`);
-                    } catch (err) { console.error('Failed to occupy table:', err); }
-                  }} />
-                <Action icon={Eye} label="View" onClick={() => navigate(`/app/tables/${t.tableUuid}`)} />
-              </>
-            ) : (
-              <>
-                <Action icon={Eye} label="View order" primary onClick={() => navigate(`/app/tables/${t.tableUuid}`)} />
-                <Action icon={Plus} label="Add items" onClick={() => navigate(`/app/tables/${t.tableUuid}/add-items`)} />
-                {hasManagerAccess && <Action icon={UserCheck} label="Assign waiter" onClick={() => handleOpenAssignWaiter(t)} />}
-                <Action icon={Activity} label="Status" onClick={() => openStatusModal(t)} />
-              </>
-            )}
-          </div>
-
-          {hasManagerAccess && (
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ink-line">
-              <Action icon={Edit} label="Edit" onClick={() => openEditModal(t)} />
-              <Action icon={Power} label={t.isActive === false ? 'Enable' : 'Disable'} onClick={() => handleToggleTableActive(t)} />
-              <Action icon={Trash2} label="Delete" danger onClick={() => handleDeleteTable(t.tableUuid)} />
+          {!canAct ? (
+            <div className="rounded-input bg-ink-card2 border border-ink-line px-3 py-4 text-center">
+              <p className="text-sm text-txt-light font-medium">
+                {t.currentWaiterName ? `Assigned to ${t.currentWaiterName}` : 'Not assigned to you'}
+              </p>
+              <p className="text-[11px] text-txt-faintDark mt-1">
+                You can view this table — a manager assigns the tables you serve.
+              </p>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {t.status === 'VACANT' ? (
+                  <>
+                    <div className="col-span-2 flex items-center justify-between rounded-input bg-ink-card2 px-3 py-2">
+                      <span className="eyebrow text-[10px] text-txt-faintDark">Guests</span>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => setSeatPax((p) => Math.max(1, p - 1))}
+                          className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">−</button>
+                        <span className="font-display font-bold text-white w-6 text-center tabular-nums">{seatPax}</span>
+                        <button type="button" onClick={() => setSeatPax((p) => Math.min(t.capacity || 99, p + 1))}
+                          className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">+</button>
+                      </div>
+                    </div>
+                    <Action icon={HandMetal} label="Seat guests" primary disabled={actionLoading}
+                      onClick={async () => {
+                        try {
+                          await dispatch(occupyTable({ tableUuid: t.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: seatPax } })).unwrap();
+                          navigate(`/app/tables/${t.tableUuid}`);
+                        } catch (err) { console.error('Failed to occupy table:', err); }
+                      }} />
+                    <Action icon={Eye} label="View" onClick={() => navigate(`/app/tables/${t.tableUuid}`)} />
+                  </>
+                ) : (
+                  <>
+                    <Action icon={Eye} label="View order" primary onClick={() => navigate(`/app/tables/${t.tableUuid}`)} />
+                    <Action icon={Plus} label="Add items" onClick={() => navigate(`/app/tables/${t.tableUuid}/add-items`)} />
+                    {hasManagerAccess && <Action icon={UserCheck} label="Assign waiter" onClick={() => handleOpenAssignWaiter(t)} />}
+                    <Action icon={Activity} label="Status" onClick={() => openStatusModal(t)} />
+                  </>
+                )}
+              </div>
+
+              {hasManagerAccess && (
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ink-line">
+                  <Action icon={Edit} label="Edit" onClick={() => openEditModal(t)} />
+                  <Action icon={Power} label={t.isActive === false ? 'Enable' : 'Disable'} onClick={() => handleToggleTableActive(t)} />
+                  <Action icon={Trash2} label="Delete" danger onClick={() => handleDeleteTable(t.tableUuid)} />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -790,16 +811,18 @@ const TableManagement = () => {
                         {rows.map((table) => {
                           const busy = table.status === 'OCCUPIED' || table.status === 'BILLED';
                           const selected = floorSelected?.tableUuid === table.tableUuid;
+                          const mine = isWaiter && table.currentWaiterUuid === currentUserUuid;
                           return (
                             <button key={table.tableUuid} type="button" onClick={() => setFloorSelected(table)}
                               className={cn('w-full flex items-center gap-3 p-3 rounded-tile bg-ink-card border text-left',
-                                selected ? 'border-marigold' : 'border-ink-line hover:border-ink-line/80')}>
+                                selected ? 'border-marigold' : mine ? 'border-marigold/60' : 'border-ink-line hover:border-ink-line/80')}>
                               <span className={cn('h-10 w-10 rounded-full grid place-items-center font-display font-bold shrink-0',
                                 FLOOR_CARD[table.status] || FLOOR_CARD.VACANT)}>
                                 {String(table.tableNumber).slice(-2)}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-white truncate">
+                                <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
+                                  {mine && <Star className="h-3.5 w-3.5 fill-marigold text-marigold shrink-0" />}
                                   {table.sectionName || 'Floor'} · {table.currentPax || 0}/{table.capacity}
                                 </p>
                                 <p className="text-[11px] text-txt-mutedDark truncate">

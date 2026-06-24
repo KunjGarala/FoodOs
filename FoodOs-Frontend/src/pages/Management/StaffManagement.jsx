@@ -25,12 +25,16 @@ import AddEmployee from './AddEmployee';
 import EditEmployee from './EditEmployee';
 
 const FILTER_ROLES = [
+    { value: 'OWNER', label: 'Owner' },
     { value: 'MANAGER', label: 'Store Manager' },
     { value: 'CASHIER', label: 'Cashier' },
     { value: 'WAITER', label: 'Captain / Waiter' },
     { value: 'CHEF', label: 'Kitchen Staff' },
     { value: 'GUEST', label: 'Guest / Limited Access' }
 ];
+
+// Roles fetched to assemble the full roster (the API is single-role per call).
+const ROSTER_ROLES = ['OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'CHEF', 'GUEST'];
 
 /** Pill tone for a role badge. */
 const roleTone = (role) => {
@@ -92,7 +96,7 @@ const StaffManagement = () => {
     const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
 
     // Filters
-    const [selectedRole, setSelectedRole] = useState('CASHIER');
+    const [selectedRole, setSelectedRole] = useState('ALL');
     const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -133,7 +137,8 @@ const StaffManagement = () => {
         fetchRestaurantNames();
     }, [restaurantIds]);
 
-    // Fetch Data
+    // Fetch the full roster across every role (the API is single-role per call),
+    // then merge + dedupe. The role dropdown filters this list client-side.
     const fetchEmployees = useCallback(async () => {
         if (!selectedRestaurantId) return;
 
@@ -141,13 +146,25 @@ const StaffManagement = () => {
             setLoading(true);
             setError(null);
 
-            const params = {
-                role: selectedRole,
-                restaurantUuid: selectedRestaurantId
-            };
+            const results = await Promise.all(
+                ROSTER_ROLES.map((r) =>
+                    employeeAPI
+                        .getAll({ role: r, restaurantUuid: selectedRestaurantId })
+                        .then((res) => res.data || [])
+                        .catch(() => [])
+                )
+            );
 
-            const response = await employeeAPI.getAll(params);
-            setEmployees(response.data || []);
+            const seen = new Set();
+            const merged = [];
+            results.flat().forEach((emp) => {
+                const key = emp.uuid || emp.id || emp.username;
+                if (key && !seen.has(key)) {
+                    seen.add(key);
+                    merged.push(emp);
+                }
+            });
+            setEmployees(merged);
         } catch (err) {
             console.error('Failed to fetch employees:', err);
             setError('Failed to load staff list. Please try again.');
@@ -155,21 +172,23 @@ const StaffManagement = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedRole, selectedRestaurantId]);
+    }, [selectedRestaurantId]);
 
     useEffect(() => {
         fetchEmployees();
     }, [fetchEmployees]);
 
-    // Handle Search Filter (Client-side usually for small lists, or server?)
+    // Role filter + search, both client-side over the full roster.
     const filteredEmployees = employees.filter(emp => {
+        const matchesRole = selectedRole === 'ALL' || emp.role === selectedRole;
         const query = searchQuery.toLowerCase();
-        return (
+        const matchesSearch = !query || (
             emp.fullName?.toLowerCase().includes(query) ||
             emp.username?.toLowerCase().includes(query) ||
             emp.phoneNumber?.includes(query) ||
             emp.employeeCode?.toLowerCase().includes(query)
         );
+        return matchesRole && matchesSearch;
     });
 
     const handleViewProfile = (employee) => {
@@ -241,6 +260,7 @@ const StaffManagement = () => {
                                 value={selectedRole}
                                 onChange={(e) => setSelectedRole(e.target.value)}
                             >
+                                <option value="ALL">All roles</option>
                                 {FILTER_ROLES.map(role => (
                                     <option key={role.value} value={role.value}>{role.label}</option>
                                 ))}

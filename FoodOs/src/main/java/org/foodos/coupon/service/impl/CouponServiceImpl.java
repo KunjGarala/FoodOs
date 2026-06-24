@@ -551,6 +551,7 @@ public class CouponServiceImpl implements CouponService {
                 .endDate(coupon.getEndDate())
                 .usageLimitGlobal(coupon.getUsageLimitGlobal())
                 .usageLimitPerUser(coupon.getUsageLimitPerUser())
+                .usageCount(usageRepository.countByCouponIdAndIsDeletedFalse(coupon.getId()))
                 .active(coupon.getIsActive())
                 .allowStacking(coupon.getAllowStacking())
                 .scopeType(coupon.getScopeType())

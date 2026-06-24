@@ -30,6 +30,7 @@ const RestaurantDetails = () => {
   const prevActiveRef = useRef(activeRestaurantId);
 
   const [restaurant, setRestaurant] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -66,6 +67,11 @@ const RestaurantDetails = () => {
         const response = await restaurantAPI.getRestaurantDetail(restaurantUuid);
         setRestaurant(response.data);
         setError(null);
+
+        // Per-outlet live KPIs (owner-scoped); ignore failures gracefully.
+        restaurantAPI.getHierarchySummary(restaurantUuid)
+          .then((r) => setSummary(r.data))
+          .catch(() => setSummary(null));
       } catch (err) {
         console.error('Failed to fetch restaurant details:', err);
         setError('Failed to load restaurant details. Please try again later.');
@@ -178,10 +184,6 @@ const RestaurantDetails = () => {
   const formatCurrency = (value) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
 
-  // Optional rollup data — only available if a /hierarchy/summary endpoint feeds it.
-  const summary = restaurant.summary || restaurant.hierarchySummary || null;
-  const groupRollup = restaurant.groupRollup || (summary && summary.group) || null;
-
   // Initials for logo fallback
   const initials = (name || businessName || '?')
     .split(' ')
@@ -191,24 +193,34 @@ const RestaurantDetails = () => {
     .join('')
     .toUpperCase();
 
-  // Build outlet cards from child outlets. The detail payload only carries
-  // child UUIDs today, so we render whatever each entry exposes and omit
-  // sales/covers when a /hierarchy/summary feed hasn't supplied them.
-  const outlets = (childRestaurantUuids || []).map((entry) => {
-    if (entry && typeof entry === 'object') {
-      return {
-        uuid: entry.restaurantUuid || entry.uuid || entry.id,
-        name: entry.name,
-        city: entry.city,
-        isActive: entry.isActive,
-        salesToday: entry.salesToday ?? entry.todaySales,
-        covers: entry.covers ?? entry.todayCovers,
-        setupProgress: entry.setupProgress ?? entry.onboardingProgress,
-        isOnboarding: entry.isOnboarding ?? entry.incomplete,
-      };
-    }
-    return { uuid: entry };
-  });
+  // Outlet cards come from /hierarchy/summary (live sales/covers/tables). We
+  // exclude the brand/HQ record itself (shown in the banner) and fall back to
+  // the bare child-UUID list if the rollup feed isn't available.
+  const rootUuid = parentRestaurantUuid || id;
+  const outlets = summary?.outlets
+    ? summary.outlets
+        .filter((o) => o.restaurantUuid !== rootUuid)
+        .map((o) => ({
+          uuid: o.restaurantUuid,
+          name: o.name,
+          city: o.city,
+          isActive: o.status ? o.status === 'ACTIVE' : undefined,
+          salesToday: o.salesToday,
+          covers: o.coversToday,
+          tableCount: o.tableCount,
+        }))
+    : (childRestaurantUuids || []).map((entry) =>
+        entry && typeof entry === 'object'
+          ? {
+              uuid: entry.restaurantUuid || entry.uuid || entry.id,
+              name: entry.name,
+              city: entry.city,
+              isActive: entry.isActive,
+            }
+          : { uuid: entry });
+
+  const groupSales = summary?.groupSalesToday;
+  const groupCovers = summary?.groupCoversToday;
 
   return (
     <div className="space-y-5">
@@ -254,113 +266,100 @@ const RestaurantDetails = () => {
           </div>
 
           {/* Compliance trio */}
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <ComplianceChip label="GST" value={gstNumber} />
-            <ComplianceChip label="FSSAI" value={fssaiLicense} />
-            <ComplianceChip
+          <div className="flex flex-wrap gap-x-8 gap-y-4 shrink-0">
+            <ComplianceItem label="GST" value={gstNumber} ok={!!gstNumber} />
+            <ComplianceItem
+              label="FSSAI"
+              value={fssaiLicense}
+              sub={licenseExpiry ? `exp ${new Date(licenseExpiry).getFullYear()}` : null}
+              ok={!!fssaiLicense}
+            />
+            <ComplianceItem
               label="License"
-              value={licenseKey || licenseType}
-              ok={!!(licenseKey || licenseType) && !isLicenseExpired(licenseExpiry)}
+              value={licenseType}
+              ok={!!licenseType && !isLicenseExpired(licenseExpiry)}
             />
           </div>
         </div>
       </div>
 
-      {/* Group rollup strip — render only when data exists */}
-      {groupRollup && (
-        <Panel className="px-5 py-4">
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-            <RollupStat label="Group sales today" value={formatCurrency(groupRollup.salesToday)} />
-            <RollupStat label="Covers" value={Number(groupRollup.covers || 0).toLocaleString('en-IN')} />
-            <RollupStat label="Outlets" value={groupRollup.outletCount ?? outlets.length} />
-          </div>
-        </Panel>
-      )}
-
-      {/* Outlet grid */}
+      {/* Outlets */}
       <div>
-        <p className="eyebrow text-[11px] text-txt-faint mb-3">Outlets · {outlets.length}</p>
+        <div className="flex items-end justify-between gap-3 mb-3">
+          <p className="eyebrow text-[11px] text-txt-faint">Outlets · {outlets.length}</p>
+          {(groupSales != null || groupCovers != null) && (
+            <p className="text-xs text-txt-muted">
+              <span className="text-txt-faint">Group today</span>{' '}
+              <span className="font-mono font-semibold text-ink-text">{formatCurrency(groupSales)}</span>
+              {groupCovers != null && (
+                <>
+                  {' '}·{' '}
+                  <span className="font-mono font-semibold text-ink-text">
+                    {Number(groupCovers).toLocaleString('en-IN')}
+                  </span>{' '}covers
+                </>
+              )}
+            </p>
+          )}
+        </div>
         {outlets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {outlets.map((outlet) => {
               const isCurrent = outlet.uuid && outlet.uuid === activeRestaurantId;
-              const progress = Number(outlet.setupProgress);
-              const isOnboarding = outlet.isOnboarding || (!Number.isNaN(progress) && progress > 0 && progress < 100);
+              const active = outlet.isActive !== false;
+              const meta = [outlet.city, outlet.tableCount != null ? `${outlet.tableCount} tables` : null]
+                .filter(Boolean)
+                .join(' · ');
               return (
-                <button
+                <div
                   key={outlet.uuid}
-                  type="button"
-                  onClick={() => outlet.uuid && navigate(`/app/restaurant/${outlet.uuid}`)}
                   className={cn(
-                    'text-left bg-paper-card rounded-card p-4 transition hover:shadow-sm',
-                    'border-2',
-                    isCurrent
-                      ? 'border-marigold'
-                      : isOnboarding
-                        ? 'border-dashed border-gold'
-                        : 'border-line-light',
+                    'flex flex-col bg-paper-card rounded-card p-4 border-2',
+                    isCurrent ? 'border-marigold' : 'border-line-light',
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-display font-semibold text-ink-text truncate">
-                        {outlet.name || 'Outlet'}
-                      </p>
-                      {outlet.city && (
-                        <p className="text-xs text-txt-muted mt-0.5 flex items-center gap-1 truncate">
-                          <MapPin className="h-3 w-3 shrink-0" /> {outlet.city}
-                        </p>
-                      )}
+                      <p className="font-display font-bold text-ink-text truncate">{outlet.name || 'Outlet'}</p>
+                      <p className="text-xs text-txt-muted mt-0.5 truncate">{meta || '—'}</p>
                     </div>
                     {isCurrent && <Pill tone="marigold">Current</Pill>}
                   </div>
 
-                  <div className="mt-3">
-                    {outlet.isActive === undefined ? (
-                      <Pill tone="neutral">Linked</Pill>
-                    ) : (
-                      <Pill tone={outlet.isActive ? 'success' : 'danger'}>
-                        {outlet.isActive ? 'Active' : 'Inactive'}
-                      </Pill>
-                    )}
+                  <div className="flex items-center gap-1.5 mt-3 text-xs">
+                    <span className={cn('h-2 w-2 rounded-full', active ? 'bg-success' : 'bg-txt-faint')} />
+                    <span className={active ? 'text-success-deep font-medium' : 'text-txt-muted'}>
+                      {active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
 
-                  {/* Onboarding progress bar */}
-                  {isOnboarding && !Number.isNaN(progress) && (
-                    <div className="mt-3">
-                      <div className="flex justify-between text-[11px] text-txt-faint mb-1">
-                        <span>Setup</span>
-                        <span className="font-mono">{Math.round(progress)}%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-paper-3 overflow-hidden">
-                        <div className="h-full bg-marigold rounded-full" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
-                      </div>
-                    </div>
-                  )}
+                  <p className="font-display font-bold text-2xl text-ink-text mt-2 leading-none">
+                    {outlet.salesToday != null ? formatCurrency(outlet.salesToday) : '—'}
+                  </p>
+                  <p className="text-xs text-txt-muted font-mono mt-1.5">
+                    {outlet.covers != null
+                      ? `${Number(outlet.covers).toLocaleString('en-IN')} covers today`
+                      : 'No covers yet'}
+                  </p>
 
-                  {/* Today's sales + covers, only if supplied */}
-                  {(outlet.salesToday != null || outlet.covers != null) && (
-                    <div className="mt-3 pt-3 border-t border-line-light flex items-center justify-between text-xs">
-                      {outlet.salesToday != null && (
-                        <div>
-                          <p className="text-txt-faint">Sales today</p>
-                          <p className="font-display font-semibold text-ink-text">{formatCurrency(outlet.salesToday)}</p>
-                        </div>
-                      )}
-                      {outlet.covers != null && (
-                        <div className="text-right">
-                          <p className="text-txt-faint">Covers</p>
-                          <p className="font-display font-semibold text-ink-text">{Number(outlet.covers).toLocaleString('en-IN')}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Show UUID when no richer fields exist */}
-                  {!outlet.name && outlet.uuid && (
-                    <p className="mt-3 font-mono text-[11px] text-txt-faint truncate">{outlet.uuid}</p>
-                  )}
-                </button>
+                  <div className="mt-4">
+                    {isCurrent ? (
+                      <button
+                        onClick={() => navigate('/app')}
+                        className="w-full h-10 rounded-input bg-ink text-txt-light text-sm font-semibold hover:brightness-110 transition"
+                      >
+                        Manage
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => outlet.uuid && dispatch(setActiveRestaurant(outlet.uuid))}
+                        className="w-full h-10 rounded-input bg-paper-2 border border-line-input text-txt-dark text-sm font-medium hover:bg-paper-3 transition"
+                      >
+                        Switch to outlet
+                      </button>
+                    )}
+                  </div>
+                </div>
               );
             })}
 
@@ -368,7 +367,7 @@ const RestaurantDetails = () => {
             <button
               type="button"
               onClick={() => navigate('/create-outlet')}
-              className="flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-input bg-paper-2 p-4 text-txt-muted hover:border-marigold hover:text-ink-text transition min-h-[140px]"
+              className="flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-input bg-paper-2 p-4 text-txt-muted hover:border-marigold hover:text-ink-text transition min-h-[180px]"
             >
               <Plus className="h-6 w-6" />
               <span className="text-sm font-medium">Add Outlet</span>
@@ -575,6 +574,18 @@ const RollupStat = ({ label, value }) => (
   <div>
     <p className="eyebrow text-[10px] text-txt-faint">{label}</p>
     <p className="font-display font-bold text-xl text-ink-text mt-0.5">{value}</p>
+  </div>
+);
+
+// HQ-banner compliance entry: mono label + value (green when present/valid).
+const ComplianceItem = ({ label, value, sub, ok }) => (
+  <div className="min-w-[90px]">
+    <p className="eyebrow text-[9px] text-txt-faintDark">{label}</p>
+    <p className={cn('font-mono text-sm mt-1 flex items-center gap-1', ok ? 'text-success-bright' : 'text-txt-mutedDark')}>
+      <span className="truncate">{value || '—'}</span>
+      {ok && <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
+    </p>
+    {sub && <p className="font-mono text-[10px] text-txt-faintDark mt-0.5">{sub}</p>}
   </div>
 );
 

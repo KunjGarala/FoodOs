@@ -23,14 +23,25 @@ const CouponManagement = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState(null);
 
   const { activeRestaurantId } = useSelector((state) => state.auth);
+
+  const fetchStats = async () => {
+    try {
+      const res = await couponAPI.getStats(activeRestaurantId);
+      setStats(res.data);
+    } catch {
+      setStats(null); // header falls back to derived/active count
+    }
+  };
 
   const fetchCoupons = async () => {
     try {
       setLoading(true);
       const response = await couponAPI.getAll({ restaurantUuid: activeRestaurantId, size: 100 });
       setCoupons(response.data.content || []);
+      fetchStats();
     } catch {
       setError('Failed to load coupons. Please try again.');
     } finally {
@@ -99,9 +110,10 @@ const CouponManagement = () => {
 
   const activeCount = coupons.filter((c) => c.active && !isExpired(c)).length;
 
+  const fmtINR = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
   const fmtDiscount = (c) =>
-    c.discountType === 'PERCENTAGE' ? `${c.discountValue}% off` : `$${c.discountValue} off`;
+    c.discountType === 'PERCENTAGE' ? `${c.discountValue}% off` : `₹${c.discountValue} off`;
 
   return (
     <div className="space-y-6">
@@ -134,10 +146,22 @@ const CouponManagement = () => {
 
       {/* Stat row */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi tone="ink" label="Active coupons" value={loading ? '—' : activeCount} sub="Currently live" />
-        <Kpi label="Redemptions this month" value="—" sub="Awaiting analytics" />
-        <Kpi label="Avg discount" value="—" sub="Awaiting analytics" />
-        <Kpi label="Revenue influenced" value="—" sub="Awaiting analytics" />
+        <Kpi tone="ink" label="Active coupons" value={loading ? '—' : (stats?.activeCoupons ?? activeCount)} sub="Currently live" />
+        <Kpi
+          label="Redemptions this month"
+          value={stats ? Number(stats.redemptionsThisMonth || 0).toLocaleString('en-IN') : '—'}
+          sub={stats ? 'This month' : 'Awaiting analytics'}
+        />
+        <Kpi
+          label="Avg discount"
+          value={stats ? fmtINR(stats.avgDiscount) : '—'}
+          sub={stats ? 'Per redemption' : 'Awaiting analytics'}
+        />
+        <Kpi
+          label="Revenue influenced"
+          value={stats ? fmtINR(stats.revenueInfluenced) : '—'}
+          sub={stats ? 'This month' : 'Awaiting analytics'}
+        />
       </div>
 
       <Panel className="overflow-hidden">
@@ -206,10 +230,10 @@ const CouponManagement = () => {
                         <td className="px-6 py-4">
                           <div className="font-medium text-ink-text">{fmtDiscount(coupon)}</div>
                           {coupon.maxDiscountAmount ? (
-                            <div className="text-xs text-txt-muted">Max ${coupon.maxDiscountAmount}</div>
+                            <div className="text-xs text-txt-muted">Max ₹{coupon.maxDiscountAmount}</div>
                           ) : null}
                         </td>
-                        <td className="px-6 py-4 text-txt-muted">${coupon.minOrderAmount}</td>
+                        <td className="px-6 py-4 text-txt-muted">₹{coupon.minOrderAmount}</td>
                         <td className="px-6 py-4 font-mono text-xs text-txt-muted">{fmtDate(coupon.endDate)}</td>
                         <td className="px-6 py-4 text-txt-muted">
                           {coupon.usageLimitGlobal ? (
@@ -286,7 +310,7 @@ const CouponManagement = () => {
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                       <div>
                         <dt className="text-txt-faint">Min order</dt>
-                        <dd className="text-txt-muted">${coupon.minOrderAmount}</dd>
+                        <dd className="text-txt-muted">₹{coupon.minOrderAmount}</dd>
                       </div>
                       <div>
                         <dt className="text-txt-faint">Valid till</dt>
@@ -301,7 +325,7 @@ const CouponManagement = () => {
                       {coupon.maxDiscountAmount ? (
                         <div>
                           <dt className="text-txt-faint">Max discount</dt>
-                          <dd className="text-txt-muted">${coupon.maxDiscountAmount}</dd>
+                          <dd className="text-txt-muted">₹{coupon.maxDiscountAmount}</dd>
                         </div>
                       ) : null}
                     </dl>

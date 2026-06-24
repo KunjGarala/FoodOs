@@ -263,6 +263,7 @@ export const restaurantAPI = {
   createFirstRestaurant: (formData)                  => api.post('/api/restaurants/create-first', formData),
   createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),
   getRestaurantDetail:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/detail`),
+  getHierarchySummary:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/hierarchy/summary`),
 };
 
 export const employeeAPI = {
@@ -468,6 +469,8 @@ export const couponAPI = {
   delete: (couponUuid) => api.delete(`/api/v1/coupons/${couponUuid}`),
   
   toggleStatus: (couponUuid, isActive) => api.patch(`/api/v1/coupons/${couponUuid}/toggle-status?isActive=${isActive}`),
+
+  getStats: (restaurantUuid) => api.get('/api/v1/coupons/stats', { params: { restaurantUuid } }),
 };
 
 export const analyticsAPI = {

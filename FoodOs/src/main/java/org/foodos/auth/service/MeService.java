@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.dto.Response.MeContextResponse;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.mapper.UserProfileMapper;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
@@ -45,17 +46,18 @@ public class MeService {
         Restaurant primary = user.getPrimaryRestaurant();
         boolean primaryActive = primary != null && Boolean.TRUE.equals(primary.getIsActive());
 
-        // Collect every outlet the user can see: their directly-assigned outlets
-        // (user_restaurants) AND the active child outlets of each. Traversing the
-        // parent → childRestaurants tree means a chain owner sees every outlet on
-        // the picker even if a child was never written into the join table.
-        // Primary first, then assigned outlets, then their children; deduped by UUID.
+        // Chain-level roles (OWNER/ADMIN) see every outlet in their group, so we
+        // expand each assigned outlet to its active child outlets. Regular staff
+        // (MANAGER/CASHIER/WAITER/CHEF/GUEST) only see the outlets they're directly
+        // assigned to — a waiter at the HQ must NOT see sibling/child outlets.
+        // Primary first, then assigned outlets; deduped by UUID.
+        boolean expandChildren = user.getRole() == UserRole.OWNER || user.getRole() == UserRole.ADMIN;
         Map<String, Restaurant> byUuid = new LinkedHashMap<>();
         if (primaryActive) {
-            collectWithActiveChildren(primary, byUuid);
+            collectAccessible(primary, byUuid, expandChildren);
         }
         for (Restaurant r : user.getRestaurants()) {
-            collectWithActiveChildren(r, byUuid);
+            collectAccessible(r, byUuid, expandChildren);
         }
 
         List<RestaurantBasicDTO> outlets = byUuid.values().stream()
@@ -80,17 +82,20 @@ public class MeService {
     }
 
     /**
-     * Adds {@code restaurant} and its active child outlets to {@code acc} (keyed by
-     * UUID, so order is preserved and duplicates are skipped). Inactive restaurants
-     * are ignored. Chains are one level deep (a child outlet has no children of its
-     * own), so a single pass over {@link Restaurant#getAllActiveChildRestaurants()}
-     * is enough.
+     * Adds {@code restaurant} to {@code acc} (keyed by UUID, so order is preserved and
+     * duplicates skipped). When {@code includeChildren} is true, its active child outlets
+     * are added too — used only for chain-level roles. Inactive restaurants are ignored.
+     * Chains are one level deep, so a single pass over
+     * {@link Restaurant#getAllActiveChildRestaurants()} is enough.
      */
-    private void collectWithActiveChildren(Restaurant restaurant, Map<String, Restaurant> acc) {
+    private void collectAccessible(Restaurant restaurant, Map<String, Restaurant> acc, boolean includeChildren) {
         if (restaurant == null || !Boolean.TRUE.equals(restaurant.getIsActive())) {
             return;
         }
         acc.putIfAbsent(restaurant.getRestaurantUuid(), restaurant);
+        if (!includeChildren) {
+            return;
+        }
         for (Restaurant child : restaurant.getAllActiveChildRestaurants()) {
             if (child != null) {
                 acc.putIfAbsent(child.getRestaurantUuid(), child);
