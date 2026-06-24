@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { BtnPrimary } from '../components/ui/kit';
+import logoUrl from '../assets/foodos-logo.svg';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 const AccountActivation = () => {
     const [searchParams] = useSearchParams();
@@ -11,7 +14,7 @@ const AccountActivation = () => {
     useEffect(() => {
         const verifyEmail = async () => {
             const code = searchParams.get('code');
-            
+
             if (!code) {
                 setStatus('error');
                 setMessage('No verification code found.');
@@ -21,9 +24,9 @@ const AccountActivation = () => {
             try {
                 // Determine API URL based on environment or configuration
                 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
-                
+
                 await axios.post(`${API_URL}/api/auth/verify-email?code=${code}`);
-                
+
                 setStatus('success');
                 setMessage('Account verified successfully! You can now login.');
             } catch (error) {
@@ -37,56 +40,62 @@ const AccountActivation = () => {
     }, [searchParams]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md text-center">
-                
-                {status === 'verifying' && (
-                    <>
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Verifying...</h2>
-                        <p className="mt-2 text-sm text-gray-600">{message}</p>
-                    </>
-                )}
+        <div className="min-h-screen grid place-items-center bg-paper px-4 py-12">
+            <div className="w-full max-w-md">
+                <img src={logoUrl} alt="FoodOS" className="h-12 w-12 mx-auto mb-6" />
 
-                {status === 'success' && (
-                    <>
-                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                            <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Verified!</h2>
-                        <p className="mt-2 text-sm text-gray-600">{message}</p>
-                        <div className="mt-6">
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                                Go to Login
-                            </button>
-                        </div>
-                    </>
-                )}
+                <div className="bg-paper-card border border-line-light rounded-card shadow-card p-7 sm:p-8 text-center">
+                    {status === 'verifying' && (
+                        <>
+                            <div className="mx-auto mb-5 grid place-items-center h-14 w-14 rounded-full bg-marigold/15">
+                                <Loader2 className="h-7 w-7 text-marigold animate-spin" />
+                            </div>
+                            <p className="eyebrow text-[11px] text-marigold mb-2">Verifying</p>
+                            <h2 className="font-display font-bold text-2xl text-ink-text">Almost there...</h2>
+                            <p className="text-sm text-txt-muted mt-2">{message}</p>
+                        </>
+                    )}
 
-                {status === 'error' && (
-                    <>
-                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </div>
-                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Verification Failed</h2>
-                        <p className="mt-2 text-sm text-gray-600">{message}</p>
-                        <div className="mt-6">
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="text-indigo-600 hover:text-indigo-500 font-medium"
-                            >
-                                Back to Login
-                            </button>
-                        </div>
-                    </>
-                )}
+                    {status === 'success' && (
+                        <>
+                            <div className="mx-auto mb-5 grid place-items-center h-16 w-16 rounded-full bg-success/[0.12]">
+                                <CheckCircle2 className="h-9 w-9 text-success-deep" />
+                            </div>
+                            <p className="eyebrow text-[11px] text-marigold mb-2">Account activated</p>
+                            <h2 className="font-display font-bold text-2xl text-ink-text">Verified!</h2>
+                            <p className="text-sm text-txt-muted mt-2">{message}</p>
+                            <div className="mt-6">
+                                <BtnPrimary
+                                    type="button"
+                                    onClick={() => navigate('/login')}
+                                    className="w-full h-11"
+                                >
+                                    Go to login
+                                </BtnPrimary>
+                            </div>
+                        </>
+                    )}
+
+                    {status === 'error' && (
+                        <>
+                            <div className="mx-auto mb-5 grid place-items-center h-16 w-16 rounded-full bg-danger/[0.1]">
+                                <XCircle className="h-9 w-9 text-danger-deep" />
+                            </div>
+                            <p className="eyebrow text-[11px] text-danger-deep mb-2">Verification failed</p>
+                            <h2 className="font-display font-bold text-2xl text-ink-text">Something went wrong</h2>
+                            <p className="text-sm text-txt-muted mt-2">{message}</p>
+                            <div className="mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/login')}
+                                    className="text-sm font-semibold text-marigold hover:brightness-90 transition"
+                                >
+                                    Back to login
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );

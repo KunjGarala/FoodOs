@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Badge } from '../../components/ui/Badge';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
-import { 
-  Edit2, 
-  Trash2, 
-  Plus, 
-  Loader2, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  PageHeader,
+  Panel,
+  Pill,
+  Toggle,
+  BtnPrimary,
+  BtnGhost,
+} from '../../components/ui/kit';
+import { cn } from '../../utils/cn';
+import {
+  Edit2,
+  Trash2,
+  Plus,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
   Search,
   FolderOpen,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  GripVertical,
+  X,
 } from 'lucide-react';
 import {
   fetchCategories,
@@ -29,13 +37,20 @@ import {
   clearCurrentCategory,
 } from '../../store/categorySlice';
 
+const SUB_TABS = [
+  { label: 'Items', path: '/app/menu' },
+  { label: 'Categories', path: '/app/categories' },
+  { label: 'Modifier groups', path: '/app/modifiers' },
+];
+
 const CategoryManagement = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCategories, setExpandedCategories] = useState({});
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -52,13 +67,13 @@ const CategoryManagement = () => {
 
   // Redux state
   const { activeRestaurantId } = useSelector((state) => state.auth);
-  const { 
-    categories, 
+  const {
+    categories,
     currentCategory,
-    loading, 
-    actionLoading, 
-    error, 
-    success 
+    loading,
+    actionLoading,
+    error,
+    success
   } = useSelector((state) => state.categories);
 
   // Fetch categories on mount
@@ -136,7 +151,7 @@ const CategoryManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const categoryData = {
       name: formData.name,
       description: formData.description || undefined,
@@ -206,7 +221,7 @@ const CategoryManagement = () => {
   const handleToggleExpand = async (categoryUuid) => {
     // Toggle expansion state
     const isCurrentlyExpanded = expandedCategories[categoryUuid];
-    
+
     if (!isCurrentlyExpanded) {
       // Fetch category details with subcategories
       try {
@@ -214,7 +229,7 @@ const CategoryManagement = () => {
           restaurantUuid: activeRestaurantId,
           categoryUuid,
         })).unwrap();
-        
+
         setExpandedCategories(prev => ({
           ...prev,
           [categoryUuid]: true
@@ -234,348 +249,337 @@ const CategoryManagement = () => {
 
   // Filter categories
   const filteredCategories = categories.filter(category => {
-    const matchesSearch = 
+    const matchesSearch =
       category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     return matchesSearch;
   });
 
+  const initials = (name) =>
+    (name || '?')
+      .split(' ')
+      .map((w) => w[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+
+  // A single category row (also reused for subcategories with a slight indent).
+  const CategoryRow = ({ category, isSub = false, parent = null }) => {
+    const isActive = category.isActive !== false;
+    const categoryId = category.categoryUuid || category.uuid;
+    const isExpanded = expandedCategories[categoryId];
+    const hasSubcategories =
+      currentCategory?.categoryUuid === categoryId &&
+      currentCategory?.subCategories?.length > 0;
+    const isVisible = category.isVisibleInMenu !== false;
+
+    return (
+      <div
+        className={cn(
+          'group flex items-center gap-3 px-3 sm:px-4 py-3 transition-colors hover:bg-paper-2',
+          isSub && 'pl-10 sm:pl-14 bg-paper-2/40',
+        )}
+      >
+        {/* Drag handle */}
+        <button
+          type="button"
+          className="cursor-grab text-txt-faint hover:text-txt-muted shrink-0 touch-none"
+          title="Drag to reorder"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        {/* Expand toggle (top-level only) */}
+        {!isSub ? (
+          <button
+            onClick={() => handleToggleExpand(categoryId)}
+            className="p-1 -ml-1 rounded-input text-txt-muted hover:bg-paper-3 transition-colors shrink-0"
+            title={isExpanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        ) : (
+          <span className="w-5 shrink-0" />
+        )}
+
+        {/* Thumbnail / initials block */}
+        <div
+          className={cn(
+            'shrink-0 rounded-tile flex items-center justify-center overflow-hidden font-display font-bold text-white',
+            isSub ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs',
+          )}
+          style={{ backgroundColor: category.colorCode || '#9a6500' }}
+        >
+          {category.imageUrl ? (
+            <img
+              src={category.imageUrl}
+              alt={category.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials(category.name)
+          )}
+        </div>
+
+        {/* Name + meta */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'font-medium text-ink-text truncate',
+                isSub ? 'text-sm' : 'text-[15px]',
+              )}
+            >
+              {category.name}
+            </span>
+            {isSub && <Pill tone="neutral">Child</Pill>}
+            {!isVisible && <Pill tone="neutral">Hidden</Pill>}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-txt-muted truncate">
+              {category.description || 'No description'}
+            </span>
+            <span className="text-txt-faint">·</span>
+            <span className="font-mono text-[11px] text-txt-faint">
+              #{category.sortOrder || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Availability pill */}
+        <button
+          type="button"
+          onClick={(e) => handleToggleActive(categoryId, e)}
+          title="Click to toggle active status"
+          className="shrink-0 hidden sm:inline-flex"
+        >
+          <Pill tone={isActive ? 'success' : 'danger'}>
+            {isActive ? 'Available' : 'Unavailable'}
+          </Pill>
+        </button>
+
+        {/* Visible toggle */}
+        <div className="shrink-0 hidden sm:block">
+          <Toggle
+            size="sm"
+            checked={isVisible}
+            onChange={() => handleToggleActive(categoryId)}
+            disabled={actionLoading}
+          />
+        </div>
+
+        {/* Row actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() =>
+              isSub
+                ? handleOpenModal({
+                    ...category,
+                    parentCategoryUuid: parent?.id,
+                    parentCategoryName: parent?.name,
+                  })
+                : handleOpenModal(category)
+            }
+            disabled={actionLoading}
+            className="p-2 rounded-input text-txt-muted hover:text-marigold hover:bg-marigold/10 transition-colors disabled:opacity-50"
+            title="Edit"
+            aria-label="Edit category"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(categoryId)}
+            disabled={actionLoading}
+            className="p-2 rounded-input text-txt-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+            title="Delete"
+            aria-label="Delete category"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Subcategories render outside this row, handled by parent map */}
+        {!isSub && isExpanded && hasSubcategories && null}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="space-y-6">
       {/* Notification Toast */}
       {(error || success) && (
-        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
-          error ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'
-        }`}>
-          {error ? <AlertCircle className="h-5 w-5 shrink-0" /> : <CheckCircle className="h-5 w-5 shrink-0" />}
-          <span className="font-medium text-xs sm:text-sm line-clamp-2">{error || success}</span>
+        <div
+          className={cn(
+            'fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-card shadow-float flex items-center gap-2 animate-slide-in sm:max-w-sm border',
+            error
+              ? 'bg-danger/10 text-danger-deep border-danger/30'
+              : 'bg-success/10 text-success-deep border-success/30',
+          )}
+        >
+          {error ? (
+            <AlertCircle className="h-5 w-5 shrink-0" />
+          ) : (
+            <CheckCircle className="h-5 w-5 shrink-0" />
+          )}
+          <span className="font-medium text-xs sm:text-sm line-clamp-2">
+            {error || success}
+          </span>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Category Management</h1>
-          <p className="text-sm text-slate-500">Organize your menu items into categories</p>
-        </div>
-        <Button onClick={() => handleOpenModal()} disabled={actionLoading} className="self-start sm:self-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Category
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Menu"
+        title="Categories"
+        subtitle="Organize your menu items into categories"
+        actions={
+          <BtnPrimary onClick={() => handleOpenModal()} disabled={actionLoading}>
+            <Plus className="h-4 w-4" />
+            Add category
+          </BtnPrimary>
+        }
+      />
 
-      <Card className="flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-100">
+      {/* Sub-tabs (underline / marigold) */}
+      <nav className="flex items-center gap-6 border-b border-line-light">
+        {SUB_TABS.map((tab) => {
+          const active = tab.label === 'Categories';
+          return (
+            <button
+              key={tab.label}
+              type="button"
+              onClick={() => !active && navigate(tab.path)}
+              className={cn(
+                'relative -mb-px pb-3 text-sm font-medium transition-colors',
+                active
+                  ? 'text-ink-text'
+                  : 'text-txt-muted hover:text-ink-text',
+              )}
+            >
+              {tab.label}
+              {active && (
+                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-marigold" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      <Panel className="overflow-hidden">
+        {/* Search bar */}
+        <div className="p-3 sm:p-4 border-b border-line-light">
           <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              placeholder="Search categories..." 
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-faint" />
+            <input
+              type="text"
+              placeholder="Search categories..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="w-full h-10 pl-10 pr-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto">
+        {/* List body */}
+        <div>
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+              <Loader2 className="h-8 w-8 animate-spin text-marigold" />
             </div>
           ) : filteredCategories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-              <FolderOpen className="h-12 w-12 mb-2" />
-              <p>No categories found</p>
-              <Button onClick={() => handleOpenModal()} variant="secondary" className="mt-4">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Category
-              </Button>
+            <div className="flex flex-col items-center justify-center h-64 text-txt-muted">
+              <div className="h-14 w-14 rounded-tile bg-paper-3 flex items-center justify-center mb-3">
+                <FolderOpen className="h-7 w-7 text-txt-faint" />
+              </div>
+              <p className="text-sm font-medium text-ink-text">No categories found</p>
+              <p className="text-xs text-txt-faint mt-1">
+                Create a category to start organizing your menu
+              </p>
+              <BtnPrimary onClick={() => handleOpenModal()} className="mt-4">
+                <Plus className="h-4 w-4" />
+                Create your first category
+              </BtnPrimary>
             </div>
           ) : (
-            <>
-              {/* Mobile card view */}
-              <div className="md:hidden divide-y divide-slate-100">
-                {filteredCategories.map(category => {
-                  const isActive = category.isActive !== false;
-                  const categoryId = category.categoryUuid || category.uuid;
-                  const isExpanded = expandedCategories[categoryId];
-                  const hasSubcategories = currentCategory?.categoryUuid === categoryId && currentCategory?.subCategories?.length > 0;
+            <div className="divide-y divide-line-light">
+              {filteredCategories.map((category) => {
+                const categoryId = category.categoryUuid || category.uuid;
+                const isExpanded = expandedCategories[categoryId];
+                const hasSubcategories =
+                  currentCategory?.categoryUuid === categoryId &&
+                  currentCategory?.subCategories?.length > 0;
 
-                  return (
-                    <div key={categoryId} className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <button
-                            onClick={() => handleToggleExpand(categoryId)}
-                            className="p-1 hover:bg-slate-200 rounded transition-colors shrink-0"
-                          >
-                            {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-600" /> : <ChevronRight className="h-4 w-4 text-slate-600" />}
-                          </button>
-                          {category.colorCode ? (
-                            <div className="h-4 w-4 rounded shrink-0" style={{ backgroundColor: category.colorCode }} />
-                          ) : (
-                            <FolderOpen className="h-4 w-4 text-slate-400 shrink-0" />
-                          )}
-                          <span className="font-medium text-slate-900 truncate">{category.name}</span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => handleOpenModal(category)} disabled={actionLoading} className="p-2 text-blue-600 hover:bg-blue-50 rounded">
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => handleDelete(categoryId)} disabled={actionLoading} className="p-2 text-red-600 hover:bg-red-50 rounded">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      {category.description && <p className="text-sm text-slate-500 mt-1 ml-7">{category.description}</p>}
-                      <div className="flex flex-wrap gap-1.5 mt-2 ml-7">
-                        <Badge 
-                          variant={isActive ? 'success' : 'danger'} 
-                          className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={(e) => handleToggleActive(categoryId, e)}
-                          title="Click to toggle active status"
-                        >
-                          {isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                        {category.isVisibleInMenu !== false && <Badge variant="info" className="text-xs">Menu</Badge>}
-                        {category.parentCategoryName && <Badge variant="outline" className="text-xs">{category.parentCategoryName}</Badge>}
-                      </div>
-
-                      {/* Mobile subcategories */}
-                      {isExpanded && hasSubcategories && (
-                        <div className="mt-3 ml-7 space-y-2">
-                          {currentCategory.subCategories.map(subCat => (
-                            <div key={subCat.categoryUuid} className="bg-slate-50 rounded-lg p-3 flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  {subCat.colorCode ? <div className="h-3 w-3 rounded shrink-0" style={{ backgroundColor: subCat.colorCode }} /> : <FolderOpen className="h-3 w-3 text-slate-400 shrink-0" />}
-                                  <span className="text-sm text-slate-700 truncate">{subCat.name}</span>
-                                  <Badge variant="outline" className="text-xs">Child</Badge>
-                                </div>
-                                {subCat.description && <p className="text-xs text-slate-500 mt-1">{subCat.description}</p>}
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button onClick={() => handleOpenModal({ ...subCat, parentCategoryUuid: categoryId, parentCategoryName: category.name })} disabled={actionLoading} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded">
-                                  <Edit2 className="h-3 w-3" />
-                                </button>
-                                <button onClick={() => handleDelete(subCat.categoryUuid)} disabled={actionLoading} className="p-1.5 text-red-600 hover:bg-red-100 rounded">
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop table view */}
-              <table className="hidden md:table w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0">
-                <tr>
-                  <th className="px-6 py-3">Category Name</th>
-                  <th className="px-6 py-3">Description</th>
-                  <th className="px-6 py-3">Parent</th>
-                  <th className="px-6 py-3">Sort Order</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredCategories.map(category => {
-                  const isActive = category.isActive !== false;
-                  const categoryId = category.categoryUuid || category.uuid;
-                  const isExpanded = expandedCategories[categoryId];
-                  const hasSubcategories = currentCategory?.categoryUuid === categoryId && currentCategory?.subCategories?.length > 0;
-                  
-                  return (
-                    <React.Fragment key={categoryId}>
-                      <tr className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleToggleExpand(categoryId)}
-                              className="p-1 hover:bg-slate-200 rounded transition-colors"
-                              title={isExpanded ? "Collapse" : "Expand"}
-                            >
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-slate-600" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-slate-600" />
-                              )}
-                            </button>
-                            {category.colorCode && (
-                              <div 
-                                className="h-4 w-4 rounded" 
-                                style={{ backgroundColor: category.colorCode }}
-                              />
-                            )}
-                            {!category.colorCode && <FolderOpen className="h-4 w-4 text-slate-400" />}
-                            <span className="font-medium text-slate-900">{category.name}</span>
-                          </div>
-                        </td>
-                      <td className="px-6 py-3 text-slate-600">
-                        {category.description || 'No description'}
-                      </td>
-                      <td className="px-6 py-3 text-slate-600 text-sm">
-                        {category.parentCategoryName || '-'}
-                      </td>
-                      <td className="px-6 py-3 text-slate-600">
-                        <Badge variant="secondary">{category.sortOrder || 0}</Badge>
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="flex gap-1">
-                          <Badge 
-                            variant={isActive ? 'success' : 'danger'} 
-                            className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={(e) => handleToggleActive(categoryId, e)}
-                            title="Click to toggle active status"
-                          >
-                            {isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                          {category.isVisibleInMenu !== false && (
-                            <Badge variant="info" className="text-xs">Menu</Badge>
-                          )}
-                        </div>
-                      </td>
-                        <td className="px-6 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleOpenModal(category)}
-                              disabled={actionLoading}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
-                              title="Edit Category"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(categoryId)}
-                              disabled={actionLoading}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                              title="Delete Category"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      
-                      {/* Subcategories */}
-                      {isExpanded && hasSubcategories && currentCategory.subCategories.map(subCat => (
-                        <tr key={subCat.categoryUuid} className="bg-slate-50/50 hover:bg-slate-100 transition-colors">
-                          <td className="px-6 py-3">
-                            <div className="flex items-center gap-2 pl-8">
-                              {subCat.colorCode && (
-                                <div 
-                                  className="h-3 w-3 rounded" 
-                                  style={{ backgroundColor: subCat.colorCode }}
-                                />
-                              )}
-                              {!subCat.colorCode && <FolderOpen className="h-3 w-3 text-slate-400" />}
-                              <span className="text-sm text-slate-700">{subCat.name}</span>
-                              <Badge variant="outline" className="text-xs">Child</Badge>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3 text-slate-600 text-sm">
-                            {subCat.description || 'No description'}
-                          </td>
-                          <td className="px-6 py-3 text-slate-600 text-sm">
-                            {category.name}
-                          </td>
-                          <td className="px-6 py-3 text-slate-600">
-                            <Badge variant="secondary" className="text-xs">{subCat.sortOrder || 0}</Badge>
-                          </td>
-                          <td className="px-6 py-3">
-                            <div className="flex gap-1">
-                              <Badge 
-                                variant={subCat.isActive !== false ? 'success' : 'danger'} 
-                                className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={(e) => handleToggleActive(subCat.categoryUuid, e)}
-                                title="Click to toggle active status"
-                              >
-                                {subCat.isActive !== false ? 'Active' : 'Inactive'}
-                              </Badge>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => {
-                                  const fullSubCat = {
-                                    ...subCat,
-                                    parentCategoryUuid: categoryId,
-                                    parentCategoryName: category.name
-                                  };
-                                  handleOpenModal(fullSubCat);
-                                }}
-                                disabled={actionLoading}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
-                                title="Edit Subcategory"
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(subCat.categoryUuid)}
-                                disabled={actionLoading}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                                title="Delete Subcategory"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                return (
+                  <React.Fragment key={categoryId}>
+                    <CategoryRow category={category} />
+                    {isExpanded &&
+                      hasSubcategories &&
+                      currentCategory.subCategories.map((subCat) => (
+                        <CategoryRow
+                          key={subCat.categoryUuid}
+                          category={subCat}
+                          isSub
+                          parent={{ id: categoryId, name: category.name }}
+                        />
                       ))}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-            </>
+                  </React.Fragment>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        {/* Category Count Footer */}
+        {/* Footer count */}
         {!loading && filteredCategories.length > 0 && (
-          <div className="p-4 border-t border-slate-100 bg-slate-50">
-            <p className="text-sm text-slate-600">
-              Showing {filteredCategories.length} of {categories.length} categories
+          <div className="px-4 py-3 border-t border-line-light bg-paper-2">
+            <p className="text-xs text-txt-muted">
+              Showing{' '}
+              <span className="font-mono text-ink-text">{filteredCategories.length}</span>{' '}
+              of{' '}
+              <span className="font-mono text-ink-text">{categories.length}</span>{' '}
+              categories
             </p>
           </div>
         )}
-      </Card>
+      </Panel>
 
-      {/* Create/Edit Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
+      {/* Create/Edit Modal — re-skinned settings sheet */}
+      <Modal
+        isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={editingCategory ? 'Edit Category' : 'Create New Category'}
+        title={editingCategory ? 'Edit category' : 'New category'}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Category Name *
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+                  Category name *
                 </label>
-                <Input
+                <input
                   type="text"
                   placeholder="e.g., Appetizers, Main Course, Desserts"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   maxLength={100}
+                  className="w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                 />
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
                   Description
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                   placeholder="Brief description of this category"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -585,11 +589,11 @@ const CategoryManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Parent Category
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+                  Parent category
                 </label>
                 <select
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                   value={formData.parentCategoryUuid}
                   onChange={(e) => setFormData({ ...formData, parentCategoryUuid: e.target.value })}
                 >
@@ -605,138 +609,123 @@ const CategoryManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Sort Order
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+                  Sort order
                 </label>
-                <Input
+                <input
                   type="number"
                   placeholder="0"
                   value={formData.sortOrder}
                   onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })}
                   min="0"
+                  className="w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm font-mono text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                 />
-                <p className="text-xs text-slate-500 mt-1">
-                  Lower numbers appear first
-                </p>
+                <p className="text-xs text-txt-faint mt-1">Lower numbers appear first</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
                   Image URL
                 </label>
-                <Input
+                <input
                   type="url"
                   placeholder="https://example.com/image.jpg"
                   value={formData.imageUrl}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                   maxLength={500}
+                  className="w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Icon Name
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+                  Icon name
                 </label>
-                <Input
+                <input
                   type="text"
                   placeholder="e.g., pizza, burger, coffee"
                   value={formData.iconName}
                   onChange={(e) => setFormData({ ...formData, iconName: e.target.value })}
                   maxLength={50}
+                  className="w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                 />
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Color Code
+                <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+                  Color code
                 </label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="color"
                     value={formData.colorCode}
                     onChange={(e) => setFormData({ ...formData, colorCode: e.target.value })}
-                    className="h-10 w-20 rounded border border-slate-300 cursor-pointer"
+                    className="h-10 w-16 rounded-input border border-line-input cursor-pointer bg-paper-2 p-1"
                   />
-                  <Input
+                  <input
                     type="text"
                     placeholder="#3B82F6"
                     value={formData.colorCode}
                     onChange={(e) => setFormData({ ...formData, colorCode: e.target.value })}
                     pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
                     maxLength={7}
-                    className="flex-1"
+                    className="flex-1 h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm font-mono text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-txt-faint mt-1">
                   Hex color for category identification
                 </p>
               </div>
             </div>
 
-            <div className="border-t pt-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
+            <div className="border-t border-line-light pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-ink-text">Active</label>
+                <Toggle
                   checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  onChange={(v) => setFormData({ ...formData, isActive: v })}
                 />
-                <label htmlFor="isActive" className="text-sm font-medium text-slate-700">
-                  Active
-                </label>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isVisibleInMenu"
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-ink-text">Visible in menu</label>
+                <Toggle
                   checked={formData.isVisibleInMenu}
-                  onChange={(e) => setFormData({ ...formData, isVisibleInMenu: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  onChange={(v) => setFormData({ ...formData, isVisibleInMenu: v })}
                 />
-                <label htmlFor="isVisibleInMenu" className="text-sm font-medium text-slate-700">
-                  Visible in Menu
-                </label>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="availableForDineIn"
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-ink-text">Available for dine-in</label>
+                <Toggle
                   checked={formData.availableForDineIn}
-                  onChange={(e) => setFormData({ ...formData, availableForDineIn: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  onChange={(v) => setFormData({ ...formData, availableForDineIn: v })}
                 />
-                <label htmlFor="availableForDineIn" className="text-sm font-medium text-slate-700">
-                  Available for Dine-In
-                </label>
               </div>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
-            <Button 
-              type="button" 
-              variant="secondary" 
+            <BtnGhost
+              type="button"
               onClick={handleCloseModal}
               disabled={actionLoading}
             >
+              <X className="h-4 w-4" />
               Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={actionLoading}
-            >
+            </BtnGhost>
+            <BtnPrimary type="submit" disabled={actionLoading}>
               {actionLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Saving...
                 </>
+              ) : editingCategory ? (
+                'Update category'
               ) : (
-                editingCategory ? 'Update Category' : 'Create Category'
+                'Create category'
               )}
-            </Button>
+            </BtnPrimary>
           </div>
         </form>
       </Modal>

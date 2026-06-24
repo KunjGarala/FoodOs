@@ -8,7 +8,6 @@ import {
   Split as ArrowResult, // Using Split icon for Demerge
   UserCheck, RefreshCw, Edit3, ChevronDown, ChevronUp, Tag
 } from 'lucide-react';
-import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
@@ -16,6 +15,8 @@ import { Input } from '../../components/ui/Input';
 import { CouponInput } from '../../components/coupon/CouponInput';
 import { CouponList } from '../../components/coupon/CouponList';
 import { CouponSummary } from '../../components/coupon/CouponSummary';
+import { DarkScreen, Pill, BtnPrimary, BtnGhost } from '../../components/ui/kit';
+import { cn } from '../../utils/cn';
 
 import {
   fetchTableDetails,
@@ -33,7 +34,6 @@ import {
 } from '../../store/tableSlice';
 import { employeeAPI } from '../../services/api';
 import {
-  addItemsToOrder,
   sendKot,
   generateBill,
   addPayment,
@@ -61,13 +61,14 @@ import useWebSocket from '../../hooks/useWebSocket';
 // ─────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────
-const STATUS_COLORS = {
-  VACANT: { bg: 'bg-emerald-100', text: 'text-emerald-800', dot: 'bg-emerald-500' },
-  OCCUPIED: { bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-500' },
-  RESERVED: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-500' },
-  BILLED: { bg: 'bg-violet-100', text: 'text-violet-800', dot: 'bg-violet-500' },
-  DIRTY: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-500' },
-  MAINTENANCE: { bg: 'bg-slate-100', text: 'text-slate-800', dot: 'bg-slate-500' },
+// Table status → redesign Pill tone + dot colour (dark surface)
+const STATUS_PILL = {
+  VACANT: { tone: 'success', dot: 'bg-success' },
+  OCCUPIED: { tone: 'marigold', dot: 'bg-marigold' },
+  RESERVED: { tone: 'gold', dot: 'bg-gold' },
+  BILLED: { tone: 'success', dot: 'bg-success' },
+  DIRTY: { tone: 'danger', dot: 'bg-danger' },
+  MAINTENANCE: { tone: 'neutral', dot: 'bg-txt-faintDark' },
 };
 
 const KOT_STATUS_COLORS = {
@@ -113,10 +114,6 @@ const TableDetails = () => {
   const orderError = useSelector((s) => s.orders.error);
   const orderSuccess = useSelector((s) => s.orders.success);
   const orderActionLoading = useSelector((s) => s.orders.actionLoading);
-  const currentUserUuid = useSelector((s) => s.auth.userId);
-  const products = useSelector((s) => s.products.products);
-  const categories = useSelector((s) => s.categories.categories);
-  const productsLoading = useSelector((s) => s.products.loading);
   const couponState = useSelector((s) => s.coupon);
 
   // Modals
@@ -559,40 +556,48 @@ const TableDetails = () => {
   // ── Loading / Error ────────────────────────────────────
   if (detailsLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-10 w-10 animate-spin text-slate-400" />
-          <p className="text-slate-500 font-medium">Loading table details…</p>
+      <DarkScreen className="p-4 sm:p-6">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-10 w-10 animate-spin text-txt-faintDark" />
+            <p className="text-txt-mutedDark font-medium">Loading table details…</p>
+          </div>
         </div>
-      </div>
+      </DarkScreen>
     );
   }
 
   if (!tableDetails || !table) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] gap-4">
-        <AlertCircle className="h-16 w-16 text-slate-300" />
-        <p className="text-lg text-slate-500 font-medium">Table not found</p>
-        <Button variant="outline" onClick={() => navigate('/app/tables')}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Floor Plan
-        </Button>
-      </div>
+      <DarkScreen className="p-4 sm:p-6">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <AlertCircle className="h-16 w-16 text-txt-faintDark" />
+          <p className="text-lg text-txt-mutedDark font-medium">Table not found</p>
+          <BtnGhost onClick={() => navigate('/app/tables')}>
+            <ArrowLeft className="h-4 w-4" /> Back to Floor Plan
+          </BtnGhost>
+        </div>
+      </DarkScreen>
     );
   }
 
-  const sc = STATUS_COLORS[table.status] || STATUS_COLORS.VACANT;
+  const sc = STATUS_PILL[table.status] || STATUS_PILL.VACANT;
 
   // ── Render ─────────────────────────────────────────────
+  const isError = !!(orderError || tableError || couponState.error || couponState.autoRemovedReason);
+
   return (
-    <div className="space-y-4 sm:space-y-6 pb-8">
+    <DarkScreen className="p-4 sm:p-6">
+      <div className="space-y-4 sm:space-y-6 pb-8">
       {/* Toast */}
       {(orderError || orderSuccess || tableError || couponState.error || couponState.message || couponState.autoRemovedReason) && (
-        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in sm:max-w-sm ${
-          (orderError || tableError || couponState.error || couponState.autoRemovedReason)
-            ? 'bg-red-50 text-red-800 border border-red-200'
-            : 'bg-green-50 text-green-800 border border-green-200'
-        }`}>
-          {(orderError || tableError || couponState.error || couponState.autoRemovedReason)
+        <div className={cn(
+          'fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 sm:p-4 rounded-card shadow-float flex items-center gap-2 animate-slide-in sm:max-w-sm border',
+          isError
+            ? 'bg-danger/[0.14] text-danger-deep border-danger/30'
+            : 'bg-success/[0.12] text-success-deep border-success/30',
+        )}>
+          {isError
             ? <AlertCircle className="h-5 w-5 flex-shrink-0" />
             : <CheckCircle className="h-5 w-5 flex-shrink-0" />}
           <span className="text-xs sm:text-sm font-medium line-clamp-2">
@@ -602,48 +607,57 @@ const TableDetails = () => {
       )}
 
       {/* ───── HEADER ───── */}
-      <div className="flex flex-col gap-3 sm:gap-4 bg-white rounded-xl border border-slate-200 p-3 sm:p-5">
+      <div className="flex flex-col gap-3 sm:gap-4 bg-ink-card rounded-card border border-ink-line p-3 sm:p-5">
         <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => navigate('/app/tables')}
-            className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
+            className="p-1.5 sm:p-2 rounded-input text-txt-mutedDark hover:text-white hover:bg-white/5 transition-colors shrink-0"
           >
-            <ArrowLeft className="h-5 w-5 text-slate-600" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
+            <p className="eyebrow text-[10px] text-txt-faintDark mb-0.5">Floor · Table Details</p>
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-              <h1 className="text-lg sm:text-2xl font-bold text-slate-900">Table {table.tableNumber}</h1>
-              <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-semibold ${sc.bg} ${sc.text}`}>
-                <span className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${sc.dot}`} />
+              <h1 className="font-display text-lg sm:text-2xl font-bold text-white tracking-[-0.01em]">Table {table.tableNumber}</h1>
+              <Pill tone={sc.tone}>
+                <span className={cn('h-1.5 w-1.5 rounded-full', sc.dot)} />
                 {table.status}
-              </span>
+              </Pill>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-500">
+            <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-txt-mutedDark">
               <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {table.capacity} seats</span>
               {table.sectionName && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{table.sectionName}</span>}
             </div>
           </div>
         </div>
 
-        {/* Order info badge (if occupied/billed) */}
+        {/* Session card — stat chips */}
         {activeOrder && (
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 pl-0 sm:pl-12">
-            <div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Hash className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />
-                <span className="font-semibold text-sm text-slate-800">{activeOrder.orderNumber || activeOrder.orderUuid?.slice(0, 8)}</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pl-0 sm:pl-12">
+            <div className="rounded-tile bg-ink-card2 border border-ink-line p-3">
+              <p className="eyebrow text-[9px] text-txt-faintDark mb-1 flex items-center gap-1"><Hash className="h-3 w-3" /> Order</p>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-sm text-white truncate">{activeOrder.orderNumber || activeOrder.orderUuid?.slice(0, 8)}</span>
                 <Badge variant={activeOrder.status === 'OPEN' ? 'success' : activeOrder.status === 'BILLED' ? 'primary' : 'default'}>
                   {activeOrder.status}
                 </Badge>
               </div>
-              <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 mt-0.5">
-                {activeOrder.numberOfGuests > 0 && (
-                  <span className="flex items-center gap-1"><Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{activeOrder.numberOfGuests} guests</span>
-                )}
-                {table.seatedAt && (
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{calculateSeatedTime(table.seatedAt)}</span>
-                )}
+            </div>
+            {activeOrder.numberOfGuests > 0 && (
+              <div className="rounded-tile bg-ink-card2 border border-ink-line p-3">
+                <p className="eyebrow text-[9px] text-txt-faintDark mb-1 flex items-center gap-1"><Users className="h-3 w-3" /> Guests</p>
+                <span className="font-display text-lg font-bold text-white leading-none">{activeOrder.numberOfGuests}</span>
               </div>
+            )}
+            {table.seatedAt && (
+              <div className="rounded-tile bg-ink-card2 border border-ink-line p-3">
+                <p className="eyebrow text-[9px] text-txt-faintDark mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Seated</p>
+                <span className="font-mono text-sm text-txt-light">{calculateSeatedTime(table.seatedAt)}</span>
+              </div>
+            )}
+            <div className="rounded-tile bg-marigold/[0.12] border border-marigold/25 p-3">
+              <p className="eyebrow text-[9px] text-marigold/80 mb-1 flex items-center gap-1"><Receipt className="h-3 w-3" /> Running Total</p>
+              <span className="font-mono text-lg font-bold text-marigold leading-none">{formatCurrency(total)}</span>
             </div>
           </div>
         )}
@@ -652,24 +666,24 @@ const TableDetails = () => {
         {(isOccupied || isBilled) && (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 pl-0 sm:pl-12">
             {table.currentWaiterName ? (
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-                <UserCheck className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">{table.currentWaiterName}</span>
+              <div className="flex items-center gap-2 bg-ink-card2 border border-ink-line rounded-input px-3 py-1.5">
+                <UserCheck className="h-4 w-4 text-marigold" />
+                <span className="text-sm font-medium text-txt-light">{table.currentWaiterName}</span>
                 {hasManagerAccess && (
                   <>
                     <button
                       onClick={handleOpenAssignWaiter}
-                      className="ml-1 p-1 hover:bg-blue-100 rounded transition-colors"
+                      className="ml-1 p-1 text-txt-mutedDark hover:text-white hover:bg-white/5 rounded transition-colors"
                       title="Change waiter"
                     >
-                      <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={handleRemoveWaiter}
-                      className="p-1 hover:bg-red-100 rounded transition-colors"
+                      className="p-1 text-danger hover:bg-danger/10 rounded transition-colors"
                       title="Remove waiter"
                     >
-                      <X className="h-3.5 w-3.5 text-red-500" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </>
                 )}
@@ -677,7 +691,7 @@ const TableDetails = () => {
             ) : hasManagerAccess ? (
               <button
                 onClick={handleOpenAssignWaiter}
-                className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                className="flex items-center gap-1.5 bg-marigold/[0.12] border border-marigold/25 rounded-input px-3 py-1.5 text-sm font-medium text-marigold hover:bg-marigold/20 transition-colors"
               >
                 <UserCheck className="h-4 w-4" />
                 Assign Waiter
@@ -689,39 +703,29 @@ const TableDetails = () => {
 
       {/* ───── VACANT STATE ───── */}
       {isVacant && (
-        <Card className="text-center py-16">
-          <CardContent>
-            <UtensilsCrossed className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-700 mb-2">Table is Vacant</h2>
-            <p className="text-slate-500 mb-6">No active order. Occupy this table to create a new order.</p>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <Button onClick={() => setShowOccupyModal(true)} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="h-4 w-4 mr-2" /> Occupy Table
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/app/tables/${tableUuid}/history`)}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
-              >
-                <Receipt className="h-4 w-4 mr-2" /> View Order History
-              </Button>
+        <div className="bg-ink-card border border-ink-line rounded-card text-center py-16 px-4">
+          <UtensilsCrossed className="h-16 w-16 text-txt-faintDark mx-auto mb-4" />
+          <h2 className="font-display text-xl font-semibold text-white mb-2">Table is Vacant</h2>
+          <p className="text-txt-mutedDark mb-6">No active order. Occupy this table to create a new order.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <BtnPrimary onClick={() => setShowOccupyModal(true)}>
+              <Plus className="h-4 w-4" /> Occupy Table
+            </BtnPrimary>
+            <BtnGhost onClick={() => navigate(`/app/tables/${tableUuid}/history`)}>
+              <Receipt className="h-4 w-4" /> View Order History
+            </BtnGhost>
+          </div>
+
+          {/* Demerge Button: Show if table is merged and vacant */}
+          {(table?.isMerged === true || !!table?.mergedWithTableIds) && (
+            <div className="mt-4">
+              <BtnGhost onClick={handleDemergeTable}>
+                <ArrowResult className="h-4 w-4" />
+                Demerge Tables
+              </BtnGhost>
             </div>
-            
-            {/* Demerge Button: Show if table is merged and vacant */}
-            {(table?.isMerged === true || !!table?.mergedWithTableIds) && (
-              <div className="mt-4">
-                 <Button 
-                   variant="outline"
-                   className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                   onClick={handleDemergeTable}
-                 >
-                   <ArrowResult className="h-4 w-4 mr-2" />
-                   Demerge Tables
-                 </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </div>
       )}
 
       {/* ───── OCCUPIED / BILLED STATE ───── */}
@@ -731,72 +735,72 @@ const TableDetails = () => {
           <div className="xl:col-span-2 space-y-4 sm:space-y-6">
 
             {/* Customer Info - Collapsible */}
-            <Card>
+            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
               <div
-                className="p-3 sm:p-4 flex items-center justify-between cursor-pointer select-none hover:bg-slate-50 transition-colors rounded-t-xl"
+                className="p-3 sm:p-4 flex items-center justify-between cursor-pointer select-none hover:bg-white/5 transition-colors"
                 onClick={() => setCustomerExpanded((v) => !v)}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <UserCircle className="h-5 w-5 text-slate-600 shrink-0" />
-                  <h3 className="font-semibold text-slate-800 text-sm sm:text-base">Customer</h3>
+                  <UserCircle className="h-5 w-5 text-txt-mutedDark shrink-0" />
+                  <h3 className="font-semibold text-txt-light text-sm sm:text-base">Customer</h3>
                   {/* Inline summary when collapsed */}
                   {!customerExpanded && (activeOrder.customerName || activeOrder.customerPhone) && (
-                    <span className="hidden sm:inline-flex items-center gap-2 ml-2 text-xs text-slate-500 truncate">
-                      <span className="font-medium text-slate-600 truncate">{activeOrder.customerName || '—'}</span>
+                    <span className="hidden sm:inline-flex items-center gap-2 ml-2 text-xs text-txt-mutedDark truncate">
+                      <span className="font-medium text-txt-light truncate">{activeOrder.customerName || '—'}</span>
                       {activeOrder.customerPhone && (
-                        <><span className="text-slate-300">|</span><span className="truncate">{activeOrder.customerPhone}</span></>
+                        <><span className="text-txt-faintDark">|</span><span className="truncate">{activeOrder.customerPhone}</span></>
                       )}
                     </span>
                   )}
                   {!customerExpanded && !activeOrder.customerName && !activeOrder.customerPhone && !activeOrder.customerEmail && (
-                    <span className="ml-2 text-xs text-slate-400">No details</span>
+                    <span className="ml-2 text-xs text-txt-faintDark">No details</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleOpenCustomerModal(); }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-marigold bg-marigold/[0.12] hover:bg-marigold/20 border border-marigold/25 rounded-input transition-colors"
                   >
                     <Edit3 className="h-3 w-3" />
                     {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) ? 'Edit' : 'Add'}
                   </button>
                   {customerExpanded
-                    ? <ChevronUp className="h-4 w-4 text-slate-400" />
-                    : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                    ? <ChevronUp className="h-4 w-4 text-txt-faintDark" />
+                    : <ChevronDown className="h-4 w-4 text-txt-faintDark" />}
                 </div>
               </div>
               {/* Expanded content */}
               <div className={`overflow-hidden transition-all duration-200 ease-in-out ${
                 customerExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
               }`}>
-                <div className="border-t border-slate-100">
+                <div className="border-t border-ink-line">
                   {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) ? (
                     <div className="px-4 py-3 flex flex-wrap gap-5 text-sm">
                       {activeOrder.customerName && (
                         <div className="flex items-center gap-2">
-                          <UserCircle className="h-4 w-4 text-slate-400" />
-                          <span className="font-medium text-slate-700">{activeOrder.customerName}</span>
+                          <UserCircle className="h-4 w-4 text-txt-faintDark" />
+                          <span className="font-medium text-txt-light">{activeOrder.customerName}</span>
                         </div>
                       )}
                       {activeOrder.customerPhone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-slate-400" />
-                          <span className="text-slate-600">{activeOrder.customerPhone}</span>
+                          <Phone className="h-4 w-4 text-txt-faintDark" />
+                          <span className="text-txt-mutedDark">{activeOrder.customerPhone}</span>
                         </div>
                       )}
                       {activeOrder.customerEmail && (
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-slate-400" />
-                          <span className="text-slate-600">{activeOrder.customerEmail}</span>
+                          <Mail className="h-4 w-4 text-txt-faintDark" />
+                          <span className="text-txt-mutedDark">{activeOrder.customerEmail}</span>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="px-4 py-3 text-center">
-                      <p className="text-sm text-slate-400">No customer details added</p>
+                      <p className="text-sm text-txt-faintDark">No customer details added</p>
                       <button
                         onClick={handleOpenCustomerModal}
-                        className="mt-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        className="mt-1 text-sm font-medium text-marigold hover:brightness-110 hover:underline"
                       >
                         + Add customer details
                       </button>
@@ -804,18 +808,18 @@ const TableDetails = () => {
                   )}
                 </div>
               </div>
-            </Card>
+            </div>
 
             {/* Order Items Table */}
-            <Card>
-              <div className="p-3 sm:p-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800 text-sm sm:text-base">Order Items ({items.length})</h3>
+            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
+              <div className="p-3 sm:p-4 border-b border-ink-line flex items-center justify-between">
+                <h3 className="font-semibold text-txt-light text-sm sm:text-base">Order Items ({items.length})</h3>
                 {hasPendingItems && (
                   <Badge variant="warning" className="text-[10px] sm:text-xs">{items.filter(i => i.kotStatus === 'PENDING' || !i.kotStatus).length} pending</Badge>
                 )}
               </div>
               {items.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">
+                <div className="p-8 text-center text-txt-faintDark">
                   <UtensilsCrossed className="h-10 w-10 mx-auto mb-2" />
                   <p className="font-medium">No items yet</p>
                   <p className="text-xs mt-1">Add items to this order</p>
@@ -824,55 +828,50 @@ const TableDetails = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-100 text-left text-slate-500">
-                        <th className="px-4 py-3 font-medium">Item</th>
-                        <th className="px-4 py-3 font-medium text-center">Qty</th>
-                        <th className="px-4 py-3 font-medium text-right">Price</th>
-                        <th className="px-4 py-3 font-medium text-right">Total</th>
-                        <th className="px-4 py-3 font-medium text-center">KOT</th>
+                      <tr className="border-b border-ink-line text-left text-txt-faintDark">
+                        <th className="px-4 py-3 font-medium eyebrow text-[10px]">Item</th>
+                        <th className="px-4 py-3 font-medium eyebrow text-[10px] text-center">Qty</th>
+                        <th className="px-4 py-3 font-medium eyebrow text-[10px] text-right">Price</th>
+                        <th className="px-4 py-3 font-medium eyebrow text-[10px] text-right">Total</th>
+                        <th className="px-4 py-3 font-medium eyebrow text-[10px] text-center">KOT</th>
                         <th className="px-4 py-3 font-medium text-center w-12"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {groupedItems.map((group, idx) => {
                         const isCancelled = group.kotStatus === 'CANCELLED' || group.status === 'CANCELLED';
-                        const singleItemLineTotal = (() => {
-                          const basePrice = (group.unitPrice || group.price || 0) * (group.quantity || 1);
-                          const itemModTotal = (group.modifiers || []).reduce((ms, m) => ms + ((m.lineTotal || (m.priceAdd || m.unitPrice || 0) * (m.quantity || 1)) || 0), 0);
-                          return basePrice + itemModTotal;
-                        })();
                         const groupTotal = group.originalItems.reduce((sum, oi) => {
                           const oiBase = (oi.unitPrice || oi.price || 0) * (oi.quantity || 1);
                           const oiMod = (oi.modifiers || []).reduce((ms, m) => ms + ((m.lineTotal || (m.priceAdd || m.unitPrice || 0) * (m.quantity || 1)) || 0), 0);
                           return sum + (oi.lineTotal || (oiBase + oiMod));
                         }, 0);
                         return (
-                          <tr key={group.itemUuid || group.orderItemUuid || idx} className={`border-b border-slate-50 ${isCancelled ? 'opacity-50 line-through' : ''}`}>
+                          <tr key={group.itemUuid || group.orderItemUuid || idx} className={`border-b border-ink-line/60 ${isCancelled ? 'opacity-50 line-through' : ''}`}>
                             <td className="px-4 py-3">
-                              <div className="font-medium text-slate-800">{group.productName || group.name}</div>
-                              {group.variationName && <div className="text-xs text-slate-400">{group.variationName}</div>}
+                              <div className="font-medium text-txt-light">{group.productName || group.name}</div>
+                              {group.variationName && <div className="text-xs text-txt-faintDark">{group.variationName}</div>}
                               {group.modifiers?.length > 0 && (
                                 <div className="mt-1 space-y-0.5">
                                   {group.modifiers.map((mod, mIdx) => {
                                     const modPrice = mod.lineTotal || (mod.priceAdd || mod.unitPrice || 0) * (mod.quantity || 1);
                                     return (
-                                      <div key={mod.orderItemModifierUuid || mIdx} className="flex items-center gap-1 text-xs text-slate-500">
-                                        <span className="text-blue-400">+</span>
+                                      <div key={mod.orderItemModifierUuid || mIdx} className="flex items-center gap-1 text-xs text-txt-mutedDark">
+                                        <span className="text-marigold">+</span>
                                         <span>{mod.modifierName || mod.name}</span>
-                                        {mod.quantity > 1 && <span className="text-slate-400">x{mod.quantity}</span>}
-                                        {modPrice > 0 && <span className="ml-auto text-blue-600 font-medium">₹{modPrice.toFixed(2)}</span>}
+                                        {mod.quantity > 1 && <span className="text-txt-faintDark">x{mod.quantity}</span>}
+                                        {modPrice > 0 && <span className="ml-auto text-marigold font-mono font-medium">₹{modPrice.toFixed(2)}</span>}
                                       </div>
                                     );
                                   })}
                                 </div>
                               )}
                               {group.originalItems.length > 1 && (
-                                <div className="text-xs text-slate-400 mt-1">({group.originalItems.length} identical items)</div>
+                                <div className="text-xs text-txt-faintDark mt-1">({group.originalItems.length} identical items)</div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center font-semibold">{group.groupedQty}</td>
-                            <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(group.unitPrice || group.price)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                            <td className="px-4 py-3 text-center font-display font-bold text-white">{group.groupedQty}</td>
+                            <td className="px-4 py-3 text-right font-mono text-txt-mutedDark">{formatCurrency(group.unitPrice || group.price)}</td>
+                            <td className="px-4 py-3 text-right font-mono font-semibold text-txt-light">
                               {formatCurrency(groupTotal)}
                             </td>
                             <td className="px-4 py-3 text-center">
@@ -884,10 +883,10 @@ const TableDetails = () => {
                               {!isCancelled && (group.kotStatus === 'PENDING' || !group.kotStatus) && (
                                 <button
                                   onClick={() => { setCancelItemTarget(group.originalItems[0]); setCancelReason(''); setShowCancelItemModal(true); }}
-                                  className="p-1 hover:bg-red-50 rounded-md transition-colors"
+                                  className="p-1 hover:bg-danger/10 rounded-md transition-colors"
                                   title="Cancel item"
                                 >
-                                  <Ban className="h-4 w-4 text-red-500" />
+                                  <Ban className="h-4 w-4 text-danger" />
                                 </button>
                               )}
                             </td>
@@ -898,22 +897,22 @@ const TableDetails = () => {
                   </table>
                 </div>
               )}
-            </Card>
+            </div>
           </div>
 
           {/* RIGHT: Bill + Payments + Actions */}
           <div className="space-y-4 sm:space-y-6">
 
             {/* Bill Summary */}
-            <Card>
-              <div className="p-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Receipt className="h-5 w-5" /> Bill Summary</h3>
+            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
+              <div className="p-4 border-b border-ink-line">
+                <h3 className="font-semibold text-txt-light flex items-center gap-2"><Receipt className="h-5 w-5 text-marigold" /> Bill Summary</h3>
               </div>
               <div className="p-4 text-sm">
                 {/* Itemized breakdown */}
                 {groupedNonCancelledItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faintDark mb-2">
                       <span>Item</span>
                       <span>Amount</span>
                     </div>
@@ -928,50 +927,50 @@ const TableDetails = () => {
                         const productName = group.productName || group.name;
                         const hasModifiers = (group.modifiers || []).length > 0;
                         return (
-                          <div key={idx} className="flex items-start justify-between py-1.5 group hover:bg-slate-50 -mx-1 px-1 rounded transition-colors">
+                          <div key={idx} className="flex items-start justify-between py-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors">
                             <div className="min-w-0 flex-1 mr-3">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-medium text-slate-700">{productName}</span>
+                                <span className="font-medium text-txt-light">{productName}</span>
                                 {group.variationName && (
-                                  <span className="text-[11px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-medium">{group.variationName}</span>
+                                  <span className="text-[11px] text-txt-mutedDark bg-ink-card2 px-1.5 py-0.5 rounded font-medium">{group.variationName}</span>
                                 )}
                                 {group.groupedQty > 1 && (
-                                  <span className="text-[11px] font-bold text-white bg-slate-500 px-1.5 py-0.5 rounded-full leading-none">&times;{group.groupedQty}</span>
+                                  <span className="text-[11px] font-bold text-ink bg-marigold px-1.5 py-0.5 rounded-full leading-none font-mono">&times;{group.groupedQty}</span>
                                 )}
                               </div>
                               {hasModifiers && (
                                 <div className="flex flex-wrap gap-x-2 mt-0.5">
                                   {(group.modifiers || []).map((m, mIdx) => (
-                                    <span key={mIdx} className="text-[11px] text-blue-500">
+                                    <span key={mIdx} className="text-[11px] text-marigold">
                                       + {m.modifierName || m.name}
                                     </span>
                                   ))}
                                 </div>
                               )}
                               {group.groupedQty > 1 && (
-                                <div className="text-[11px] text-slate-400 mt-0.5">
+                                <div className="text-[11px] text-txt-faintDark mt-0.5 font-mono">
                                   {formatCurrency(perItemTotal)} each
                                 </div>
                               )}
                             </div>
-                            <span className="whitespace-nowrap font-semibold text-slate-800 tabular-nums pt-0.5">{formatCurrency(groupTotal)}</span>
+                            <span className="whitespace-nowrap font-mono font-semibold text-txt-light tabular-nums pt-0.5">{formatCurrency(groupTotal)}</span>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="border-b border-dashed border-slate-200 mt-2 mb-3" />
+                    <div className="border-b border-dashed border-ink-line mt-2 mb-3" />
                   </div>
                 )}
 
                 {/* Coupons */}
-                <div className="mt-3 mb-4 p-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 space-y-3">
+                <div className="mt-3 mb-4 p-3 rounded-tile border border-dashed border-ink-line bg-ink-card2 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <Tag className="h-4 w-4 text-slate-500" />
+                    <div className="flex items-center gap-2 text-sm font-semibold text-txt-light">
+                      <Tag className="h-4 w-4 text-marigold" />
                       <span>Coupons & Offers</span>
                     </div>
                     {couponState.autoRemovedReason && (
-                      <span className="text-xs text-red-600 font-medium">{couponState.autoRemovedReason}</span>
+                      <span className="text-xs text-danger font-medium">{couponState.autoRemovedReason}</span>
                     )}
                   </div>
 
@@ -998,87 +997,87 @@ const TableDetails = () => {
                     revalidating={couponState.revalidating}
                   />
 
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faintDark">
                     <span>Available Offers</span>
-                    <span className="text-slate-400">Auto picks best savings</span>
+                    <span className="text-txt-faintDark">Auto picks best savings</span>
                   </div>
                   <CouponList coupons={couponState.suggestions} onApply={handleApplyFromList} />
                 </div>
 
                 {/* Totals */}
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-slate-500">
+                  <div className="flex justify-between text-txt-mutedDark">
                     <span>Subtotal</span>
-                    <span className="tabular-nums">{formatCurrency(subtotal)}</span>
+                    <span className="font-mono tabular-nums text-txt-light">{formatCurrency(subtotal)}</span>
                   </div>
                   {discount > 0 && (
-                    <div className="flex justify-between text-emerald-600">
+                    <div className="flex justify-between text-success-bright">
                       <span>Discount</span>
-                      <span className="tabular-nums">-{formatCurrency(discount)}</span>
+                      <span className="font-mono tabular-nums">-{formatCurrency(discount)}</span>
                     </div>
                   )}
                   {tax > 0 && (
-                    <div className="flex justify-between text-slate-500">
+                    <div className="flex justify-between text-txt-mutedDark">
                       <span>Tax</span>
-                      <span className="tabular-nums">{formatCurrency(tax)}</span>
+                      <span className="font-mono tabular-nums text-txt-light">{formatCurrency(tax)}</span>
                     </div>
                   )}
                   {serviceCharge > 0 && (
-                    <div className="flex justify-between text-slate-500">
+                    <div className="flex justify-between text-txt-mutedDark">
                       <span>Service Charge</span>
-                      <span className="tabular-nums">{formatCurrency(serviceCharge)}</span>
+                      <span className="font-mono tabular-nums text-txt-light">{formatCurrency(serviceCharge)}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Grand Total */}
-                <div className="border-t-2 border-slate-800 mt-3 pt-3 flex justify-between items-center">
-                  <span className="font-bold text-lg text-slate-900">Total</span>
-                  <span className="font-bold text-lg text-slate-900 tabular-nums">{formatCurrency(total)}</span>
+                <div className="border-t border-ink-line mt-3 pt-3 flex justify-between items-center">
+                  <span className="font-display font-bold text-lg text-white">Total</span>
+                  <span className="font-mono font-bold text-lg text-marigold tabular-nums">{formatCurrency(total)}</span>
                 </div>
 
                 {/* Payment Status */}
                 <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Paid</span>
-                    <span className={`font-semibold tabular-nums ${paidAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{formatCurrency(paidAmount)}</span>
+                    <span className="text-txt-mutedDark">Paid</span>
+                    <span className={`font-mono font-semibold tabular-nums ${paidAmount > 0 ? 'text-success-bright' : 'text-txt-faintDark'}`}>{formatCurrency(paidAmount)}</span>
                   </div>
                   {balance > 0 && (
-                    <div className="flex justify-between items-center bg-red-50 -mx-4 px-4 py-2 rounded-b-xl">
-                      <span className="font-semibold text-red-700">Balance Due</span>
-                      <span className="font-bold text-red-700 tabular-nums">{formatCurrency(balance)}</span>
+                    <div className="flex justify-between items-center bg-danger/[0.14] -mx-4 px-4 py-2">
+                      <span className="font-semibold text-danger-deep">Balance Due</span>
+                      <span className="font-mono font-bold text-danger-deep tabular-nums">{formatCurrency(balance)}</span>
                     </div>
                   )}
                   {balance <= 0 && paidAmount > 0 && (
-                    <div className="flex justify-between items-center bg-emerald-50 -mx-4 px-4 py-2 rounded-b-xl">
-                      <span className="font-semibold text-emerald-700 flex items-center gap-1.5">
+                    <div className="flex justify-between items-center bg-success/[0.12] -mx-4 px-4 py-2">
+                      <span className="font-semibold text-success-deep flex items-center gap-1.5">
                         <CheckCircle className="h-4 w-4" /> Fully Paid
                       </span>
-                      <span className="font-bold text-emerald-700 tabular-nums">{formatCurrency(paidAmount)}</span>
+                      <span className="font-mono font-bold text-success-deep tabular-nums">{formatCurrency(paidAmount)}</span>
                     </div>
                   )}
                 </div>
               </div>
-            </Card>
+            </div>
 
             {/* Payments */}
-            <Card>
-              <div className="p-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2"><CreditCard className="h-5 w-5" /> Payments</h3>
+            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
+              <div className="p-4 border-b border-ink-line">
+                <h3 className="font-semibold text-txt-light flex items-center gap-2"><CreditCard className="h-5 w-5 text-marigold" /> Payments</h3>
               </div>
               <div className="p-4">
                 {payments.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-4">No payments yet</p>
+                  <p className="text-sm text-txt-faintDark text-center py-4">No payments yet</p>
                 ) : (
                   <div className="space-y-2">
                     {payments.map((p, idx) => (
-                      <div key={p.paymentUuid || idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div key={p.paymentUuid || idx} className="flex items-center justify-between p-3 bg-ink-card2 border border-ink-line rounded-tile">
                         <div>
-                          <div className="font-medium text-slate-700 text-sm">{p.paymentMethod || p.method}</div>
-                          {p.transactionId && <div className="text-xs text-slate-400">{p.transactionId}</div>}
+                          <div className="font-medium text-txt-light text-sm">{p.paymentMethod || p.method}</div>
+                          {p.transactionId && <div className="text-xs text-txt-faintDark font-mono">{p.transactionId}</div>}
                         </div>
                         <div className="text-right">
-                          <div className="font-semibold text-slate-800">{formatCurrency(p.amount)}</div>
+                          <div className="font-mono font-semibold text-txt-light">{formatCurrency(p.amount)}</div>
                           {p.status && <Badge variant={p.status === 'COMPLETED' ? 'success' : 'default'} className="text-xs">{p.status}</Badge>}
                         </div>
                       </div>
@@ -1086,106 +1085,101 @@ const TableDetails = () => {
                   </div>
                 )}
               </div>
-            </Card>
+            </div>
 
-            {/* Action Buttons */}
-            <Card>
-              <div className="p-4 space-y-3">
-                <Button
+            {/* Action Grid */}
+            <div className="bg-ink-card border border-ink-line rounded-card p-4">
+              <p className="eyebrow text-[10px] text-txt-faintDark mb-3">Actions</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                <BtnPrimary
                   className="w-full"
                   onClick={() => navigate(`/app/tables/${tableUuid}/add-items`)}
                   disabled={orderActionLoading || isBilled}
                 >
-                  <Plus className="h-4 w-4 mr-2" /> Add Items
-                </Button>
-
+                  <Plus className="h-4 w-4" /> Add Items
+                </BtnPrimary>
 
                 {hasPendingItems && (
-                  <Button
-                    variant="outline"
-                    className="w-full border-orange-200 text-orange-700 hover:bg-orange-50"
+                  <BtnGhost
+                    className="w-full bg-ink-card2 border-ink-line text-marigold hover:bg-white/5"
                     onClick={handleSendKot}
                     disabled={orderActionLoading}
                   >
-                    {orderActionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ChefHat className="h-4 w-4 mr-2" />}
+                    {orderActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChefHat className="h-4 w-4" />}
                     Send KOT
-                  </Button>
+                  </BtnGhost>
                 )}
 
                 {hasBillingAccess && isOccupied && items.length > 0 && (
-                  <Button
-                    variant="outline"
-                    className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
+                  <BtnGhost
+                    className="w-full bg-ink-card2 border-ink-line text-txt-light hover:bg-white/5"
                     onClick={handleGenerateBill}
                     disabled={orderActionLoading}
                   >
-                    {orderActionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Receipt className="h-4 w-4 mr-2" />}
+                    {orderActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
                     Generate Bill
-                  </Button>
+                  </BtnGhost>
                 )}
 
                 {hasBillingAccess && (
-                  <Button
-                    variant="outline"
-                    className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  <BtnGhost
+                    className="w-full bg-ink-card2 border-ink-line text-success-bright hover:bg-white/5"
                     onClick={() => {
                       setPaymentForm({ method: 'CASH', amount: balance > 0 ? balance.toFixed(2) : '', transactionId: '' });
                       setShowPaymentModal(true);
                     }}
                     disabled={orderActionLoading}
                   >
-                    <CreditCard className="h-4 w-4 mr-2" /> Add Payment
-                  </Button>
-                )}
-
-                {/* KOT Status Warning */}
-                {hasUnservedItems && items.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-                    <div className="flex items-center justify-center gap-2 text-amber-700">
-                      <AlertCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Waiting for all items to be served</span>
-                    </div>
-                    <p className="text-xs text-amber-600 mt-1">
-                      {nonCancelledItems.filter(i => i.kotStatus === 'SERVED').length}/{nonCancelledItems.length} items served
-                    </p>
-                  </div>
-                )}
-
-                {/* Complete Order - only when ALL items served AND payment complete */}
-                {allItemsServed && paidAmount >= total && total > 0 && (
-                  <Button
-                    variant="success"
-                    className="w-full"
-                    onClick={handleCompleteOrder}
-                    disabled={orderActionLoading}
-                  >
-                    {orderActionLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                    Complete Order
-                  </Button>
-                )}
-
-                {/* Show info when items served but payment pending */}
-                {allItemsServed && (paidAmount < total || total <= 0) && items.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                    <div className="flex items-center justify-center gap-2 text-blue-700">
-                      <CreditCard className="h-4 w-4" />
-                      <span className="text-sm font-medium">All items served — complete payment to finish</span>
-                    </div>
-                  </div>
-                )}
-
-                {hasManagerAccess && (
-                  <Button
-                    variant="danger"
-                    className="w-full"
-                    onClick={() => { setCancelReason(''); setShowCancelOrderModal(true); }}
-                    disabled={orderActionLoading}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" /> Cancel Order
-                  </Button>
+                    <CreditCard className="h-4 w-4" /> Add Payment
+                  </BtnGhost>
                 )}
               </div>
-            </Card>
+
+              {/* KOT Status Warning */}
+              {hasUnservedItems && items.length > 0 && (
+                <div className="mt-3 bg-marigold/[0.12] border border-marigold/25 rounded-tile p-3 text-center">
+                  <div className="flex items-center justify-center gap-2 text-marigold">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Waiting for all items to be served</span>
+                  </div>
+                  <p className="text-xs text-txt-mutedDark mt-1 font-mono">
+                    {nonCancelledItems.filter(i => i.kotStatus === 'SERVED').length}/{nonCancelledItems.length} items served
+                  </p>
+                </div>
+              )}
+
+              {/* Complete Order - only when ALL items served AND payment complete */}
+              {allItemsServed && paidAmount >= total && total > 0 && (
+                <button
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-input bg-success text-white font-semibold text-sm hover:brightness-105 transition disabled:opacity-50"
+                  onClick={handleCompleteOrder}
+                  disabled={orderActionLoading}
+                >
+                  {orderActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Complete Order
+                </button>
+              )}
+
+              {/* Show info when items served but payment pending */}
+              {allItemsServed && (paidAmount < total || total <= 0) && items.length > 0 && (
+                <div className="mt-3 bg-ink-card2 border border-ink-line rounded-tile p-3 text-center">
+                  <div className="flex items-center justify-center gap-2 text-txt-light">
+                    <CreditCard className="h-4 w-4 text-marigold" />
+                    <span className="text-sm font-medium">All items served — complete payment to finish</span>
+                  </div>
+                </div>
+              )}
+
+              {hasManagerAccess && (
+                <button
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-input bg-danger/[0.14] border border-danger/30 text-danger-deep font-semibold text-sm hover:bg-danger/20 transition disabled:opacity-50"
+                  onClick={() => { setCancelReason(''); setShowCancelOrderModal(true); }}
+                  disabled={orderActionLoading}
+                >
+                  <XCircle className="h-4 w-4" /> Cancel Order
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1461,7 +1455,8 @@ const TableDetails = () => {
           </div>
         </div>
       </Modal>
-    </div>
+      </div>
+    </DarkScreen>
   );
 };
 

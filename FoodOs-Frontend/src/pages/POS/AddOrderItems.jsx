@@ -2,13 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  ArrowLeft, Search, Plus, Minus, Trash2, ChefHat, Loader2,
-  AlertCircle, ShoppingCart, UtensilsCrossed, Check, Settings2
+  ArrowLeft, Search, Plus, Minus, Trash2, Loader2,
+  ShoppingCart, Check, Settings2
 } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import {
   searchProducts as searchProductsAction,
@@ -25,6 +21,8 @@ import {
   addItemsToOrder,
 } from '../../store/orderSlice';
 import { productModifierGroupAPI } from '../../services/api';
+import { Pill, BtnPrimary, BtnGhost, Sheet } from '../../components/ui/kit';
+import { cn } from '../../utils/cn';
 
 const AddOrderItems = () => {
   const { tableUuid } = useParams();
@@ -37,6 +35,7 @@ const AddOrderItems = () => {
   const [itemCart, setItemCart] = useState([]); // Local cart for this session
   const [variationSelectionProduct, setVariationSelectionProduct] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCartSheet, setShowCartSheet] = useState(false);
 
   // Modifier selection state
   const [modifierSelectionProduct, setModifierSelectionProduct] = useState(null);
@@ -50,12 +49,12 @@ const AddOrderItems = () => {
   const { searchResults } = useSelector((state) => state.products);
   const { categories: menuCategories, loading: menuLoading } = useSelector((state) => state.menu);
   const tableDetails = useSelector(selectTableDetails);
-  
+
   const activeOrder = tableDetails?.activeOrder;
 
   // Transform menu data to flat arrays for existing UI
   const categories = menuCategories || [];
-  const products = menuCategories?.flatMap(category => 
+  const products = menuCategories?.flatMap(category =>
     category.products.map(product => ({
       ...product,
       categoryName: category.name,
@@ -66,7 +65,7 @@ const AddOrderItems = () => {
   // Build hierarchical category structure for display
   const buildCategoryHierarchy = () => {
     const result = [];
-    
+
     // First, add all parent categories (those without parentCategoryUuid)
     categories.forEach(category => {
       if (!category.parentCategoryUuid) {
@@ -75,7 +74,7 @@ const AddOrderItems = () => {
           isParent: true,
           displayName: category.name
         });
-        
+
         // Add its subcategories if any
         if (category.subCategories && category.subCategories.length > 0) {
           category.subCategories.forEach(subCat => {
@@ -93,7 +92,7 @@ const AddOrderItems = () => {
         }
       }
     });
-    
+
     return result;
   };
 
@@ -122,8 +121,8 @@ const AddOrderItems = () => {
   }, [searchQuery, dispatch, activeRestaurantId]);
 
   // 3. Filter products by active category
-  const filteredProducts = activeCategory === 'all' 
-    ? products 
+  const filteredProducts = activeCategory === 'all'
+    ? products
     : products.filter(p => p.categoryName === activeCategory);
 
   const displayProducts = searchQuery.trim() ? searchResults : filteredProducts;
@@ -381,7 +380,7 @@ const AddOrderItems = () => {
 
   const handleSubmit = async () => {
     if (!activeOrder || itemCart.length === 0) return;
-    
+
     setIsSubmitting(true);
     const items = itemCart.map((i) => ({
       productUuid: i.productUuid,
@@ -405,129 +404,274 @@ const AddOrderItems = () => {
     }
   };
 
-  // --- Render ---
+  // --- Render helpers ---
 
+  const cartCount = itemCart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = calculateCartTotal();
 
+  const tableLabel = tableDetails?.tableNumber || tableDetails?.number;
+
+  // ─── Dark cart content (shared between fixed panel + mobile sheet) ───
+  const cartBody = (
+    <>
+      <div className="p-4 border-b border-ink-line flex items-center justify-between">
+        <div className="min-w-0">
+          <p className="eyebrow text-[10px] text-txt-faintDark">Add to Order</p>
+          <h2 className="font-display font-bold text-lg text-txt-light leading-tight flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-marigold" />
+            Current Selection
+          </h2>
+        </div>
+        {itemCart.length > 0 && (
+          <button
+            onClick={handleClearCart}
+            className="text-xs font-medium text-danger hover:brightness-110 transition"
+          >
+            Clear All
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {itemCart.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-txt-mutedDark py-10">
+            <div className="bg-ink-card2 p-4 rounded-full mb-3">
+              <ShoppingCart className="h-8 w-8 text-txt-faintDark" />
+            </div>
+            <p className="font-medium text-txt-light">No items selected</p>
+            <p className="text-xs mt-1 text-txt-mutedDark">Tap items on the left to add</p>
+          </div>
+        ) : (
+          itemCart.map((item, idx) => {
+            const lineTotal = (item.price + (item.modifiers || []).reduce((s, m) => s + (m.priceAdd || 0), 0)) * item.quantity;
+            return (
+              <div
+                key={`cart-${idx}`}
+                className="bg-ink-card border border-ink-line rounded-tile p-3 group"
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-txt-light text-sm truncate">{item.name}</p>
+                    {item.variationName && (
+                      <p className="text-xs text-txt-mutedDark">{item.variationName}</p>
+                    )}
+                    {item.modifiers?.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {item.modifiers.map((m, mi) => (
+                          <span
+                            key={mi}
+                            className="inline-flex items-center text-[10px] text-marigold bg-marigold/[0.12] rounded px-1.5 py-0.5"
+                          >
+                            +{m.name} {m.priceAdd > 0 && <span className="font-mono ml-0.5">₹{m.priceAdd.toFixed(2)}</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-display font-bold text-marigold font-mono text-sm whitespace-nowrap">
+                    ₹{lineTotal.toFixed(2)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between mt-2.5">
+                  <div className="flex items-center gap-2 bg-ink-card2 rounded-full p-1">
+                    <button
+                      onClick={() => handleUpdateQuantity(idx, -1)}
+                      className="p-1 rounded-full hover:bg-ink-line transition-colors text-txt-light"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="text-sm font-display font-bold w-5 text-center text-txt-light">{item.quantity}</span>
+                    <button
+                      onClick={() => handleUpdateQuantity(idx, 1)}
+                      className="p-1 rounded-full hover:bg-ink-line transition-colors text-txt-light"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveItem(idx)}
+                    className="p-1.5 rounded-md hover:bg-danger/15 transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-4 w-4 text-danger" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="p-4 bg-ink-card2 border-t border-ink-line space-y-3">
+        <div className="flex justify-between items-center">
+          <span className="font-semibold text-txt-light">Total</span>
+          <span className="font-display font-bold text-2xl text-marigold font-mono">₹{cartTotal.toFixed(2)}</span>
+        </div>
+        <BtnPrimary
+          className="w-full h-11"
+          onClick={handleSubmit}
+          disabled={itemCart.length === 0 || isSubmitting}
+        >
+          {isSubmitting ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> Adding...</>
+          ) : (
+            <><Plus className="h-4 w-4" /> Add to Order</>
+          )}
+        </BtnPrimary>
+      </div>
+    </>
+  );
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] flex-col lg:flex-row gap-3 sm:gap-4 overflow-hidden">
-      
-      {/* LEFT PANEL: Product Selection */}
-      <div className="flex-1 flex flex-col h-full bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-        
-        {/* Header: Back, Search, Categories */}
-        <div className="p-3 sm:p-4 bg-white border-b border-slate-200 z-10 flex flex-col gap-3 sm:gap-4">
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2 mr-2">
-                    <ArrowLeft className="h-5 w-5 text-slate-600" />
-                </Button>
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
-                    <Input 
-                        placeholder="Search items..." 
-                        className="pl-10"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-8rem)] gap-4 lg:gap-6">
+
+      {/* Left: Menu Area (light) */}
+      <div className="flex-1 flex flex-col gap-4 min-w-0">
+        {/* Header: back + search + categories */}
+        <div className="flex flex-col gap-3 sm:gap-4 bg-paper-card p-3 sm:p-4 rounded-card border border-line-light">
+          <div className="flex items-center gap-3">
+            <BtnGhost
+              onClick={() => navigate(-1)}
+              className="h-10 w-10 px-0 shrink-0"
+              title="Back to table"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </BtnGhost>
+            <div>
+              <p className="eyebrow text-[10px] text-txt-faint">Point of Sale</p>
+              <h1 className="font-display font-bold text-lg sm:text-xl text-ink-text leading-tight">
+                {tableLabel ? `Table ${tableLabel} · Add Items` : 'Add Items'}
+              </h1>
             </div>
-            
-            {/* Categories Dropdown */}
-            <div className="relative">
-                <select
-                    value={activeCategory}
-                    onChange={(e) => setActiveCategory(e.target.value)}
-                    className="w-full md:w-64 pl-4 pr-10 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer shadow-sm"
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-txt-faint" />
+            <input
+              placeholder="Search items..."
+              className="w-full pl-10 pr-3 py-2.5 text-sm bg-paper-2 border border-line-input rounded-input text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/50 focus:border-transparent"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Category chips */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setActiveCategory('all')}
+              className={cn(
+                'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+                activeCategory === 'all'
+                  ? 'bg-marigold text-ink'
+                  : 'bg-paper-3 text-txt-muted hover:bg-paper-2'
+              )}
+            >
+              All Categories
+            </button>
+            {menuLoading ? (
+              <div className="flex items-center gap-2 px-4 py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-txt-faint" />
+                <span className="text-sm text-txt-muted">Loading...</span>
+              </div>
+            ) : (
+              hierarchicalCategories.map(cat => (
+                <button
+                  key={cat.categoryUuid}
+                  onClick={() => setActiveCategory(cat.name)}
+                  className={cn(
+                    'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+                    activeCategory === cat.name
+                      ? 'bg-marigold text-ink'
+                      : 'bg-paper-3 text-txt-muted hover:bg-paper-2',
+                    !cat.isParent && 'pl-6'
+                  )}
                 >
-                    <option value="all">All Categories</option>
-                    {hierarchicalCategories.map(cat => (
-                        <option 
-                            key={cat.categoryUuid} 
-                            value={cat.name}
-                            style={{
-                                fontWeight: cat.isParent ? '600' : '400',
-                                paddingLeft: cat.isParent ? '0.5rem' : '1.5rem'
-                            }}
-                        >
-                            {cat.displayName}
-                        </option>
-                    ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                    </svg>
-                </div>
-            </div>
+                  {cat.isParent ? cat.name : cat.displayName}
+                </button>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
-             {menuLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <div className="flex-1 overflow-y-auto pb-24 lg:pb-0">
+          {menuLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-marigold" />
             </div>
           ) : displayProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <UtensilsCrossed className="h-12 w-12 mb-2" />
-              <p>No products found</p>
+            <div className="flex flex-col items-center justify-center h-64 text-txt-muted">
+              <div className="bg-paper-3 p-4 rounded-full mb-3">
+                <Search className="h-10 w-10 text-txt-faint" />
+              </div>
+              <p className="font-medium text-ink-text">No products found</p>
+              <p className="text-xs mt-1">Try a different search or category</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {displayProducts.map(product => {
                 const hasVariations = product.hasVariations;
                 const price = hasVariations
-                  ? product.variations?.[0]?.price 
+                  ? product.variations?.[0]?.price
                   : product.basePrice || 0;
-                
+
                 const isAvailable = product.isActive !== false;
-                
+                const initials = (product.name || '?').trim().slice(0, 2).toUpperCase();
+                const isVeg = ['VEG', 'VEGAN', 'JAIN'].includes(product.dietaryType);
+
                 // Check if in cart to show badge
                 const cartQty = itemCart
-                    .filter(i => i.productUuid === product.productUuid)
-                    .reduce((s, i) => s + i.quantity, 0);
+                  .filter(i => i.productUuid === product.productUuid)
+                  .reduce((s, i) => s + i.quantity, 0);
 
                 return (
-                  <button 
+                  <div
                     key={product.productUuid}
                     onClick={() => isAvailable && (hasVariations ? setVariationSelectionProduct(product) : handleAddToCart(product))}
-                    disabled={!isAvailable}
-                    className={`bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 flex flex-col justify-between group h-28 sm:h-32 transition-all text-left relative overflow-hidden ${
-                      isAvailable 
-                        ? 'hover:border-blue-500 hover:shadow-md cursor-pointer active:scale-[0.98]' 
-                        : 'opacity-60 cursor-not-allowed bg-slate-50'
-                    }`}
+                    className={cn(
+                      'bg-paper-card rounded-card border border-line-light flex flex-col overflow-hidden group transition-all relative',
+                      isAvailable
+                        ? 'hover:border-marigold hover:shadow-card cursor-pointer active:scale-[0.99]'
+                        : 'opacity-50 cursor-not-allowed'
+                    )}
                   >
-                    <div className="flex justify-between items-start w-full">
-                      <h3 className="font-semibold text-slate-800 line-clamp-2 text-sm leading-tight">{product.name}</h3>
-                      <div className={`h-3 w-3 rounded-sm border flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        ['VEG', 'VEGAN', 'JAIN'].includes(product.dietaryType) ? 'border-green-600' : 'border-red-600'
-                      }`}>
-                        <div className={`h-1.5 w-1.5 rounded-full ${
-                          ['VEG', 'VEGAN', 'JAIN'].includes(product.dietaryType) ? 'bg-green-600' : 'bg-red-600'
-                        }`} />
+                    {/* Image / initials block */}
+                    <div className="relative h-24 bg-paper-3 flex items-center justify-center">
+                      <span className="font-display font-bold text-2xl text-txt-faint">{initials}</span>
+                      <div className={cn(
+                        'absolute top-2 left-2 h-4 w-4 rounded-sm border flex items-center justify-center bg-paper-card',
+                        isVeg ? 'border-success' : 'border-danger'
+                      )}>
+                        <div className={cn('h-2 w-2 rounded-full', isVeg ? 'bg-success' : 'bg-danger')} />
+                      </div>
+                      {product.hasModifiers && (
+                        <span className="absolute top-2 right-2 text-txt-muted bg-paper-card/80 p-1 rounded" title="Has modifiers">
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                      {cartQty > 0 && (
+                        <div className="absolute bottom-2 right-2 flex items-center justify-center bg-marigold text-ink text-xs font-bold h-6 w-6 rounded-full shadow-card">
+                          {cartQty}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Body */}
+                    <div className="p-3 flex items-end justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-ink-text line-clamp-2 text-sm leading-tight">{product.name}</h3>
+                        {hasVariations ? (
+                          <span className="text-[11px] font-medium text-marigold mt-1 inline-block">
+                            Select variation
+                          </span>
+                        ) : (
+                          <span className="font-display font-bold text-marigold font-mono text-base mt-1 inline-block">₹{price}</span>
+                        )}
+                      </div>
+                      <div className="shrink-0 h-9 w-9 rounded-full bg-marigold text-ink flex items-center justify-center group-hover:brightness-105 transition">
+                        <Plus className="h-5 w-5" />
                       </div>
                     </div>
-                    
-                    <div className="mt-auto flex justify-between items-end w-full">
-                      {hasVariations ? (
-                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                          Select Var.
-                        </span>
-                      ) : (
-                        <span className="font-bold text-slate-900">₹{price}</span>
-                      )}
-                      {product.hasModifiers && (
-                        <Settings2 className="h-3.5 w-3.5 text-slate-400" title="Has modifiers" />
-                      )}
-                    </div>
-                    
-                    {cartQty > 0 && (
-                        <div className="absolute top-2 right-2 flex items-center justify-center bg-blue-600 text-white text-xs font-bold h-6 w-6 rounded-full shadow-sm">
-                            {cartQty}
-                        </div>
-                    )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -535,123 +679,63 @@ const AddOrderItems = () => {
         </div>
       </div>
 
-      {/* RIGHT PANEL: Cart Summary */}
-      <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm h-[35vh] sm:h-[40vh] lg:h-full">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-xl">
-            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Current Selection
-            </h2>
-            {itemCart.length > 0 && (
-                <button onClick={handleClearCart} className="text-xs text-red-500 hover:text-red-700 font-medium">
-                    Clear All
-                </button>
-            )}
-        </div>
+      {/* Right: Cart (dark, fixed width on lg) */}
+      <aside className="hidden lg:flex flex-col w-[360px] shrink-0 bg-ink rounded-card border border-ink-line overflow-hidden lg:h-full">
+        {cartBody}
+      </aside>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-             {itemCart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                    <p className="font-medium text-sm">No items selected</p>
-                    <p className="text-xs mt-1">Tap items on the left to add</p>
-                </div>
-            ) : (
-                itemCart.map((item, idx) => (
-                    <div key={`cart-${idx}`} className="flex flex-col gap-1 pb-3 border-b border-slate-50 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start">
-                             <div>
-                                <p className="font-medium text-slate-800 text-sm">{item.name}</p>
-                                {item.variationName && (
-                                    <p className="text-xs text-slate-500">{item.variationName}</p>
-                                )}
-                                {item.modifiers?.length > 0 && (
-                                    <div className="mt-0.5">
-                                      {item.modifiers.map((m, mi) => (
-                                        <span key={mi} className="inline-flex items-center text-[10px] text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 mr-1 mb-0.5">
-                                          +{m.name} {m.priceAdd > 0 && `₹${m.priceAdd.toFixed(2)}`}
-                                        </span>
-                                      ))}
-                                    </div>
-                                )}
-                            </div>
-                            <p className="font-semibold text-slate-900 text-sm">
-                                ₹{((item.price + (item.modifiers || []).reduce((s, m) => s + (m.priceAdd || 0), 0)) * item.quantity).toFixed(2)}
-                            </p>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                             <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-1">
-                                <button 
-                                    onClick={() => handleUpdateQuantity(idx, -1)} 
-                                    className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
-                                >
-                                    <Minus className="h-3 w-3" />
-                                </button>
-                                <span className="text-sm font-semibold w-4 text-center">{item.quantity}</span>
-                                <button 
-                                    onClick={() => handleUpdateQuantity(idx, 1)} 
-                                    className="p-1 hover:bg-white rounded-md shadow-sm transition-all"
-                                >
-                                    <Plus className="h-3 w-3" />
-                                </button>
-                            </div>
-                            <button
-                                onClick={() => handleRemoveItem(idx)}
-                                className="p-1.5 hover:bg-red-50 rounded-md text-slate-400 hover:text-red-500 transition-colors"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-                ))
-            )}
+      {/* Mobile sticky "View selection" bar */}
+      {itemCart.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-ink border-t border-ink-line">
+          <button
+            onClick={() => setShowCartSheet(true)}
+            className="w-full flex items-center justify-between bg-marigold text-ink rounded-input px-4 py-3 font-semibold"
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              View selection · {cartCount} item{cartCount === 1 ? '' : 's'}
+            </span>
+            <span className="font-display font-bold font-mono">₹{cartTotal.toFixed(2)}</span>
+          </button>
         </div>
+      )}
 
-        <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl space-y-3">
-            <div className="flex justify-between items-center text-slate-900 font-bold text-lg">
-                <span>Total</span>
-                <span>₹{calculateCartTotal().toFixed(2)}</span>
-            </div>
-            <Button
-                className="w-full py-3 text-base"
-                onClick={handleSubmit}
-                disabled={itemCart.length === 0 || isSubmitting}
-            >
-                {isSubmitting ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Adding...</>
-                ) : (
-                    <><Plus className="h-4 w-4 mr-2" /> Add to Order</>
-                )}
-            </Button>
+      {/* Mobile cart Sheet */}
+      <Sheet open={showCartSheet} onClose={() => setShowCartSheet(false)} side="bottom" className="bg-ink p-0">
+        <div className="flex flex-col max-h-[85vh]">
+          {cartBody}
         </div>
-      </div>
+      </Sheet>
 
-       {/* Variation Selection Modal */}
-      <Modal 
-        isOpen={!!variationSelectionProduct} 
-        onClose={() => setVariationSelectionProduct(null)} 
+      {/* Variation Selection Modal */}
+      <Modal
+        isOpen={!!variationSelectionProduct}
+        onClose={() => setVariationSelectionProduct(null)}
         title={`Select Variation: ${variationSelectionProduct?.name}`}
       >
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto">
             {variationSelectionProduct?.variations?.map((v) => (
               <button
                 key={v.variationUuid}
                 onClick={() => handleVariationSelect(v)}
-                className="w-full flex justify-between items-center p-4 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+                className="flex justify-between items-center p-4 border border-line-light rounded-tile hover:border-marigold hover:bg-marigold/[0.08] transition-all text-left group"
               >
                 <div>
-                  <span className="font-semibold text-slate-800 block text-sm">{v.name}</span>
-                  {v.isDefault && <span className="text-xs text-slate-500">(Default)</span>}
+                  <span className="font-semibold text-ink-text block">{v.name}</span>
+                  {v.isDefault && <span className="text-xs text-txt-muted">(Default)</span>}
                 </div>
-                <span className="font-bold text-slate-900 group-hover:text-blue-700 text-sm">
+                <span className="font-display font-bold text-marigold font-mono">
                   ₹{v.price?.toFixed(2)}
                 </span>
               </button>
             ))}
-        </div>
-        <div className="flex justify-end pt-4">
-            <Button variant="outline" onClick={() => setVariationSelectionProduct(null)}>
+          </div>
+          <div className="flex justify-end pt-2">
+            <BtnGhost onClick={() => setVariationSelectionProduct(null)}>
               Cancel
-            </Button>
+            </BtnGhost>
+          </div>
         </div>
       </Modal>
 
@@ -664,13 +748,13 @@ const AddOrderItems = () => {
         <div className="space-y-5 max-h-[65vh] overflow-y-auto">
           {modifierGroupsLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              <span className="ml-2 text-sm text-slate-500">Loading options...</span>
+              <Loader2 className="h-6 w-6 animate-spin text-marigold" />
+              <span className="ml-2 text-sm text-txt-muted">Loading options...</span>
             </div>
           ) : modifierGroups.length === 0 ? (
-            <div className="text-center py-6 text-slate-400">
-              <Settings2 className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No modifier options available</p>
+            <div className="text-center py-6 text-txt-muted">
+              <Settings2 className="h-10 w-10 mx-auto mb-2 text-txt-faint" />
+              <p className="text-sm text-ink-text font-medium">No modifier options available</p>
               <p className="text-xs mt-1">This item will be added without customization</p>
             </div>
           ) : (
@@ -686,21 +770,21 @@ const AddOrderItems = () => {
                 <div key={group.modifierGroupUuid} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-semibold text-slate-800 text-sm">{group.name}</h4>
-                      <p className="text-xs text-slate-500">
+                      <h4 className="font-semibold text-ink-text text-sm">{group.name}</h4>
+                      <p className="text-xs text-txt-muted">
                         {isSingle ? 'Select one' : `Select ${minReq}–${maxReq || '∞'}`}
-                        {group.isRequired && <span className="text-red-500 ml-1">*Required</span>}
+                        {group.isRequired && <span className="text-danger ml-1">*Required</span>}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {isMaxReached && (
-                        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">Max reached</span>
+                        <Pill tone="marigold">Max reached</Pill>
                       )}
                       {!isMinMet && minReq > 0 && (
-                        <span className="text-[10px] font-medium text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">Pick {minReq - selected.length} more</span>
+                        <Pill tone="danger">Pick {minReq - selected.length} more</Pill>
                       )}
                       {selected.length > 0 && (
-                        <Badge variant={isMinMet ? 'success' : 'warning'} size="sm">{selected.length}{maxReq ? `/${maxReq}` : ''}</Badge>
+                        <Pill tone={isMinMet ? 'success' : 'marigold'}>{selected.length}{maxReq ? `/${maxReq}` : ''}</Pill>
                       )}
                     </div>
                   </div>
@@ -714,26 +798,35 @@ const AddOrderItems = () => {
                           key={mod.modifierUuid}
                           onClick={() => !isDisabled && handleModifierToggle(group, mod.modifierUuid)}
                           disabled={isDisabled}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-all text-left ${
+                          className={cn(
+                            'w-full flex items-center justify-between p-2.5 rounded-tile border transition-all text-left',
                             isDisabled
-                              ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                              ? 'border-line-light bg-paper-2 opacity-50 cursor-not-allowed'
                               : isSelected
-                                ? 'border-blue-400 bg-blue-50'
-                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
-                          }`}
+                                ? 'border-marigold bg-marigold/[0.1]'
+                                : 'border-line-light hover:border-line-input hover:bg-paper-2 cursor-pointer'
+                          )}
                         >
                           <div className="flex items-center gap-2.5">
-                            <div className={`h-5 w-5 rounded-${isSingle ? 'full' : 'md'} border-2 flex items-center justify-center transition-colors ${
-                              isSelected ? 'border-blue-500 bg-blue-500' : isDisabled ? 'border-slate-200' : 'border-slate-300'
-                            }`}>
-                              {isSelected && <Check className="h-3 w-3 text-white" />}
+                            <div className={cn(
+                              'h-5 w-5 border-2 flex items-center justify-center transition-colors',
+                              isSingle ? 'rounded-full' : 'rounded-md',
+                              isSelected ? 'border-marigold bg-marigold' : isDisabled ? 'border-line-light' : 'border-line-input'
+                            )}>
+                              {isSelected && <Check className="h-3 w-3 text-ink" />}
                             </div>
-                            <span className={`text-sm ${isSelected ? 'font-semibold text-blue-800' : isDisabled ? 'text-slate-400' : 'text-slate-700'}`}>
+                            <span className={cn(
+                              'text-sm',
+                              isSelected ? 'font-semibold text-ink-text' : isDisabled ? 'text-txt-faint' : 'text-txt-muted'
+                            )}>
                               {mod.name}
                             </span>
                           </div>
                           {mod.priceAdd > 0 && (
-                            <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : isDisabled ? 'text-slate-300' : 'text-slate-500'}`}>
+                            <span className={cn(
+                              'text-sm font-medium font-mono',
+                              isSelected ? 'text-marigold' : isDisabled ? 'text-txt-faint' : 'text-txt-muted'
+                            )}>
                               +₹{mod.priceAdd.toFixed(2)}
                             </span>
                           )}
@@ -746,8 +839,8 @@ const AddOrderItems = () => {
             })
           )}
         </div>
-        <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-4">
-          <div className="text-sm text-slate-600">
+        <div className="flex justify-between items-center pt-4 border-t border-line-light mt-4">
+          <div className="text-sm text-txt-muted">
             {modifierGroups.length > 0 && (() => {
               const modTotal = Object.entries(selectedModifiers).reduce((sum, [groupUuid, modUuids]) => {
                 const group = modifierGroups.find(g => g.modifierGroupUuid === groupUuid);
@@ -756,16 +849,16 @@ const AddOrderItems = () => {
                   return gs + (mod?.priceAdd || 0);
                 }, 0);
               }, 0);
-              return modTotal > 0 ? <span className="font-medium">Extra: +₹{modTotal.toFixed(2)}</span> : null;
+              return modTotal > 0 ? <span className="font-medium font-mono">Extra: +₹{modTotal.toFixed(2)}</span> : null;
             })()}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setModifierSelectionProduct(null); setModifierSelectionVariation(null); setModifierGroups([]); setSelectedModifiers({}); }}>
+            <BtnGhost onClick={() => { setModifierSelectionProduct(null); setModifierSelectionVariation(null); setModifierGroups([]); setSelectedModifiers({}); }}>
               Cancel
-            </Button>
-            <Button onClick={handleConfirmModifiers} disabled={modifierGroupsLoading || (modifierGroups.length > 0 && !isModifierSelectionValid())}>
-              <Plus className="h-4 w-4 mr-1" /> Add to Cart
-            </Button>
+            </BtnGhost>
+            <BtnPrimary onClick={handleConfirmModifiers} disabled={modifierGroupsLoading || (modifierGroups.length > 0 && !isModifierSelectionValid())}>
+              <Plus className="h-4 w-4" /> Add to Cart
+            </BtnPrimary>
           </div>
         </div>
       </Modal>

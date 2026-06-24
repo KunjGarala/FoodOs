@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Loader2, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+import { PageHeader, Panel } from '../../components/ui/kit';
 import ModifierGroupManager from '../../components/ModifierGroupManager';
 import ModifierManagerModal from '../../components/ModifierManagerModal';
 import {
@@ -52,76 +51,51 @@ const ModifierManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-3 sm:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 flex items-center gap-2">
-                <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 shrink-0" />
-                <span className="truncate">Modifier Management</span>
-              </h1>
-              <p className="text-slate-500 mt-1 text-sm sm:text-base">
-                Manage modifier groups and their options
-              </p>
-            </div>
-          </div>
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Menu"
+        title="Modifier Groups & Add-ons"
+        subtitle="Build option groups like Toppings, Spice Level or Add-ons for your menu items."
+      />
+
+      {/* Global Notifications */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-input border border-danger/30 bg-danger/[0.08] px-4 py-3 text-sm text-danger-deep">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <span className="line-clamp-2">{typeof error === 'string' ? error : JSON.stringify(error)}</span>
         </div>
+      )}
 
-        {/* Global Notifications */}
-        {error && (
-          <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <span className="line-clamp-2">{typeof error === 'string' ? error : JSON.stringify(error)}</span>
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
-            <CheckCircle className="h-5 w-5 flex-shrink-0" />
-            <span className="line-clamp-2">{success}</span>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="grid gap-4 sm:gap-6">
-          {/* Modifier Groups */}
-          <Card className="shadow-lg">
-            <div className="p-3 sm:p-6">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-slate-700">Modifier Groups</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Create groups to organize modifiers (e.g., "Toppings", "Spice Level", "Add-ons")
-                </p>
-              </div>
-              
-              {activeRestaurantId ? (
-                <ModifierGroupManager 
-                  restaurantUuid={activeRestaurantId} 
-                  onManageModifiers={handleManageModifiers}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="h-12 w-12 mx-auto text-slate-300 mb-2" />
-                  <p className="text-slate-500">No restaurant selected</p>
-                </div>
-              )}
-            </div>
-          </Card>
+      {success && (
+        <div className="flex items-center gap-2 rounded-input border border-success/30 bg-success/[0.10] px-4 py-3 text-sm text-success-deep">
+          <CheckCircle className="h-5 w-5 flex-shrink-0" />
+          <span className="line-clamp-2">{success}</span>
         </div>
+      )}
 
-        {/* Modifier Management Modal */}
-        {selectedModifierGroup && (
-          <ModifierManagerModal
-            isOpen={isModifierModalOpen}
-            onClose={handleCloseModifierModal}
-            restaurantUuid={activeRestaurantId}
-            modifierGroupUuid={selectedModifierGroup.modifierGroupUuid}
-            modifierGroupName={selectedModifierGroup.name}
-          />
-        )}
-      </div>
+      {/* Main Content */}
+      {activeRestaurantId ? (
+        <ModifierGroupManager
+          restaurantUuid={activeRestaurantId}
+          onManageModifiers={handleManageModifiers}
+        />
+      ) : (
+        <Panel className="p-10 text-center">
+          <AlertCircle className="mx-auto mb-3 h-12 w-12 text-txt-faint" />
+          <p className="text-sm text-txt-muted">No restaurant selected</p>
+        </Panel>
+      )}
+
+      {/* Modifier Management Modal */}
+      {selectedModifierGroup && (
+        <ModifierManagerModal
+          isOpen={isModifierModalOpen}
+          onClose={handleCloseModifierModal}
+          restaurantUuid={activeRestaurantId}
+          modifierGroupUuid={selectedModifierGroup.modifierGroupUuid}
+          modifierGroupName={selectedModifierGroup.name}
+        />
+      )}
     </div>
   );
 };
