@@ -311,6 +311,9 @@ export const tableAPI = {
   // Get table analytics
   getTableAnalytics: (restaurantUuid) => api.get(`/api/v1/tables/analytics/${restaurantUuid}`),
 
+  // Live Floor pressure-band summary (coversSeated / tablesTurning / avgDwellMinutes / kotsLate)
+  getLiveSummary: (restaurantUuid) => api.get(`/api/v1/tables/restaurant/${restaurantUuid}/live-summary`),
+
   // Occupy a vacant table (creates a new order)
   occupyTable: (tableUuid, data = {}) => api.post(`/api/v1/tables/${tableUuid}/occupy`, data),
 

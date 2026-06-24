@@ -13,15 +13,29 @@ import {
 } from 'lucide-react';
 import {
   getTablesByRestaurant, getAllTables, createTable, updateTable, updateTableStatus, deleteTable,
-  mergeTables, transferTable, getTableAnalytics, clearError, setStatusFilter,
-  setSectionFilter, selectFilteredTables, selectTablesByStatus, selectTableLoading,
+  mergeTables, transferTable, getTableAnalytics, clearError,
+  setSectionFilter, selectFilteredTables, selectTableLoading,
   selectTableActionLoading, selectTableError, selectTableFilters, selectTableAnalytics,
   selectTablePagination, getValidNextStatuses, isValidStatusTransition, occupyTable,
   handleTableWsEvent, assignWaiter,
 } from '../../store/tableSlice';
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
-import { employeeAPI } from '../../services/api';
+import { employeeAPI, tableAPI } from '../../services/api';
 import useWebSocket from '../../hooks/useWebSocket';
+import { DarkScreen, Segmented, Pill, LivePill, Sheet } from '../../components/ui/kit';
+import { cn } from '../../utils/cn';
+
+// Live Floor status → table-card palette (dark surface)
+const FLOOR_CARD = {
+  OCCUPIED: 'bg-table-occupied text-ink border-transparent',
+  BILLED: 'bg-table-billing text-[#06281a] border-transparent',
+  DIRTY: 'bg-table-dirty text-[#ef8a88] border border-dashed border-danger',
+  RESERVED: 'bg-table-reserved text-[#3a2c10] border-transparent',
+  VACANT: 'bg-ink-card2 text-[#9fb0c1] border border-ink-line',
+};
+const FLOOR_PILL = {
+  OCCUPIED: 'marigold', BILLED: 'success', DIRTY: 'danger', RESERVED: 'gold', VACANT: 'neutral',
+};
 
 const TABLE_SHAPES = ['RECTANGLE', 'ROUND', 'SQUARE', 'OVAL'];
 
@@ -54,7 +68,6 @@ const TableManagement = () => {
   const userRole = useSelector(selectRole);
   const currentUserUuid = useSelector((state) => state.auth.userId);
   const tables = useSelector(selectFilteredTables);
-  const tablesByStatus = useSelector(selectTablesByStatus);
   const loading = useSelector(selectTableLoading);
   const actionLoading = useSelector(selectTableActionLoading);
   const error = useSelector(selectTableError);
@@ -97,8 +110,12 @@ const TableManagement = () => {
   const [validStatuses, setValidStatuses] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date()); // For real-time occupied time updates
   const [actionPopoverTable, setActionPopoverTable] = useState(null); // For vacant table action popover
-  const [showMobileLiveStatus, setShowMobileLiveStatus] = useState(false); // Mobile live status panel
   const popoverRef = useRef(null);
+
+  // ── Redesign Live Floor state ──
+  const [floorSelected, setFloorSelected] = useState(null); // table selected into detail panel
+  const [floorView, setFloorView] = useState('map');         // 'map' | 'list'
+  const [liveSummary, setLiveSummary] = useState(null);      // pressure-band KPIs from backend
 
   const sections = ['All', ...new Set(tables.map(t => t.sectionName).filter(Boolean))];
 
@@ -155,24 +172,26 @@ const TableManagement = () => {
     }
   }, [error, dispatch]);
 
-  const getStatusColor = (status) => {
-    const colors = {
-      OCCUPIED: 'bg-yellow-100 border-yellow-400 text-yellow-900 hover:bg-yellow-50',
-      BILLED: 'bg-green-100 border-green-400 text-green-900 hover:bg-green-50',
-      DIRTY: 'bg-red-100 border-red-400 text-red-900 hover:bg-red-50',
-      RESERVED: 'bg-blue-100 border-blue-400 text-blue-900 hover:bg-blue-50',
+  // Live pressure-band summary (covers seated / turning / dwell / KOTs late)
+  useEffect(() => {
+    if (!activeRestaurantId) return;
+    let active = true;
+    const load = () => {
+      tableAPI.getLiveSummary(activeRestaurantId)
+        .then((res) => { if (active) setLiveSummary(res.data); })
+        .catch(() => { /* fall back to client-side metrics */ });
     };
-    return colors[status] || 'bg-white border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-slate-50';
-  };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { active = false; clearInterval(id); };
+  }, [activeRestaurantId]);
 
-  const getStatusBadgeVariant = (status) => {
-    const variants = { OCCUPIED: 'warning', BILLED: 'success', DIRTY: 'error', RESERVED: 'info' };
-    return variants[status] || 'default';
-  };
-
-  const getInactiveTableStyle = () => {
-    return 'bg-slate-100 border-slate-300 text-slate-400 opacity-60 cursor-not-allowed';
-  };
+  // Keep the selected detail card in sync with refreshed table data
+  useEffect(() => {
+    if (!floorSelected) return;
+    const fresh = tables.find((t) => t.tableUuid === floorSelected.tableUuid);
+    if (fresh && fresh !== floorSelected) setFloorSelected(fresh);
+  }, [tables]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateTable = async () => {
     try {
@@ -223,7 +242,7 @@ const TableManagement = () => {
 
   const handleUpdateStatus = async () => {
     try {
-      const { tableUuid, tableNumber, ...statusData } = statusForm;
+      const { tableUuid, tableNumber: _tableNumber, ...statusData } = statusForm;
       
       console.log('Update status - tableUuid:', tableUuid, 'statusData:', statusData);
       
@@ -473,331 +492,350 @@ const TableManagement = () => {
   const resetMergeForm = () => setMergeForm({ parentTableUuid: '', childTableUuids: [] });
   const resetTransferForm = () => setTransferForm({ fromTableUuid: '', toTableUuid: '' });
 
+  const formatINR = (v) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(v || 0));
+
+  // A single floor table card — used both in the spatial map (absolute) and grid fallback.
+  const renderFloorCard = (table, absolute = false) => {
+    const isInactive = table.isActive === false;
+    const mins = table.seatedAt ? Math.floor((currentTime - new Date(table.seatedAt)) / 60000) : 0;
+    const late = table.status === 'OCCUPIED' && mins >= 45;
+    const round = (table.shape || '').toUpperCase() === 'ROUND';
+    const busy = table.status === 'OCCUPIED' || table.status === 'BILLED';
+    const selected = floorSelected?.tableUuid === table.tableUuid;
+    return (
+      <button
+        key={table.tableUuid}
+        type="button"
+        onClick={() => !isInactive && setFloorSelected(table)}
+        style={absolute ? { left: table.posX || 0, top: table.posY || 0 } : undefined}
+        className={cn(
+          absolute && 'absolute',
+          'w-[118px] h-[104px] p-2.5 flex flex-col justify-between text-left transition',
+          round ? 'rounded-full items-center justify-center text-center' : 'rounded-tile',
+          isInactive
+            ? 'bg-ink-card2/40 text-txt-faintDark border border-dashed border-ink-line opacity-60'
+            : cn(FLOOR_CARD[table.status] || FLOOR_CARD.VACANT, 'hover:brightness-105'),
+          selected && 'ring-2 ring-marigold ring-offset-2 ring-offset-ink-panel',
+        )}
+      >
+        <div className="flex items-center justify-between w-full gap-1">
+          <span className="font-display font-bold text-[22px] leading-none">{table.tableNumber}</span>
+          {!round && busy && (
+            <span className={cn('font-mono text-[10px] px-1.5 py-0.5 rounded-full', late ? 'bg-danger text-white' : 'bg-black/15')}>
+              {calculateOccupiedTime(table.seatedAt) || '—'}
+            </span>
+          )}
+        </div>
+        <div className={cn('w-full min-w-0', round && 'mt-1')}>
+          <div className="font-mono text-[10px] opacity-80">{table.currentPax || 0}/{table.capacity} pax</div>
+          {!round && table.currentWaiterName && busy && (
+            <div className="text-[10px] font-medium truncate">{table.currentWaiterName}</div>
+          )}
+          {!round && table.currentOrderTotal != null && busy && (
+            <div className="font-mono text-[11px] font-bold">{formatINR(table.currentOrderTotal)}</div>
+          )}
+        </div>
+      </button>
+    );
+  };
+
+  const STATUS_GROUPS = [
+    { key: 'OCCUPIED', label: 'Occupied' },
+    { key: 'BILLED', label: 'Billing' },
+    { key: 'VACANT', label: 'Open' },
+    { key: 'DIRTY', label: 'Dirty' },
+    { key: 'RESERVED', label: 'Reserved' },
+  ];
+
+  // Detail panel content for the selected floor table (used in aside + mobile sheet).
+  const renderDetail = () => {
+    const t = floorSelected;
+    if (!t) {
+      return (
+        <div className="h-full grid place-items-center p-8 text-center text-txt-faintDark text-sm">
+          Select a table to see its session & actions.
+        </div>
+      );
+    }
+    const busy = t.status === 'OCCUPIED' || t.status === 'BILLED';
+    const Stat = ({ label, value, highlight }) => (
+      <div className="rounded-tile bg-ink-card2 p-3">
+        <p className="eyebrow text-[9px] text-txt-faintDark">{label}</p>
+        <p className={cn('font-display font-bold text-base mt-0.5 truncate', highlight ? 'text-marigold' : 'text-white')}>{value}</p>
+      </div>
+    );
+    const Action = (props) => {
+      const { icon: Icon, label, onClick, primary, danger, disabled } = props;
+      return (
+        <button onClick={onClick} disabled={disabled}
+          className={cn('flex items-center justify-center gap-2 h-11 rounded-input text-sm font-semibold transition disabled:opacity-40',
+            primary ? 'bg-marigold text-ink hover:brightness-105'
+              : danger ? 'bg-danger/15 text-danger hover:bg-danger/25'
+              : 'bg-ink-card2 text-txt-light hover:bg-ink-card2/70')}>
+          <Icon className="h-4 w-4" /> {label}
+        </button>
+      );
+    };
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-4 border-b border-ink-line flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="font-display font-bold text-lg text-white truncate">Table {t.tableNumber}</h3>
+            <p className="text-[11px] text-txt-mutedDark truncate">{t.sectionName || 'Floor'} · {t.capacity} seats</p>
+          </div>
+          <Pill tone={FLOOR_PILL[t.status] || 'neutral'}>{t.status}</Pill>
+        </div>
+
+        <div className="p-4 space-y-4 flex-1 overflow-auto">
+          <div className="grid grid-cols-2 gap-2">
+            <Stat label="Guests" value={`${t.currentPax || 0}/${t.capacity}`} />
+            <Stat label="Dwell" value={busy && t.seatedAt ? calculateOccupiedTime(t.seatedAt) : '—'} />
+            <Stat label="Waiter" value={t.currentWaiterName || '—'} />
+            <Stat label="Running" value={busy && t.currentOrderTotal != null ? formatINR(t.currentOrderTotal) : '—'} highlight />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {t.status === 'VACANT' ? (
+              <>
+                <Action icon={HandMetal} label="Seat guests" primary disabled={actionLoading}
+                  onClick={async () => {
+                    try {
+                      await dispatch(occupyTable({ tableUuid: t.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: 1 } })).unwrap();
+                      navigate(`/app/tables/${t.tableUuid}`);
+                    } catch (err) { console.error('Failed to occupy table:', err); }
+                  }} />
+                <Action icon={Eye} label="View" onClick={() => navigate(`/app/tables/${t.tableUuid}`)} />
+              </>
+            ) : (
+              <>
+                <Action icon={Eye} label="View order" primary onClick={() => navigate(`/app/tables/${t.tableUuid}`)} />
+                <Action icon={Plus} label="Add items" onClick={() => navigate(`/app/tables/${t.tableUuid}/add-items`)} />
+                {hasManagerAccess && <Action icon={UserCheck} label="Assign waiter" onClick={() => handleOpenAssignWaiter(t)} />}
+                <Action icon={Activity} label="Status" onClick={() => openStatusModal(t)} />
+              </>
+            )}
+          </div>
+
+          {hasManagerAccess && (
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ink-line">
+              <Action icon={Edit} label="Edit" onClick={() => openEditModal(t)} />
+              <Action icon={Power} label={t.isActive === false ? 'Enable' : 'Disable'} onClick={() => handleToggleTableActive(t)} />
+              <Action icon={Trash2} label="Delete" danger onClick={() => handleDeleteTable(t.tableUuid)} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Pressure-band metrics (backend live-summary, with client-side fallback) ──
+  const occupiedTables = displayTables.filter((t) => t.status === 'OCCUPIED');
+  const coversSeated = liveSummary?.coversSeated ??
+    occupiedTables.reduce((a, t) => a + (t.currentPax || 0), 0);
+  const tablesTurning = liveSummary?.tablesTurning ??
+    displayTables.filter((t) => t.status === 'BILLED').length;
+  const avgDwell = liveSummary?.avgDwellMinutes ?? (() => {
+    const seated = occupiedTables.filter((t) => t.seatedAt);
+    if (!seated.length) return 0;
+    return Math.round(seated.reduce((a, t) => a + Math.floor((currentTime - new Date(t.seatedAt)) / 60000), 0) / seated.length);
+  })();
+  const kotsLate = liveSummary?.kotsLate;
+
+  const hasLayout = displayTables.some((t) => (t.posX || 0) !== 0 || (t.posY || 0) !== 0);
+
   return (
-    <div className="flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-8rem)] gap-4 lg:gap-6">
+    <DarkScreen className="flex flex-col">
+    <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-4 lg:gap-6 p-4 sm:p-6">
       <div className="flex-1 flex flex-col min-w-0">
         <div className="mb-4 sm:mb-6">
           {/* Header */}
-          <div className="flex flex-col gap-3 mb-4">
-            <div className="flex items-start justify-between">
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800">Floor Plan</h1>
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <p className="text-xs sm:text-sm text-slate-500">Manage tables and seating</p>
-                  {hasManagerAccess && (
-                    <Badge variant="info" size="sm">
-                      {userRole} View
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              {/* Mobile: compact action buttons */}
-              <div className="flex items-center gap-1.5 sm:hidden">
-                <button onClick={() => setShowMobileLiveStatus(!showMobileLiveStatus)}
-                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 relative">
-                  <Activity className="h-4 w-4" />
-                  {tablesByStatus.occupied > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {tablesByStatus.occupied}
-                    </span>
-                  )}
-                </button>
-                <button onClick={() => setShowCreateModal(true)}
-                  className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
-                  <Plus className="h-4 w-4" />
-                </button>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-xl sm:text-[23px] tracking-[-0.01em] text-white">Live Floor</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <p className="text-xs sm:text-sm text-txt-mutedDark">Real-time seating & service</p>
+                <LivePill dark />
               </div>
             </div>
-            
-            {/* Desktop action buttons */}
-            <div className="hidden sm:flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={handleViewAnalytics} disabled={loading}>
-                <BarChart3 className="h-4 w-4 mr-2" />Analytics
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowMergeModal(true)}>
-                <Shuffle className="h-4 w-4 mr-2" />Merge
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowTransferModal(true)}>
-                <ArrowRightLeft className="h-4 w-4 mr-2" />Transfer
-              </Button>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />Add Table
-              </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Segmented dark value={floorView} onChange={setFloorView}
+                options={[{ value: 'map', label: 'Map' }, { value: 'list', label: 'List' }]} />
+              {hasManagerAccess && (
+                <>
+                  <button onClick={handleViewAnalytics} disabled={loading}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-ink-card text-txt-mutedDark hover:text-white text-sm font-medium">
+                    <BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">Analytics</span>
+                  </button>
+                  <button onClick={() => setShowMergeModal(true)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-ink-card text-txt-mutedDark hover:text-white text-sm font-medium">
+                    <Shuffle className="h-4 w-4" /><span className="hidden sm:inline">Merge</span>
+                  </button>
+                  <button onClick={() => setShowTransferModal(true)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-ink-card text-txt-mutedDark hover:text-white text-sm font-medium">
+                    <ArrowRightLeft className="h-4 w-4" /><span className="hidden sm:inline">Transfer</span>
+                  </button>
+                  <button onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-marigold text-ink text-sm font-semibold hover:brightness-105">
+                    <Plus className="h-4 w-4" /><span className="hidden sm:inline">Add Table</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Status filter badges - horizontally scrollable on mobile */}
-          <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 overflow-x-auto scrollbar-hide pb-1">
-            {Object.entries(tablesByStatus).map(([status, count]) => (
-              <Badge key={status} variant={filters.status === status.toUpperCase() ? 'default' : 'outline'}
-                className="cursor-pointer capitalize whitespace-nowrap text-xs sm:text-sm" onClick={() => dispatch(setStatusFilter(status === filters.status ? null : status.toUpperCase()))}>
-                {status}: {count}
-              </Badge>
+          {/* Pressure band */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {[
+              { label: 'Covers Seated', value: coversSeated },
+              { label: 'Tables Turning', value: tablesTurning },
+              { label: 'Avg Dwell', value: `${avgDwell}m` },
+              { label: 'KOTs Late', value: kotsLate ?? '—', danger: true },
+            ].map((tile) => (
+              <div key={tile.label}
+                className={cn('rounded-tile border p-3', tile.danger && Number(kotsLate) > 0
+                  ? 'bg-danger/[0.14] border-danger/30' : 'bg-ink-card border-ink-line')}>
+                <p className="eyebrow text-[10px] text-txt-faintDark">{tile.label}</p>
+                <p className={cn('font-display font-bold text-2xl mt-1', tile.danger && Number(kotsLate) > 0 ? 'text-danger' : 'text-white')}>{tile.value}</p>
+              </div>
             ))}
           </div>
 
-          {/* Section tabs - scrollable */}
-          <div className="flex overflow-x-auto bg-white p-1 rounded-lg border border-slate-200 scrollbar-hide">
-            {sections.map(section => (
+          {/* Section tabs */}
+          <div className="flex overflow-x-auto scrollbar-hide gap-1 bg-ink-card p-1 rounded-input">
+            {sections.map((section) => (
               <button key={section} onClick={() => dispatch(setSectionFilter(section))}
-                className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
-                  filters.section === section ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-                }`}>
+                className={cn('px-3 sm:px-4 py-1.5 rounded-[8px] text-xs sm:text-sm font-medium whitespace-nowrap transition-colors',
+                  filters.section === section ? 'bg-marigold text-ink' : 'text-txt-mutedDark hover:text-white')}>
                 {section}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Mobile action bar (Analytics, Merge, Transfer) */}
-        <div className="flex sm:hidden gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
-          <button onClick={handleViewAnalytics} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium whitespace-nowrap hover:bg-slate-50">
-            <BarChart3 className="h-3.5 w-3.5" />Analytics
-          </button>
-          <button onClick={() => setShowMergeModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium whitespace-nowrap hover:bg-slate-50">
-            <Shuffle className="h-3.5 w-3.5" />Merge
-          </button>
-          <button onClick={() => setShowTransferModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-medium whitespace-nowrap hover:bg-slate-50">
-            <ArrowRightLeft className="h-3.5 w-3.5" />Transfer
-          </button>
-        </div>
-
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="mb-4 p-3 bg-danger/15 border border-danger/30 rounded-input flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-danger shrink-0" />
+            <p className="text-sm text-danger">{error}</p>
             <button onClick={() => dispatch(clearError())} className="ml-auto">
-              <X className="h-4 w-4 text-red-600" />
+              <X className="h-4 w-4 text-danger" />
             </button>
           </div>
         )}
 
-        <div className="flex-1 overflow-auto p-1">
+        <div className="flex-1 overflow-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <div className="flex items-center justify-center h-full py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-txt-faintDark" />
             </div>
-          ) : tables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <Users className="h-16 w-16 mb-4" />
-              <p className="text-lg font-medium">No tables found</p>
+          ) : displayTables.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-20 text-txt-faintDark">
+              <Users className="h-14 w-14 mb-3 opacity-60" />
+              <p className="text-base font-medium">No tables found</p>
               <p className="text-sm">Create your first table to get started</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5 pb-32">
-              {tables.map(table => {
-                const isInactive = table.isActive === false;
-                return (
-                <div key={table.tableUuid}
-                  className={`relative aspect-square rounded-xl sm:rounded-2xl border-2 flex flex-col items-center justify-center transition-all group ${
-                    isInactive 
-                      ? getInactiveTableStyle() 
-                      : `cursor-pointer hover:shadow-md active:scale-[0.98] ${getStatusColor(table.status)}`
-                  }`}
-                  onClick={isInactive ? undefined : () => {
-                    if (table.status === 'VACANT') {
-                      setActionPopoverTable(actionPopoverTable?.tableUuid === table.tableUuid ? null : table);
-                    } else {
-                      navigate(`/app/tables/${table.tableUuid}`);
-                    }
-                  }}>
-                  <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 hidden sm:flex gap-0.5 sm:gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                    {!isInactive && (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); openEditModal(table); }}
-                          className="p-1 sm:p-1.5 bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg hover:bg-white shadow-sm">
-                          <Edit className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-700" />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteTable(table.tableUuid); }}
-                          className="p-1 sm:p-1.5 bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg hover:bg-white shadow-sm">
-                          <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600" />
-                        </button>
-                      </>
-                    )}
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleToggleTableActive(table); }}
-                      className={`p-1 sm:p-1.5 backdrop-blur-sm rounded-md sm:rounded-lg shadow-sm ${
-                        isInactive 
-                          ? 'bg-green-500/90 hover:bg-green-600 text-white' 
-                          : 'bg-white/90 hover:bg-white text-slate-700'
-                      } ${isInactive && table.isMerged ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      title={isInactive 
-                        ? (table.isMerged ? 'Table is merged. Demerge to activate.' : 'Activate table') 
-                        : 'Deactivate table'}
-                    >
-                      <Power className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                    </button>
-                  </div>
-                  <div className="absolute top-1.5 sm:top-2 left-1.5 sm:left-2">
-                    {isInactive ? (
-                      <Badge variant="default" size="sm" className="bg-slate-400 text-white text-[10px] sm:text-xs">INACTIVE</Badge>
-                    ) : (
-                      <Badge variant={getStatusBadgeVariant(table.status)} size="sm" className="text-[10px] sm:text-xs">{table.status}</Badge>
-                    )}
-                  </div>
-                  
-                  <span className={`text-xl sm:text-2xl font-bold ${isInactive ? 'line-through' : ''}`}>{table.tableNumber}</span>
-                  <div className="flex items-center gap-1 mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium opacity-80">
-                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span>{table.capacity} Seats</span>
-                  </div>
-                  {table.sectionName && <span className="text-[10px] sm:text-xs opacity-60 mt-0.5 sm:mt-1">{table.sectionName}</span>}
-                  
-                  {/* Waiter name for occupied/billed tables */}
-                  {!isInactive && table.currentWaiterName && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
-                    <div className="text-[10px] sm:text-xs text-blue-600 font-medium mt-0.5 flex items-center gap-0.5">
-                      <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                      {table.currentWaiterName}
+            <>
+              {/* Spatial map (lg + Map view) */}
+              <div className={cn(floorView === 'list' ? 'hidden' : 'hidden lg:block')}>
+                <div className="relative floor-stripes bg-ink-panel rounded-card border border-ink-line p-4 min-h-[560px] overflow-auto">
+                  {hasLayout ? (
+                    <div className="relative" style={{ minHeight: 540 }}>
+                      {displayTables.map((t) => renderFloorCard(t, true))}
                     </div>
-                  )}
-
-                  {/* Assign Waiter button for managers on occupied tables without waiter */}
-                  {!isInactive && hasManagerAccess && (table.status === 'OCCUPIED' || table.status === 'BILLED') && !table.currentWaiterName && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleOpenAssignWaiter(table); }}
-                      className="text-[10px] sm:text-xs text-slate-400 hover:text-blue-600 font-medium mt-0.5 flex items-center gap-0.5 transition-colors"
-                    >
-                      <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                      Assign Waiter
-                    </button>
-                  )}
-                  
-                  {isInactive && (
-                    <div className="mt-2 text-xs font-medium text-slate-500">
-                      Not Available
-                    </div>
-                  )}
-                  
-                  {/* Guest count and time info for occupied/billed tables */}
-                  {!isInactive && (table.status === 'OCCUPIED' || table.status === 'BILLED') && (
-                    <div className="absolute bottom-1.5 sm:bottom-2 left-0 right-0 px-2 sm:px-3 flex flex-col items-center gap-0.5 sm:gap-1">
-                      {/* {table.currentPax > 0 && (
-                        <div className="bg-white/90 backdrop-blur-sm rounded-md sm:rounded-lg py-0.5 sm:py-1 px-1.5 sm:px-2 text-[10px] sm:text-xs font-semibold shadow-sm">
-                          {table.currentPax} Guest{table.currentPax !== 1 ? 's' : ''}
-                        </div>
-                      )} */}
-                      {/* Show occupied time only for manager/owner/admin with seatedAt field */}
-                      {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
-                        <div className="bg-orange-100 text-orange-800 rounded-md sm:rounded-lg py-0.5 sm:py-1 px-1.5 sm:px-2 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1">
-                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                          {calculateOccupiedTime(table.seatedAt)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action popover for vacant tables */}
-                  {!isInactive && actionPopoverTable?.tableUuid === table.tableUuid && table.status === 'VACANT' && (
-                    <div 
-                      ref={popoverRef}
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:top-auto sm:translate-y-0 sm:-bottom-20 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 z-30"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
-                        disabled={actionLoading}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            await dispatch(occupyTable({ tableUuid: table.tableUuid, data: { orderType: 'DINE_IN', numberOfGuests: 1 } })).unwrap();
-                            setActionPopoverTable(null);
-                            navigate(`/app/tables/${table.tableUuid}`);
-                          } catch (err) {
-                            console.error('Failed to occupy table:', err);
-                          }
-                        }}
-                      >
-                        {actionLoading ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <HandMetal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
-                        Take
-                      </button>
-                      <button
-                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActionPopoverTable(null);
-                          navigate(`/app/tables/${table.tableUuid}/`);
-                        }}
-                      >
-                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        View
-                      </button>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      {displayTables.map((t) => renderFloorCard(t, false))}
                     </div>
                   )}
                 </div>
-                );
-              })}
-            </div>
+              </div>
+
+              {/* Grouped list (List view / all mobile) */}
+              <div className={cn(floorView === 'list' ? 'block' : 'block lg:hidden', 'space-y-5 pb-4')}>
+                {STATUS_GROUPS.map((group) => {
+                  const rows = displayTables.filter((t) => t.status === group.key);
+                  if (!rows.length) return null;
+                  return (
+                    <section key={group.key}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="eyebrow text-[11px] text-txt-mutedDark">{group.label}</h3>
+                        <span className="text-[11px] font-mono text-txt-faintDark">{rows.length}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {rows.map((table) => {
+                          const busy = table.status === 'OCCUPIED' || table.status === 'BILLED';
+                          const selected = floorSelected?.tableUuid === table.tableUuid;
+                          return (
+                            <button key={table.tableUuid} type="button" onClick={() => setFloorSelected(table)}
+                              className={cn('w-full flex items-center gap-3 p-3 rounded-tile bg-ink-card border text-left',
+                                selected ? 'border-marigold' : 'border-ink-line hover:border-ink-line/80')}>
+                              <span className={cn('h-10 w-10 rounded-full grid place-items-center font-display font-bold shrink-0',
+                                FLOOR_CARD[table.status] || FLOOR_CARD.VACANT)}>
+                                {String(table.tableNumber).slice(-2)}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-white truncate">
+                                  {table.sectionName || 'Floor'} · {table.currentPax || 0}/{table.capacity}
+                                </p>
+                                <p className="text-[11px] text-txt-mutedDark truncate">
+                                  {busy && table.currentWaiterName ? table.currentWaiterName : table.status}
+                                  {busy && table.seatedAt ? ` · ${calculateOccupiedTime(table.seatedAt)}` : ''}
+                                </p>
+                              </div>
+                              {busy && table.currentOrderTotal != null && (
+                                <span className="font-mono text-sm font-bold text-marigold shrink-0">{formatINR(table.currentOrderTotal)}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
 
         {/* Pagination Controls for Manager/Owner/Admin */}
         {hasManagerAccess && pagination.totalPages > 1 && (
-          <div className="border-t border-slate-200 p-3 sm:p-4 bg-white">
+          <div className="mt-4 pt-3 border-t border-ink-line">
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:justify-between">
-              <div className="text-xs sm:text-sm text-slate-600 text-center sm:text-left">
-                Showing {pagination.page * pagination.size + 1} to{' '}
-                {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of{' '}
-                {pagination.totalElements} tables
+              <div className="text-xs text-txt-mutedDark">
+                Showing {pagination.page * pagination.size + 1}–
+                {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of {pagination.totalElements}
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs sm:text-sm px-2 sm:px-3"
-                  onClick={() => dispatch(getAllTables({ 
-                    page: pagination.page - 1, 
-                    size: pagination.size, 
-                    status: filters.status,
-                    restaurantUuid: activeRestaurantId
-                  }))}
+              <div className="flex items-center gap-1.5">
+                <button
+                  className="h-8 px-3 text-sm rounded-input bg-ink-card text-txt-mutedDark hover:text-white disabled:opacity-40"
+                  onClick={() => dispatch(getAllTables({ page: pagination.page - 1, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }))}
                   disabled={pagination.page === 0 || loading}
                 >
                   Prev
-                </Button>
-                <div className="flex items-center gap-0.5 sm:gap-1">
+                </button>
+                <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    const pageNum = pagination.page < 3 ? i : 
-                                   pagination.page >= pagination.totalPages - 3 ? 
-                                   pagination.totalPages - 5 + i : 
-                                   pagination.page - 2 + i;
+                    const pageNum = pagination.page < 3 ? i :
+                      pagination.page >= pagination.totalPages - 3 ? pagination.totalPages - 5 + i : pagination.page - 2 + i;
                     return (
-                      <button
-                        key={pageNum}
-                        onClick={() => dispatch(getAllTables({ 
-                          page: pageNum, 
-                          size: pagination.size, 
-                          status: filters.status,
-                          restaurantUuid: activeRestaurantId
-                        }))}
+                      <button key={pageNum}
+                        onClick={() => dispatch(getAllTables({ page: pageNum, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }))}
                         disabled={loading}
-                        className={`min-w-[1.75rem] sm:min-w-[2rem] h-7 sm:h-8 px-1.5 sm:px-2 text-xs sm:text-sm rounded ${
-                          pagination.page === pageNum
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
+                        className={cn('min-w-[2rem] h-8 px-2 text-sm rounded-input',
+                          pagination.page === pageNum ? 'bg-marigold text-ink font-semibold' : 'bg-ink-card text-txt-mutedDark hover:text-white')}>
                         {pageNum + 1}
                       </button>
                     );
                   })}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs sm:text-sm px-2 sm:px-3"
-                  onClick={() => dispatch(getAllTables({ 
-                    page: pagination.page + 1, 
-                    size: pagination.size, 
-                    status: filters.status,
-                    restaurantUuid: activeRestaurantId
-                  }))}
+                <button
+                  className="h-8 px-3 text-sm rounded-input bg-ink-card text-txt-mutedDark hover:text-white disabled:opacity-40"
+                  onClick={() => dispatch(getAllTables({ page: pagination.page + 1, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }))}
                   disabled={pagination.page >= pagination.totalPages - 1 || loading}
                 >
                   Next
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -805,121 +843,17 @@ const TableManagement = () => {
       </div>
 
       {/* Desktop Live Status Sidebar */}
-      <Card className="w-80 h-full bg-white hidden lg:flex lg:flex-col">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="font-semibold text-slate-800">Live Status</h3>
-          <Badge variant="success">{tablesByStatus.occupied} Occupied</Badge>
-        </div>
-        <div className="flex-1 overflow-auto p-4 space-y-3">
-          {displayTables.filter(t => t.status !== 'VACANT').map(table => (
-            <div key={table.tableUuid} onClick={() => navigate(`/app/tables/${table.tableUuid}`)}
-              className="flex justify-between items-center p-3 rounded-lg border border-slate-100 hover:border-blue-100 hover:bg-blue-50 transition-colors cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700 group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                  {table.tableNumber.length > 2 ? table.tableNumber.slice(-2) : table.tableNumber}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">{table.sectionName || 'Main Hall'}</div>
-                  <div className="text-xs text-slate-500">{table.currentPax || 0} / {table.capacity} Guests</div>
-                  {/* Show occupied time in live status sidebar for manager/owner/admin */}
-                  {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
-                    <div className="text-xs text-orange-600 font-medium mt-0.5">
-                      ⏱ {calculateOccupiedTime(table.seatedAt)}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <Badge variant={getStatusBadgeVariant(table.status)} size="sm">{table.status}</Badge>
-            </div>
-          ))}
-          {displayTables.filter(t => t.status !== 'VACANT').length === 0 && (
-            <div className="text-center text-slate-400 py-8">
-              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No active tables</p>
-            </div>
-          )}
-        </div>
-        <div className="p-4 border-t border-slate-100 bg-slate-50">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-500">Total Tables</span>
-              <span className="font-semibold text-slate-800">{tables.length}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-500">Available</span>
-              <span className="font-semibold text-green-600">{tablesByStatus.vacant}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-500">Occupied</span>
-              <span className="font-semibold text-yellow-600">{tablesByStatus.occupied}</span>
-            </div>
-          </div>
-        </div>
-      </Card>
+      {/* Detail panel (desktop) */}
+      <aside className="hidden lg:flex w-[340px] shrink-0 flex-col bg-ink-panel rounded-card border border-ink-line overflow-hidden">
+        {renderDetail()}
+      </aside>
 
-      {/* Mobile Live Status Bottom Sheet */}
-      {showMobileLiveStatus && (
-        <>
-          <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden" onClick={() => setShowMobileLiveStatus(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl lg:hidden animate-slide-up max-h-[75vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-slate-800">Live Status</h3>
-                <Badge variant="success" className="text-xs">{tablesByStatus.occupied} Occupied</Badge>
-              </div>
-              <button onClick={() => setShowMobileLiveStatus(false)} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                <X className="h-4 w-4 text-slate-500" />
-              </button>
-            </div>
-            
-            {/* Quick stats */}
-            <div className="grid grid-cols-3 gap-2 p-3 border-b border-slate-100 shrink-0">
-              <div className="text-center p-2 bg-slate-50 rounded-lg">
-                <div className="text-lg font-bold text-slate-800">{tables.length}</div>
-                <div className="text-[10px] text-slate-500 font-medium">Total</div>
-              </div>
-              <div className="text-center p-2 bg-green-50 rounded-lg">
-                <div className="text-lg font-bold text-green-600">{tablesByStatus.vacant}</div>
-                <div className="text-[10px] text-green-600 font-medium">Available</div>
-              </div>
-              <div className="text-center p-2 bg-amber-50 rounded-lg">
-                <div className="text-lg font-bold text-amber-600">{tablesByStatus.occupied}</div>
-                <div className="text-[10px] text-amber-600 font-medium">Occupied</div>
-              </div>
-            </div>
-
-            {/* Active tables list */}
-            <div className="flex-1 overflow-auto p-3 space-y-2 pb-safe">
-              {displayTables.filter(t => t.status !== 'VACANT').map(table => (
-                <div key={table.tableUuid} onClick={() => { setShowMobileLiveStatus(false); navigate(`/app/tables/${table.tableUuid}`); }}
-                  className="flex justify-between items-center p-3 rounded-xl border border-slate-100 hover:bg-blue-50 active:bg-blue-100 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center font-bold text-sm text-slate-700">
-                      {table.tableNumber.length > 2 ? table.tableNumber.slice(-2) : table.tableNumber}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-slate-800">{table.sectionName || 'Main Hall'}</div>
-                      <div className="text-xs text-slate-500">{table.currentPax || 0} / {table.capacity} Guests</div>
-                      {hasManagerAccess && table.seatedAt && table.status === 'OCCUPIED' && (
-                        <div className="text-[10px] text-orange-600 font-medium mt-0.5">
-                          ⏱ {calculateOccupiedTime(table.seatedAt)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Badge variant={getStatusBadgeVariant(table.status)} size="sm" className="text-[10px]">{table.status}</Badge>
-                </div>
-              ))}
-              {displayTables.filter(t => t.status !== 'VACANT').length === 0 && (
-                <div className="text-center text-slate-400 py-6">
-                  <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No active tables</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      {/* Detail panel (mobile bottom sheet) */}
+      <Sheet open={!!floorSelected} onClose={() => setFloorSelected(null)} side="bottom" className="lg:hidden bg-ink-panel">
+        <div className="max-h-[80vh] overflow-auto text-txt-light">
+          {renderDetail()}
+        </div>
+      </Sheet>
 
       {/* Create/Edit Modal */}
       <Modal isOpen={showCreateModal || showEditModal} onClose={() => {
@@ -1246,6 +1180,7 @@ const TableManagement = () => {
         </div>
       </Modal>
     </div>
+    </DarkScreen>
   );
 };
 

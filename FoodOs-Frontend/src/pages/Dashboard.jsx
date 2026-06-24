@@ -1,304 +1,196 @@
 import React, { useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardTitle } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { DollarSign, ShoppingBag, Users, TrendingUp } from 'lucide-react';
+import { Search, RefreshCw, Plus, ArrowUpRight } from 'lucide-react';
 import {
-   fetchDashboardAnalytics,
-   selectDashboardAnalytics,
-   selectDashboardAnalyticsDays,
-   selectDashboardAnalyticsError,
-   selectDashboardAnalyticsLastUpdated,
-   selectDashboardAnalyticsLoading,
-   setAnalyticsDays,
+  PageHeader, Kpi, Panel, LivePill, BtnPrimary, BtnGhost, Pill,
+} from '../components/ui/kit';
+import {
+  fetchDashboardAnalytics,
+  selectDashboardAnalytics,
+  selectDashboardAnalyticsDays,
+  selectDashboardAnalyticsError,
+  selectDashboardAnalyticsLoading,
+  setAnalyticsDays,
 } from '../store/analyticsSlice';
 
-const StatCard = ({ title, value, icon: Icon, trend, color, subtext }) => (
-  <Card>
-    <CardContent className="p-3 sm:p-4 lg:p-6">
-      <div className="flex items-start sm:items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">{title}</p>
-          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 mt-0.5 sm:mt-1">{value}</h3>
-           {trend && (
-             <p className={`text-[10px] sm:text-xs font-medium mt-0.5 sm:mt-1 flex items-center ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-               <TrendingUp className="h-3 w-3 mr-0.5 sm:mr-1 shrink-0" />
-               {trend}% vs yesterday
-             </p>
-           )}
-           {subtext && <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1">{subtext}</p>}
-        </div>
-        <div className={`h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12 rounded-full flex items-center justify-center shrink-0 ${color}`}>
-          <Icon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
 
+const trendPercent = (todayVal, yesterdayVal) => {
+  const t = Number(todayVal || 0);
+  const y = Number(yesterdayVal || 0);
+  if (y === 0) return t > 0 ? 100 : 0;
+  return Number((((t - y) / y) * 100).toFixed(1));
+};
 
 const Dashboard = () => {
-   const dispatch = useDispatch();
-  const { user, activeRestaurantId, role, restaurantIds } = useSelector((state) => state.auth);
-   const analytics = useSelector(selectDashboardAnalytics);
-   const loading = useSelector(selectDashboardAnalyticsLoading);
-   const error = useSelector(selectDashboardAnalyticsError);
-   const days = useSelector(selectDashboardAnalyticsDays);
-   const lastUpdated = useSelector(selectDashboardAnalyticsLastUpdated);
+  const dispatch = useDispatch();
+  const { user, activeRestaurantId, role, restaurantIds } = useSelector((s) => s.auth);
+  const analytics = useSelector(selectDashboardAnalytics);
+  const loading = useSelector(selectDashboardAnalyticsLoading);
+  const error = useSelector(selectDashboardAnalyticsError);
+  const days = useSelector(selectDashboardAnalyticsDays);
   const navigate = useNavigate();
 
-   const canViewAnalytics = useMemo(() => {
-      return ['OWNER', 'MANAGER', 'ADMIN'].includes((role || '').toUpperCase());
-   }, [role]);
+  const canViewAnalytics = useMemo(
+    () => ['OWNER', 'MANAGER', 'ADMIN'].includes((role || '').toUpperCase()),
+    [role],
+  );
 
-   useEffect(() => {
-      if (!activeRestaurantId || !canViewAnalytics) return;
-
+  useEffect(() => {
+    if (!activeRestaurantId || !canViewAnalytics) return;
+    dispatch(fetchDashboardAnalytics({ restaurantUuid: activeRestaurantId, days }));
+    const id = setInterval(() => {
       dispatch(fetchDashboardAnalytics({ restaurantUuid: activeRestaurantId, days }));
+    }, 30000);
+    return () => clearInterval(id);
+  }, [dispatch, activeRestaurantId, days, canViewAnalytics]);
 
-      // Poll every 30 seconds so the dashboard stays close to real-time.
-      const intervalId = setInterval(() => {
-         dispatch(fetchDashboardAnalytics({ restaurantUuid: activeRestaurantId, days }));
-      }, 30000);
+  const today = analytics?.today;
+  const yesterday = analytics?.yesterday;
+  const topItems = analytics?.topItems || [];
+  const hourlyOrders = analytics?.hourlyOrders || [];
 
-      return () => clearInterval(intervalId);
-   }, [dispatch, activeRestaurantId, days, canViewAnalytics]);
+  const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-   const formatCurrency = (value) => {
-      const num = Number(value || 0);
-      return new Intl.NumberFormat('en-IN', {
-         style: 'currency',
-         currency: 'INR',
-         maximumFractionDigits: 2,
-      }).format(num);
-   };
-
-   const trendPercent = (todayVal, yesterdayVal) => {
-      const todayNum = Number(todayVal || 0);
-      const yNum = Number(yesterdayVal || 0);
-      if (yNum === 0) {
-         return todayNum > 0 ? 100 : 0;
-      }
-      return Number((((todayNum - yNum) / yNum) * 100).toFixed(1));
-   };
-
-   const today = analytics?.today;
-   const yesterday = analytics?.yesterday;
-   const topItems = analytics?.topItems || [];
-   const revenueChart = analytics?.revenueChart || [];
-   const hourlyOrders = analytics?.hourlyOrders || [];
-   const ordersByStatus = analytics?.ordersByStatus || {};
-
-   const topItem = topItems[0];
-   const maxRevenue = Math.max(...revenueChart.map((d) => Number(d.revenue || 0)), 1);
-
-  // No Restaurant Logic
+  // No-restaurant state
   if (role !== 'GUEST' && (!restaurantIds || restaurantIds.length === 0)) {
-       return (
-         <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)]">
-             <div className="text-center">
-                 <h2 className="text-2xl font-bold text-slate-800 mb-2">No Restaurants Found</h2>
-                 <p className="mb-6 text-slate-500">You don't have any restaurants associated with your account yet.</p>
-                 <Button onClick={() => navigate('/create-restaurant')} className="bg-blue-600">Create Your First Restaurant</Button>
-             </div>
-         </div>
-       );
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <h2 className="font-display text-2xl font-bold text-ink-text mb-2">No Restaurants Found</h2>
+        <p className="mb-6 text-txt-muted">You don't have any restaurants associated with your account yet.</p>
+        <BtnPrimary onClick={() => navigate('/create-restaurant')}>Create Your First Restaurant</BtnPrimary>
+      </div>
+    );
   }
 
+  // Sales-by-hour bars (revenue per hour). Color by relative magnitude.
+  const maxHourRev = Math.max(...hourlyOrders.map((h) => Number(h.revenue || 0)), 1);
+  const barColor = (rev) => {
+    const r = Number(rev || 0) / maxHourRev;
+    if (r >= 0.66) return 'bg-marigold';
+    if (r >= 0.33) return 'bg-marigold-soft';
+    return 'bg-line-light';
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 sm:gap-4">
-         <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Dashboard Overview</h1>
-            <p className="text-sm text-slate-500">Welcome back, {user}</p>
-         </div>
-         <div className="flex flex-col items-start sm:items-end gap-2">
-             <div className="text-xs sm:text-sm text-slate-500 bg-white px-3 py-1 rounded border border-slate-200 inline-block">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-             </div>
-
-             {activeRestaurantId && restaurantIds && restaurantIds[0] === activeRestaurantId && (
-                 <p className="text-xs text-slate-400">Restaurant ID: {activeRestaurantId}</p>
-             )}
-
-             <div className="flex items-center gap-2 mt-1">
-                 {/* Restaurant Details Button */}
-                 {activeRestaurantId && (
-                     <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => navigate(`/app/restaurant/${activeRestaurantId}`)}
-                     >
-                        View Details
-                     </Button>
-                 )}
-                 
-                 {/* Create Outlet Button - Only for OWNER with existing restaurants */}
-                 {(role === 'OWNER' && restaurantIds && restaurantIds.length > 0 && restaurantIds && restaurantIds[0] === activeRestaurantId ) && (
-                     <Button size="sm" onClick={() => navigate('/create-outlet')}>
-                        Create Outlet
-                     </Button>
-                 )}
-             </div>
-         </div>
-      </div>
-      
-      
-
-         <div className="flex flex-wrap gap-2 items-center justify-between">
-            <div className="text-xs text-slate-500">
-               {lastUpdated ? `Last updated: ${new Date(lastUpdated).toLocaleTimeString()}` : 'Waiting for first refresh...'}
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={`Good day, ${user || 'there'}`}
+        title="Today at a glance"
+        subtitle={dateLabel}
+        actions={
+          <>
+            <LivePill />
+            <div className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-input bg-paper-card border border-line-input text-txt-muted">
+              <Search className="h-4 w-4" />
+              <span className="text-sm">Search</span>
             </div>
-            <div className="flex items-center gap-2">
-               <select
-                  value={days}
-                  onChange={(e) => dispatch(setAnalyticsDays(Number(e.target.value)))}
-                  className="h-9 rounded-md border border-slate-300 px-2 text-sm bg-white"
-               >
-                  <option value={7}>Last 7 days</option>
-                  <option value={14}>Last 14 days</option>
-                  <option value={30}>Last 30 days</option>
-               </select>
-               <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={loading || !activeRestaurantId || !canViewAnalytics}
-                  onClick={() => dispatch(fetchDashboardAnalytics({ restaurantUuid: activeRestaurantId, days }))}
-               >
-                  {loading ? 'Refreshing...' : 'Refresh'}
-               </Button>
-            </div>
-         </div>
+            <select
+              value={days}
+              onChange={(e) => dispatch(setAnalyticsDays(Number(e.target.value)))}
+              className="h-10 rounded-input border border-line-input bg-paper-card px-3 text-sm text-txt-dark"
+            >
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
+            </select>
+            <BtnGhost
+              onClick={() => dispatch(fetchDashboardAnalytics({ restaurantUuid: activeRestaurantId, days }))}
+              disabled={loading || !activeRestaurantId || !canViewAnalytics}
+              className="px-3"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </BtnGhost>
+          </>
+        }
+      />
 
-         {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-               {error}
-            </div>
-         )}
+      {error && (
+        <div className="rounded-input border border-danger/30 bg-danger/[0.06] px-3 py-2 text-sm text-danger-deep">{error}</div>
+      )}
+      {!canViewAnalytics && (
+        <div className="rounded-input border border-marigold/30 bg-marigold/[0.08] px-3 py-2 text-sm text-[#9a6500]">
+          Live analytics is available for Manager / Owner / Admin roles.
+        </div>
+      )}
 
-         {!canViewAnalytics && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-               Live analytics is available for Manager/Owner/Admin roles.
-            </div>
-         )}
-
-         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-        <StatCard 
-               title="Today's Sales" 
-               value={formatCurrency(today?.revenue)} 
-               trend={trendPercent(today?.revenue, yesterday?.revenue)} 
-          icon={DollarSign} 
-          color="bg-blue-500"
-        />
-        <StatCard 
-               title="Today's Orders" 
-               value={today?.orderCount ?? 0} 
-               trend={trendPercent(today?.orderCount, yesterday?.orderCount)} 
-          icon={ShoppingBag} 
-          color="bg-purple-500"
-        />
-        <StatCard 
-               title="Average Order Value" 
-               value={formatCurrency(today?.avgOrderValue)} 
-               trend={trendPercent(today?.avgOrderValue, yesterday?.avgOrderValue)}
-          icon={Users} 
-          color="bg-amber-500"
-        />
-        <StatCard 
-               title="Top Item" 
-               value={topItem?.productName || 'N/A'} 
-               subtext={topItem ? `${topItem.quantity} sold • ${formatCurrency(topItem.revenue)}` : 'No item sales in selected range'}
-          icon={Users} 
-          color="bg-emerald-500"
-        />
+      {/* KPI row — 3 light + 1 ink */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Kpi label="Net Sales" value={formatCurrency(today?.revenue)} delta={trendPercent(today?.revenue, yesterday?.revenue)} sub="vs yesterday" />
+        <Kpi label="Avg Check" value={formatCurrency(today?.avgOrderValue)} delta={trendPercent(today?.avgOrderValue, yesterday?.avgOrderValue)} sub="per order" />
+        <Kpi label="Covers" value={today?.covers ?? 0} delta={trendPercent(today?.covers, yesterday?.covers)} sub="guests served" />
+        <Kpi tone="ink" label="Tables Turned" value={Number(today?.tablesTurned || 0).toFixed(1)} delta={trendPercent(today?.tablesTurned, yesterday?.tablesTurned)} sub="avg turns / table" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-         <Card className="h-64 sm:h-80 lg:h-96">
-            <CardContent>
-                      <CardTitle className="mb-4">Revenue Trend</CardTitle>
-                      <div className="h-full flex items-end gap-2 overflow-x-auto pb-2">
-                           {revenueChart.length === 0 && (
-                              <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                 No revenue data available.
-                              </div>
-                           )}
-                           {revenueChart.map((entry) => {
-                              const revenue = Number(entry.revenue || 0);
-                              const barHeight = Math.max(6, Math.round((revenue / maxRevenue) * 180));
-                              return (
-                                 <div key={entry.date} className="min-w-[52px] flex flex-col items-center">
-                                    <div
-                                       className="w-8 rounded-t bg-blue-500"
-                                       style={{ height: `${barHeight}px` }}
-                                       title={`${entry.date}: ${formatCurrency(revenue)}`}
-                                    />
-                                    <span className="text-[10px] text-slate-500 mt-1">{entry.date?.slice(5)}</span>
-                                 </div>
-                              );
-                           })}
-               </div>
-            </CardContent>
-         </Card>
-         <Card className="h-auto lg:h-96">
-            <CardContent>
-               <CardTitle className="mb-4">Top Selling Items</CardTitle>
-               <div className="space-y-3 sm:space-y-4">
-                           {topItems.length === 0 && (
-                              <p className="text-sm text-slate-500">No item sales for selected range.</p>
-                           )}
-                           {topItems.map((item) => (
-                              <div key={item.productName} className="flex items-center justify-between">
-                                 <div className="flex items-center gap-3 min-w-0">
-                                    <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 text-xs font-semibold">
-                                       #{item.quantity}
-                                    </div>
-                                    <div className="min-w-0">
-                                       <p className="font-medium text-slate-800 truncate">{item.productName}</p>
-                                       <p className="text-xs text-slate-500">{item.quantity} sold</p>
-                                    </div>
-                                 </div>
-                                 <span className="font-semibold text-slate-700">{formatCurrency(item.revenue)}</span>
-                              </div>
-                           ))}
-               </div>
-            </CardContent>
-         </Card>
+      {/* Sales-by-hour + Top sellers */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
+        <Panel className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="eyebrow text-[10px] text-txt-faint">Revenue</p>
+              <h3 className="font-display font-semibold text-base text-ink-text">Sales by hour</h3>
+            </div>
+            <Pill tone="marigold">Peak {(() => {
+              const peak = hourlyOrders.reduce((a, b) => (Number(b.revenue || 0) > Number(a?.revenue || 0) ? b : a), null);
+              return peak ? `${String(peak.hour).padStart(2, '0')}:00` : '—';
+            })()}</Pill>
+          </div>
+          <div className="h-56 flex items-end gap-1">
+            {hourlyOrders.length === 0 && (
+              <div className="w-full h-full grid place-items-center text-txt-faint text-sm">No revenue data yet today.</div>
+            )}
+            {hourlyOrders.map((h) => {
+              const height = Math.max(4, Math.round((Number(h.revenue || 0) / maxHourRev) * 100));
+              return (
+                <div key={h.hour} className="flex-1 flex flex-col items-center justify-end h-full group" title={`${String(h.hour).padStart(2, '0')}:00 · ${formatCurrency(h.revenue)}`}>
+                  <div className={`w-full rounded-t ${barColor(h.revenue)} transition-all`} style={{ height: `${height}%` }} />
+                  {h.hour % 3 === 0 && <span className="mt-1 text-[9px] font-mono text-txt-faint">{String(h.hour).padStart(2, '0')}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="eyebrow text-[10px] text-txt-faint">Best performers</p>
+              <h3 className="font-display font-semibold text-base text-ink-text">Top sellers</h3>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {topItems.length === 0 && <p className="text-sm text-txt-muted">No item sales in this range.</p>}
+            {topItems.map((item, i) => (
+              <div key={item.productName} className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-tile bg-paper-3 grid place-items-center font-display font-bold text-sm text-marigold shrink-0">
+                  {i + 1}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-ink-text truncate">{item.productName}</p>
+                  <p className="text-xs text-txt-muted font-mono">{item.quantity} sold</p>
+                </div>
+                <span className="font-display font-semibold text-ink-text">{formatCurrency(item.revenue)}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <Card>
-               <CardContent>
-                  <CardTitle className="mb-4">Today's Hourly Orders</CardTitle>
-                  <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
-                     {hourlyOrders.map((entry) => (
-                        <div key={entry.hour} className="text-center rounded border border-slate-200 px-1 py-2">
-                           <p className="text-xs text-slate-500">{String(entry.hour).padStart(2, '0')}</p>
-                           <p className="text-sm font-semibold text-slate-800">{entry.orderCount}</p>
-                        </div>
-                     ))}
-                  </div>
-               </CardContent>
-            </Card>
-
-            <Card>
-               <CardContent>
-                  <CardTitle className="mb-4">Order Status Breakdown (Today)</CardTitle>
-                  <div className="space-y-3">
-                     {Object.keys(ordersByStatus).length === 0 && (
-                        <p className="text-sm text-slate-500">No orders found for today.</p>
-                     )}
-                     {Object.entries(ordersByStatus).map(([status, count]) => (
-                        <div key={status} className="flex items-center justify-between rounded border border-slate-200 px-3 py-2">
-                           <span className="text-sm font-medium text-slate-700">{status.replaceAll('_', ' ')}</span>
-                           <span className="text-sm font-semibold text-slate-900">{count}</span>
-                        </div>
-                     ))}
-                  </div>
-               </CardContent>
-            </Card>
-         </div>
+      {/* Quick links */}
+      <div className="flex flex-wrap gap-2">
+        {activeRestaurantId && (
+          <BtnGhost onClick={() => navigate(`/app/restaurant/${activeRestaurantId}`)}>
+            <ArrowUpRight className="h-4 w-4" /> View outlet details
+          </BtnGhost>
+        )}
+        {role === 'OWNER' && restaurantIds?.[0] === activeRestaurantId && (
+          <BtnPrimary onClick={() => navigate('/create-outlet')}>
+            <Plus className="h-4 w-4" /> Create outlet
+          </BtnPrimary>
+        )}
+      </div>
     </div>
   );
 };

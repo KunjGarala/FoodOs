@@ -1,46 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { Sidebar } from './Sidebar';
-import { Topbar } from './Topbar';
+import { Rail } from './Rail';
+import { BottomTabs } from './BottomTabs';
 import { fetchMeContext } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
 
+/**
+ * App shell: fixed 80px icon rail (lg+) / bottom tab bar (< lg).
+ * The content area is paper by default; dark operational screens (Floor,
+ * Kitchen, POS) break out to full-bleed dark using `-m-*` + their own bg.
+ */
 export const MainLayout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dispatch = useDispatch();
 
-  // Refresh identity + accessible outlets from /api/me/context whenever the
-  // authenticated shell mounts (login redirect, page reload). This is the
-  // source of truth for the outlet picker now that it's no longer in the JWT.
+  // Refresh identity + accessible outlets from /api/me/context on shell mount.
   useEffect(() => {
     dispatch(fetchMeContext());
   }, [dispatch]);
 
-  // Connect WebSocket when any /app route mounts, disconnect on unmount
+  // Connect WebSocket while any /app route is mounted.
   useEffect(() => {
     websocketService.connect();
     return () => websocketService.disconnect();
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-slate-900 font-sans">
-      {/* Mobile backdrop overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm lg:hidden transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <Topbar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
-      <main className="lg:pl-64 pt-16 min-h-screen">
-        <div className="px-3 py-4 sm:p-4 lg:p-6 max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-paper text-ink-text font-sans">
+      <Rail />
+      <div className="lg:ml-20 min-h-screen flex flex-col">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
+      <BottomTabs />
     </div>
   );
 };
