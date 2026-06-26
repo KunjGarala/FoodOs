@@ -22,16 +22,16 @@ import {
 import { selectActiveRestaurant, selectRole } from '../../store/authSlice';
 import { employeeAPI, tableAPI } from '../../services/api';
 import useWebSocket from '../../hooks/useWebSocket';
-import { DarkScreen, Segmented, Pill, LivePill, Sheet } from '../../components/ui/kit';
+import { Segmented, Pill, LivePill, Sheet } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 
-// Live Floor status → table-card palette (dark surface)
+// Live Floor status → table-card palette (light paper surface)
 const FLOOR_CARD = {
-  OCCUPIED: 'bg-table-occupied text-ink border-transparent',
-  BILLED: 'bg-table-billing text-[#06281a] border-transparent',
-  DIRTY: 'bg-table-dirty text-[#ef8a88] border border-dashed border-danger',
-  RESERVED: 'bg-table-reserved text-[#3a2c10] border-transparent',
-  VACANT: 'bg-ink-card2 text-[#9fb0c1] border border-ink-line',
+  OCCUPIED: 'bg-marigold text-ink border-transparent',
+  BILLED: 'bg-success text-white border-transparent',
+  DIRTY: 'bg-danger/10 text-danger-deep border border-dashed border-danger',
+  RESERVED: 'bg-gold/40 text-[#7a5e1d] border-transparent',
+  VACANT: 'bg-paper-card text-txt-muted border border-line-light',
 };
 const FLOOR_PILL = {
   OCCUPIED: 'marigold', BILLED: 'success', DIRTY: 'danger', RESERVED: 'gold', VACANT: 'neutral',
@@ -518,10 +518,10 @@ const TableManagement = () => {
           'w-[118px] h-[104px] p-2.5 flex flex-col justify-between text-left transition',
           round ? 'rounded-full items-center justify-center text-center' : 'rounded-tile',
           isInactive
-            ? 'bg-ink-card2/40 text-txt-faintDark border border-dashed border-ink-line opacity-60'
+            ? 'bg-paper-2/40 text-txt-faint border border-dashed border-line-light opacity-60'
             : cn(FLOOR_CARD[table.status] || FLOOR_CARD.VACANT, 'hover:brightness-105'),
           mine && !selected && 'ring-2 ring-marigold/70',
-          selected && 'ring-2 ring-marigold ring-offset-2 ring-offset-ink-panel',
+          selected && 'ring-2 ring-marigold ring-offset-2 ring-offset-paper',
         )}
       >
         <div className="flex items-center justify-between w-full gap-1">
@@ -530,7 +530,7 @@ const TableManagement = () => {
             <span className="font-display font-bold text-[22px] leading-none">{table.tableNumber}</span>
           </span>
           {!round && busy && (
-            <span className={cn('font-mono text-[10px] leading-none px-1.5 py-1 rounded-full whitespace-nowrap shrink-0', late ? 'bg-danger text-white' : 'bg-black/15')}>
+            <span className={cn('font-mono text-[10px] leading-none px-1.5 py-1 rounded-full whitespace-nowrap shrink-0', late ? 'bg-danger text-white' : 'bg-black/10')}>
               {calculateOccupiedTime(table.seatedAt) || '—'}
             </span>
           )}
@@ -561,7 +561,7 @@ const TableManagement = () => {
     const t = floorSelected;
     if (!t) {
       return (
-        <div className="h-full grid place-items-center p-8 text-center text-txt-faintDark text-sm">
+        <div className="h-full grid place-items-center p-8 text-center text-txt-faint text-sm">
           Select a table to see its session & actions.
         </div>
       );
@@ -569,9 +569,9 @@ const TableManagement = () => {
     const busy = t.status === 'OCCUPIED' || t.status === 'BILLED';
     const canAct = canActOnTable(t);
     const Stat = ({ label, value, highlight }) => (
-      <div className="rounded-tile bg-ink-card2 p-3">
-        <p className="eyebrow text-[9px] text-txt-faintDark">{label}</p>
-        <p className={cn('font-display font-bold text-base mt-0.5 truncate', highlight ? 'text-marigold' : 'text-white')}>{value}</p>
+      <div className="rounded-tile bg-paper-2 p-3">
+        <p className="eyebrow text-[9px] text-txt-faint">{label}</p>
+        <p className={cn('font-display font-bold text-base mt-0.5 truncate', highlight ? 'text-marigold' : 'text-ink-text')}>{value}</p>
       </div>
     );
     const Action = (props) => {
@@ -581,17 +581,17 @@ const TableManagement = () => {
           className={cn('flex items-center justify-center gap-2 h-11 rounded-input text-sm font-semibold transition disabled:opacity-40',
             primary ? 'bg-marigold text-ink hover:brightness-105'
               : danger ? 'bg-danger/15 text-danger hover:bg-danger/25'
-              : 'bg-ink-card2 text-txt-light hover:bg-ink-card2/70')}>
+              : 'bg-paper-2 border border-line-input text-txt-dark hover:bg-paper-3')}>
           <Icon className="h-4 w-4" /> {label}
         </button>
       );
     };
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-ink-line flex items-center justify-between gap-2">
+        <div className="p-4 border-b border-line-light flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="font-display font-bold text-lg text-white truncate">Table {t.tableNumber}</h3>
-            <p className="text-[11px] text-txt-mutedDark truncate">{t.sectionName || 'Floor'} · {t.capacity} seats</p>
+            <h3 className="font-display font-bold text-lg text-ink-text truncate">Table {t.tableNumber}</h3>
+            <p className="text-[11px] text-txt-muted truncate">{t.sectionName || 'Floor'} · {t.capacity} seats</p>
           </div>
           <Pill tone={FLOOR_PILL[t.status] || 'neutral'}>{t.status}</Pill>
         </div>
@@ -605,11 +605,11 @@ const TableManagement = () => {
           </div>
 
           {!canAct ? (
-            <div className="rounded-input bg-ink-card2 border border-ink-line px-3 py-4 text-center">
-              <p className="text-sm text-txt-light font-medium">
+            <div className="rounded-input bg-paper-2 border border-line-light px-3 py-4 text-center">
+              <p className="text-sm text-ink-text font-medium">
                 {t.currentWaiterName ? `Assigned to ${t.currentWaiterName}` : 'Not assigned to you'}
               </p>
-              <p className="text-[11px] text-txt-faintDark mt-1">
+              <p className="text-[11px] text-txt-faint mt-1">
                 You can view this table — a manager assigns the tables you serve.
               </p>
             </div>
@@ -618,14 +618,14 @@ const TableManagement = () => {
               <div className="grid grid-cols-2 gap-2">
                 {t.status === 'VACANT' ? (
                   <>
-                    <div className="col-span-2 flex items-center justify-between rounded-input bg-ink-card2 px-3 py-2">
-                      <span className="eyebrow text-[10px] text-txt-faintDark">Guests</span>
+                    <div className="col-span-2 flex items-center justify-between rounded-input bg-paper-2 px-3 py-2">
+                      <span className="eyebrow text-[10px] text-txt-faint">Guests</span>
                       <div className="flex items-center gap-3">
                         <button type="button" onClick={() => setSeatPax((p) => Math.max(1, p - 1))}
-                          className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">−</button>
-                        <span className="font-display font-bold text-white w-6 text-center tabular-nums">{seatPax}</span>
+                          className="h-7 w-7 rounded-full bg-paper-2 border border-line-input text-txt-dark grid place-items-center text-lg leading-none hover:text-ink-text">−</button>
+                        <span className="font-display font-bold text-ink-text w-6 text-center tabular-nums">{seatPax}</span>
                         <button type="button" onClick={() => setSeatPax((p) => Math.min(t.capacity || 99, p + 1))}
-                          className="h-7 w-7 rounded-full bg-ink-card text-txt-light grid place-items-center text-lg leading-none hover:text-white">+</button>
+                          className="h-7 w-7 rounded-full bg-paper-2 border border-line-input text-txt-dark grid place-items-center text-lg leading-none hover:text-ink-text">+</button>
                       </div>
                     </div>
                     <Action icon={HandMetal} label="Seat guests" primary disabled={actionLoading}
@@ -648,7 +648,7 @@ const TableManagement = () => {
               </div>
 
               {hasManagerAccess && (
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ink-line">
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-line-light">
                   <Action icon={Edit} label="Edit" onClick={() => openEditModal(t)} />
                   <Action icon={Power} label={t.isActive === false ? 'Enable' : 'Disable'} onClick={() => handleToggleTableActive(t)} />
                   <Action icon={Trash2} label="Delete" danger onClick={() => handleDeleteTable(t.tableUuid)} />
@@ -690,34 +690,34 @@ const TableManagement = () => {
     && uniquePositions.size === displayTables.length;
 
   return (
-    <DarkScreen className="flex flex-col">
-    <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-4 lg:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col">
+    <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-4 lg:gap-6">
       <div className="flex-1 flex flex-col min-w-0">
         <div className="mb-4 sm:mb-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div className="min-w-0">
-              <h1 className="font-display font-bold text-xl sm:text-[23px] tracking-[-0.01em] text-white">Live Floor</h1>
+              <h1 className="font-display font-bold text-xl sm:text-[23px] tracking-[-0.01em] text-ink-text">Live Floor</h1>
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                <p className="text-xs sm:text-sm text-txt-mutedDark">Real-time seating & service</p>
-                <LivePill dark />
+                <p className="text-xs sm:text-sm text-txt-muted">Real-time seating & service</p>
+                <LivePill />
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Segmented dark value={floorView} onChange={setFloorView}
+              <Segmented value={floorView} onChange={setFloorView}
                 options={[{ value: 'map', label: 'Map' }, { value: 'list', label: 'List' }]} />
               {hasManagerAccess && (
                 <>
                   <button onClick={handleViewAnalytics} disabled={loading}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-ink-card text-txt-mutedDark hover:text-white text-sm font-medium">
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-paper-2 border border-line-input text-txt-muted hover:text-ink-text text-sm font-medium">
                     <BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">Analytics</span>
                   </button>
                   <button onClick={() => setShowMergeModal(true)}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-ink-card text-txt-mutedDark hover:text-white text-sm font-medium">
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-paper-2 border border-line-input text-txt-muted hover:text-ink-text text-sm font-medium">
                     <Shuffle className="h-4 w-4" /><span className="hidden sm:inline">Merge</span>
                   </button>
                   <button onClick={() => setShowTransferModal(true)}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-ink-card text-txt-mutedDark hover:text-white text-sm font-medium">
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-input bg-paper-2 border border-line-input text-txt-muted hover:text-ink-text text-sm font-medium">
                     <ArrowRightLeft className="h-4 w-4" /><span className="hidden sm:inline">Transfer</span>
                   </button>
                   <button onClick={() => setShowCreateModal(true)}
@@ -739,19 +739,19 @@ const TableManagement = () => {
             ].map((tile) => (
               <div key={tile.label}
                 className={cn('rounded-tile border p-3', tile.danger && Number(kotsLate) > 0
-                  ? 'bg-danger/[0.14] border-danger/30' : 'bg-ink-card border-ink-line')}>
-                <p className="eyebrow text-[10px] text-txt-faintDark">{tile.label}</p>
-                <p className={cn('font-display font-bold text-2xl mt-1', tile.danger && Number(kotsLate) > 0 ? 'text-danger' : 'text-white')}>{tile.value}</p>
+                  ? 'bg-danger/[0.10] border-danger/30' : 'bg-paper-card border-line-light')}>
+                <p className="eyebrow text-[10px] text-txt-faint">{tile.label}</p>
+                <p className={cn('font-display font-bold text-2xl mt-1', tile.danger && Number(kotsLate) > 0 ? 'text-danger-deep' : 'text-ink-text')}>{tile.value}</p>
               </div>
             ))}
           </div>
 
           {/* Section tabs */}
-          <div className="flex overflow-x-auto scrollbar-hide gap-1 bg-ink-card p-1 rounded-input">
+          <div className="flex overflow-x-auto scrollbar-hide gap-1 bg-paper-2 border border-line-light p-1 rounded-input">
             {sections.map((section) => (
               <button key={section} onClick={() => dispatch(setSectionFilter(section))}
                 className={cn('px-3 sm:px-4 py-1.5 rounded-[8px] text-xs sm:text-sm font-medium whitespace-nowrap transition-colors',
-                  filters.section === section ? 'bg-marigold text-ink' : 'text-txt-mutedDark hover:text-white')}>
+                  filters.section === section ? 'bg-marigold text-ink' : 'text-txt-muted hover:text-ink-text')}>
                 {section}
               </button>
             ))}
@@ -771,10 +771,10 @@ const TableManagement = () => {
         <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-txt-faintDark" />
+              <Loader2 className="h-8 w-8 animate-spin text-txt-faint" />
             </div>
           ) : displayTables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-20 text-txt-faintDark">
+            <div className="flex flex-col items-center justify-center h-full py-20 text-txt-faint">
               <Users className="h-14 w-14 mb-3 opacity-60" />
               <p className="text-base font-medium">No tables found</p>
               <p className="text-sm">Create your first table to get started</p>
@@ -783,7 +783,7 @@ const TableManagement = () => {
             <>
               {/* Spatial map (lg + Map view) */}
               <div className={cn(floorView === 'list' ? 'hidden' : 'hidden lg:block')}>
-                <div className="relative floor-stripes bg-ink-panel rounded-card border border-ink-line p-4 min-h-[560px] overflow-auto">
+                <div className="relative floor-stripes-light bg-paper-2 rounded-card border border-line-light p-4 min-h-[560px] overflow-auto">
                   {hasLayout ? (
                     <div className="relative" style={{ minHeight: 540 }}>
                       {displayTables.map((t) => renderFloorCard(t, true))}
@@ -804,8 +804,8 @@ const TableManagement = () => {
                   return (
                     <section key={group.key}>
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="eyebrow text-[11px] text-txt-mutedDark">{group.label}</h3>
-                        <span className="text-[11px] font-mono text-txt-faintDark">{rows.length}</span>
+                        <h3 className="eyebrow text-[11px] text-txt-muted">{group.label}</h3>
+                        <span className="text-[11px] font-mono text-txt-faint">{rows.length}</span>
                       </div>
                       <div className="space-y-2">
                         {rows.map((table) => {
@@ -814,18 +814,18 @@ const TableManagement = () => {
                           const mine = isWaiter && table.currentWaiterUuid === currentUserUuid;
                           return (
                             <button key={table.tableUuid} type="button" onClick={() => setFloorSelected(table)}
-                              className={cn('w-full flex items-center gap-3 p-3 rounded-tile bg-ink-card border text-left',
-                                selected ? 'border-marigold' : mine ? 'border-marigold/60' : 'border-ink-line hover:border-ink-line/80')}>
+                              className={cn('w-full flex items-center gap-3 p-3 rounded-tile bg-paper-card border text-left',
+                                selected ? 'border-marigold' : mine ? 'border-marigold/60' : 'border-line-light hover:border-line-light/80')}>
                               <span className={cn('h-10 w-10 rounded-full grid place-items-center font-display font-bold shrink-0',
                                 FLOOR_CARD[table.status] || FLOOR_CARD.VACANT)}>
                                 {String(table.tableNumber).slice(-2)}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5">
+                                <p className="text-sm font-semibold text-ink-text truncate flex items-center gap-1.5">
                                   {mine && <Star className="h-3.5 w-3.5 fill-marigold text-marigold shrink-0" />}
                                   {table.sectionName || 'Floor'} · {table.currentPax || 0}/{table.capacity}
                                 </p>
-                                <p className="text-[11px] text-txt-mutedDark truncate">
+                                <p className="text-[11px] text-txt-muted truncate">
                                   {busy && table.currentWaiterName ? table.currentWaiterName : table.status}
                                   {busy && table.seatedAt ? ` · ${calculateOccupiedTime(table.seatedAt)}` : ''}
                                 </p>
@@ -847,15 +847,15 @@ const TableManagement = () => {
 
         {/* Pagination Controls for Manager/Owner/Admin */}
         {hasManagerAccess && pagination.totalPages > 1 && (
-          <div className="mt-4 pt-3 border-t border-ink-line">
+          <div className="mt-4 pt-3 border-t border-line-light">
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:justify-between">
-              <div className="text-xs text-txt-mutedDark">
+              <div className="text-xs text-txt-muted">
                 Showing {pagination.page * pagination.size + 1}–
                 {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of {pagination.totalElements}
               </div>
               <div className="flex items-center gap-1.5">
                 <button
-                  className="h-8 px-3 text-sm rounded-input bg-ink-card text-txt-mutedDark hover:text-white disabled:opacity-40"
+                  className="h-8 px-3 text-sm rounded-input bg-paper-2 border border-line-input text-txt-muted hover:text-ink-text disabled:opacity-40"
                   onClick={() => dispatch(getAllTables({ page: pagination.page - 1, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }))}
                   disabled={pagination.page === 0 || loading}
                 >
@@ -870,14 +870,14 @@ const TableManagement = () => {
                         onClick={() => dispatch(getAllTables({ page: pageNum, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }))}
                         disabled={loading}
                         className={cn('min-w-[2rem] h-8 px-2 text-sm rounded-input',
-                          pagination.page === pageNum ? 'bg-marigold text-ink font-semibold' : 'bg-ink-card text-txt-mutedDark hover:text-white')}>
+                          pagination.page === pageNum ? 'bg-marigold text-ink font-semibold' : 'bg-paper-2 border border-line-input text-txt-muted hover:text-ink-text')}>
                         {pageNum + 1}
                       </button>
                     );
                   })}
                 </div>
                 <button
-                  className="h-8 px-3 text-sm rounded-input bg-ink-card text-txt-mutedDark hover:text-white disabled:opacity-40"
+                  className="h-8 px-3 text-sm rounded-input bg-paper-2 border border-line-input text-txt-muted hover:text-ink-text disabled:opacity-40"
                   onClick={() => dispatch(getAllTables({ page: pagination.page + 1, size: pagination.size, status: filters.status, restaurantUuid: activeRestaurantId }))}
                   disabled={pagination.page >= pagination.totalPages - 1 || loading}
                 >
@@ -890,15 +890,15 @@ const TableManagement = () => {
       </div>
 
       {/* Detail panel (desktop) */}
-      <aside className="hidden lg:flex w-[340px] shrink-0 flex-col bg-ink-panel rounded-card border border-ink-line overflow-hidden">
+      <aside className="hidden lg:flex w-[340px] shrink-0 flex-col bg-paper-card rounded-card border border-line-light overflow-hidden">
         {renderDetail()}
       </aside>
 
       {/* Detail panel (mobile bottom sheet) — wrapper is hidden on lg so its
           full-screen backdrop never overlays/intercepts the desktop panel. */}
       <div className="lg:hidden">
-        <Sheet open={!!floorSelected} onClose={() => setFloorSelected(null)} side="bottom" className="bg-ink-panel">
-          <div className="max-h-[80vh] overflow-auto text-txt-light">
+        <Sheet open={!!floorSelected} onClose={() => setFloorSelected(null)} side="bottom" className="bg-paper-card">
+          <div className="max-h-[80vh] overflow-auto text-ink-text">
             {renderDetail()}
           </div>
         </Sheet>
@@ -1229,7 +1229,7 @@ const TableManagement = () => {
         </div>
       </Modal>
     </div>
-    </DarkScreen>
+    </div>
   );
 };
 

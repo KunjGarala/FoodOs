@@ -15,7 +15,7 @@ import { Input } from '../../components/ui/Input';
 import { CouponInput } from '../../components/coupon/CouponInput';
 import { CouponList } from '../../components/coupon/CouponList';
 import { CouponSummary } from '../../components/coupon/CouponSummary';
-import { DarkScreen, Pill, BtnPrimary, BtnGhost } from '../../components/ui/kit';
+import { Pill, BtnPrimary, BtnGhost } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 
 import {
@@ -68,7 +68,7 @@ const STATUS_PILL = {
   RESERVED: { tone: 'gold', dot: 'bg-gold' },
   BILLED: { tone: 'success', dot: 'bg-success' },
   DIRTY: { tone: 'danger', dot: 'bg-danger' },
-  MAINTENANCE: { tone: 'neutral', dot: 'bg-txt-faintDark' },
+  MAINTENANCE: { tone: 'neutral', dot: 'bg-txt-faint' },
 };
 
 const KOT_STATUS_COLORS = {
@@ -556,28 +556,28 @@ const TableDetails = () => {
   // ── Loading / Error ────────────────────────────────────
   if (detailsLoading) {
     return (
-      <DarkScreen className="p-4 sm:p-6">
+      <div className="space-y-5">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-10 w-10 animate-spin text-txt-faintDark" />
-            <p className="text-txt-mutedDark font-medium">Loading table details…</p>
+            <Loader2 className="h-10 w-10 animate-spin text-txt-faint" />
+            <p className="text-txt-muted font-medium">Loading table details…</p>
           </div>
         </div>
-      </DarkScreen>
+      </div>
     );
   }
 
   if (!tableDetails || !table) {
     return (
-      <DarkScreen className="p-4 sm:p-6">
+      <div className="space-y-5">
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <AlertCircle className="h-16 w-16 text-txt-faintDark" />
-          <p className="text-lg text-txt-mutedDark font-medium">Table not found</p>
+          <AlertCircle className="h-16 w-16 text-txt-faint" />
+          <p className="text-lg text-txt-muted font-medium">Table not found</p>
           <BtnGhost onClick={() => navigate('/app/tables')}>
             <ArrowLeft className="h-4 w-4" /> Back to Floor Plan
           </BtnGhost>
         </div>
-      </DarkScreen>
+      </div>
     );
   }
 
@@ -587,7 +587,7 @@ const TableDetails = () => {
   const isError = !!(orderError || tableError || couponState.error || couponState.autoRemovedReason);
 
   return (
-    <DarkScreen className="p-4 sm:p-6">
+    <div className="space-y-5">
       <div className="space-y-4 sm:space-y-6 pb-8">
       {/* Toast */}
       {(orderError || orderSuccess || tableError || couponState.error || couponState.message || couponState.autoRemovedReason) && (
@@ -607,24 +607,24 @@ const TableDetails = () => {
       )}
 
       {/* ───── HEADER ───── */}
-      <div className="flex flex-col gap-3 sm:gap-4 bg-ink-card rounded-card border border-ink-line p-3 sm:p-5">
+      <div className="flex flex-col gap-3 sm:gap-4 bg-paper-card rounded-card border border-line-light p-3 sm:p-5">
         <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => navigate('/app/tables')}
-            className="p-1.5 sm:p-2 rounded-input text-txt-mutedDark hover:text-white hover:bg-white/5 transition-colors shrink-0"
+            className="p-1.5 sm:p-2 rounded-input text-txt-muted hover:text-ink-text hover:bg-paper-2 transition-colors shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="eyebrow text-[10px] text-txt-faintDark mb-0.5">Floor · Table Details</p>
+            <p className="eyebrow text-[10px] text-txt-faint mb-0.5">Floor · Table Details</p>
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-              <h1 className="font-display text-lg sm:text-2xl font-bold text-white tracking-[-0.01em]">Table {table.tableNumber}</h1>
+              <h1 className="font-display text-lg sm:text-2xl font-bold text-ink-text tracking-[-0.01em]">Table {table.tableNumber}</h1>
               <Pill tone={sc.tone}>
                 <span className={cn('h-1.5 w-1.5 rounded-full', sc.dot)} />
                 {table.status}
               </Pill>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-txt-mutedDark">
+            <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-txt-muted">
               <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {table.capacity} seats</span>
               {table.sectionName && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{table.sectionName}</span>}
             </div>
@@ -634,25 +634,25 @@ const TableDetails = () => {
         {/* Session card — stat chips */}
         {activeOrder && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pl-0 sm:pl-12">
-            <div className="rounded-tile bg-ink-card2 border border-ink-line p-3">
-              <p className="eyebrow text-[9px] text-txt-faintDark mb-1 flex items-center gap-1"><Hash className="h-3 w-3" /> Order</p>
+            <div className="rounded-tile bg-paper-2 border border-line-light p-3">
+              <p className="eyebrow text-[9px] text-txt-faint mb-1 flex items-center gap-1"><Hash className="h-3 w-3" /> Order</p>
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-sm text-white truncate">{activeOrder.orderNumber || activeOrder.orderUuid?.slice(0, 8)}</span>
+                <span className="font-mono text-sm text-ink-text truncate">{activeOrder.orderNumber || activeOrder.orderUuid?.slice(0, 8)}</span>
                 <Badge variant={activeOrder.status === 'OPEN' ? 'success' : activeOrder.status === 'BILLED' ? 'primary' : 'default'}>
                   {activeOrder.status}
                 </Badge>
               </div>
             </div>
             {activeOrder.numberOfGuests > 0 && (
-              <div className="rounded-tile bg-ink-card2 border border-ink-line p-3">
-                <p className="eyebrow text-[9px] text-txt-faintDark mb-1 flex items-center gap-1"><Users className="h-3 w-3" /> Guests</p>
-                <span className="font-display text-lg font-bold text-white leading-none">{activeOrder.numberOfGuests}</span>
+              <div className="rounded-tile bg-paper-2 border border-line-light p-3">
+                <p className="eyebrow text-[9px] text-txt-faint mb-1 flex items-center gap-1"><Users className="h-3 w-3" /> Guests</p>
+                <span className="font-display text-lg font-bold text-ink-text leading-none">{activeOrder.numberOfGuests}</span>
               </div>
             )}
             {table.seatedAt && (
-              <div className="rounded-tile bg-ink-card2 border border-ink-line p-3">
-                <p className="eyebrow text-[9px] text-txt-faintDark mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Seated</p>
-                <span className="font-mono text-sm text-txt-light">{calculateSeatedTime(table.seatedAt)}</span>
+              <div className="rounded-tile bg-paper-2 border border-line-light p-3">
+                <p className="eyebrow text-[9px] text-txt-faint mb-1 flex items-center gap-1"><Clock className="h-3 w-3" /> Seated</p>
+                <span className="font-mono text-sm text-ink-text">{calculateSeatedTime(table.seatedAt)}</span>
               </div>
             )}
             <div className="rounded-tile bg-marigold/[0.12] border border-marigold/25 p-3">
@@ -666,14 +666,14 @@ const TableDetails = () => {
         {(isOccupied || isBilled) && (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 pl-0 sm:pl-12">
             {table.currentWaiterName ? (
-              <div className="flex items-center gap-2 bg-ink-card2 border border-ink-line rounded-input px-3 py-1.5">
+              <div className="flex items-center gap-2 bg-paper-2 border border-line-light rounded-input px-3 py-1.5">
                 <UserCheck className="h-4 w-4 text-marigold" />
-                <span className="text-sm font-medium text-txt-light">{table.currentWaiterName}</span>
+                <span className="text-sm font-medium text-ink-text">{table.currentWaiterName}</span>
                 {hasManagerAccess && (
                   <>
                     <button
                       onClick={handleOpenAssignWaiter}
-                      className="ml-1 p-1 text-txt-mutedDark hover:text-white hover:bg-white/5 rounded transition-colors"
+                      className="ml-1 p-1 text-txt-muted hover:text-ink-text hover:bg-paper-3 rounded transition-colors"
                       title="Change waiter"
                     >
                       <RefreshCw className="h-3.5 w-3.5" />
@@ -703,10 +703,10 @@ const TableDetails = () => {
 
       {/* ───── VACANT STATE ───── */}
       {isVacant && (
-        <div className="bg-ink-card border border-ink-line rounded-card text-center py-16 px-4">
-          <UtensilsCrossed className="h-16 w-16 text-txt-faintDark mx-auto mb-4" />
-          <h2 className="font-display text-xl font-semibold text-white mb-2">Table is Vacant</h2>
-          <p className="text-txt-mutedDark mb-6">No active order. Occupy this table to create a new order.</p>
+        <div className="bg-paper-card border border-line-light rounded-card text-center py-16 px-4">
+          <UtensilsCrossed className="h-16 w-16 text-txt-faint mx-auto mb-4" />
+          <h2 className="font-display text-xl font-semibold text-ink-text mb-2">Table is Vacant</h2>
+          <p className="text-txt-muted mb-6">No active order. Occupy this table to create a new order.</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <BtnPrimary onClick={() => setShowOccupyModal(true)}>
               <Plus className="h-4 w-4" /> Occupy Table
@@ -735,25 +735,25 @@ const TableDetails = () => {
           <div className="xl:col-span-2 space-y-4 sm:space-y-6">
 
             {/* Customer Info - Collapsible */}
-            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
+            <div className="bg-paper-card border border-line-light rounded-card overflow-hidden">
               <div
-                className="p-3 sm:p-4 flex items-center justify-between cursor-pointer select-none hover:bg-white/5 transition-colors"
+                className="p-3 sm:p-4 flex items-center justify-between cursor-pointer select-none hover:bg-paper-2 transition-colors"
                 onClick={() => setCustomerExpanded((v) => !v)}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <UserCircle className="h-5 w-5 text-txt-mutedDark shrink-0" />
-                  <h3 className="font-semibold text-txt-light text-sm sm:text-base">Customer</h3>
+                  <UserCircle className="h-5 w-5 text-txt-muted shrink-0" />
+                  <h3 className="font-semibold text-ink-text text-sm sm:text-base">Customer</h3>
                   {/* Inline summary when collapsed */}
                   {!customerExpanded && (activeOrder.customerName || activeOrder.customerPhone) && (
-                    <span className="hidden sm:inline-flex items-center gap-2 ml-2 text-xs text-txt-mutedDark truncate">
-                      <span className="font-medium text-txt-light truncate">{activeOrder.customerName || '—'}</span>
+                    <span className="hidden sm:inline-flex items-center gap-2 ml-2 text-xs text-txt-muted truncate">
+                      <span className="font-medium text-ink-text truncate">{activeOrder.customerName || '—'}</span>
                       {activeOrder.customerPhone && (
-                        <><span className="text-txt-faintDark">|</span><span className="truncate">{activeOrder.customerPhone}</span></>
+                        <><span className="text-txt-faint">|</span><span className="truncate">{activeOrder.customerPhone}</span></>
                       )}
                     </span>
                   )}
                   {!customerExpanded && !activeOrder.customerName && !activeOrder.customerPhone && !activeOrder.customerEmail && (
-                    <span className="ml-2 text-xs text-txt-faintDark">No details</span>
+                    <span className="ml-2 text-xs text-txt-faint">No details</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -765,39 +765,39 @@ const TableDetails = () => {
                     {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) ? 'Edit' : 'Add'}
                   </button>
                   {customerExpanded
-                    ? <ChevronUp className="h-4 w-4 text-txt-faintDark" />
-                    : <ChevronDown className="h-4 w-4 text-txt-faintDark" />}
+                    ? <ChevronUp className="h-4 w-4 text-txt-faint" />
+                    : <ChevronDown className="h-4 w-4 text-txt-faint" />}
                 </div>
               </div>
               {/* Expanded content */}
               <div className={`overflow-hidden transition-all duration-200 ease-in-out ${
                 customerExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
               }`}>
-                <div className="border-t border-ink-line">
+                <div className="border-t border-line-light">
                   {(activeOrder.customerName || activeOrder.customerPhone || activeOrder.customerEmail) ? (
                     <div className="px-4 py-3 flex flex-wrap gap-5 text-sm">
                       {activeOrder.customerName && (
                         <div className="flex items-center gap-2">
-                          <UserCircle className="h-4 w-4 text-txt-faintDark" />
-                          <span className="font-medium text-txt-light">{activeOrder.customerName}</span>
+                          <UserCircle className="h-4 w-4 text-txt-faint" />
+                          <span className="font-medium text-ink-text">{activeOrder.customerName}</span>
                         </div>
                       )}
                       {activeOrder.customerPhone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-txt-faintDark" />
-                          <span className="text-txt-mutedDark">{activeOrder.customerPhone}</span>
+                          <Phone className="h-4 w-4 text-txt-faint" />
+                          <span className="text-txt-muted">{activeOrder.customerPhone}</span>
                         </div>
                       )}
                       {activeOrder.customerEmail && (
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-txt-faintDark" />
-                          <span className="text-txt-mutedDark">{activeOrder.customerEmail}</span>
+                          <Mail className="h-4 w-4 text-txt-faint" />
+                          <span className="text-txt-muted">{activeOrder.customerEmail}</span>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="px-4 py-3 text-center">
-                      <p className="text-sm text-txt-faintDark">No customer details added</p>
+                      <p className="text-sm text-txt-faint">No customer details added</p>
                       <button
                         onClick={handleOpenCustomerModal}
                         className="mt-1 text-sm font-medium text-marigold hover:brightness-110 hover:underline"
@@ -811,15 +811,15 @@ const TableDetails = () => {
             </div>
 
             {/* Order Items Table */}
-            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
-              <div className="p-3 sm:p-4 border-b border-ink-line flex items-center justify-between">
-                <h3 className="font-semibold text-txt-light text-sm sm:text-base">Order Items ({items.length})</h3>
+            <div className="bg-paper-card border border-line-light rounded-card overflow-hidden">
+              <div className="p-3 sm:p-4 border-b border-line-light flex items-center justify-between">
+                <h3 className="font-semibold text-ink-text text-sm sm:text-base">Order Items ({items.length})</h3>
                 {hasPendingItems && (
                   <Badge variant="warning" className="text-[10px] sm:text-xs">{items.filter(i => i.kotStatus === 'PENDING' || !i.kotStatus).length} pending</Badge>
                 )}
               </div>
               {items.length === 0 ? (
-                <div className="p-8 text-center text-txt-faintDark">
+                <div className="p-8 text-center text-txt-faint">
                   <UtensilsCrossed className="h-10 w-10 mx-auto mb-2" />
                   <p className="font-medium">No items yet</p>
                   <p className="text-xs mt-1">Add items to this order</p>
@@ -828,7 +828,7 @@ const TableDetails = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-ink-line text-left text-txt-faintDark">
+                      <tr className="border-b border-line-light text-left text-txt-faint">
                         <th className="px-4 py-3 font-medium eyebrow text-[10px]">Item</th>
                         <th className="px-4 py-3 font-medium eyebrow text-[10px] text-center">Qty</th>
                         <th className="px-4 py-3 font-medium eyebrow text-[10px] text-right">Price</th>
@@ -846,19 +846,19 @@ const TableDetails = () => {
                           return sum + (oi.lineTotal || (oiBase + oiMod));
                         }, 0);
                         return (
-                          <tr key={group.itemUuid || group.orderItemUuid || idx} className={`border-b border-ink-line/60 ${isCancelled ? 'opacity-50 line-through' : ''}`}>
+                          <tr key={group.itemUuid || group.orderItemUuid || idx} className={`border-b border-line-light/60 ${isCancelled ? 'opacity-50 line-through' : ''}`}>
                             <td className="px-4 py-3">
-                              <div className="font-medium text-txt-light">{group.productName || group.name}</div>
-                              {group.variationName && <div className="text-xs text-txt-faintDark">{group.variationName}</div>}
+                              <div className="font-medium text-ink-text">{group.productName || group.name}</div>
+                              {group.variationName && <div className="text-xs text-txt-faint">{group.variationName}</div>}
                               {group.modifiers?.length > 0 && (
                                 <div className="mt-1 space-y-0.5">
                                   {group.modifiers.map((mod, mIdx) => {
                                     const modPrice = mod.lineTotal || (mod.priceAdd || mod.unitPrice || 0) * (mod.quantity || 1);
                                     return (
-                                      <div key={mod.orderItemModifierUuid || mIdx} className="flex items-center gap-1 text-xs text-txt-mutedDark">
+                                      <div key={mod.orderItemModifierUuid || mIdx} className="flex items-center gap-1 text-xs text-txt-muted">
                                         <span className="text-marigold">+</span>
                                         <span>{mod.modifierName || mod.name}</span>
-                                        {mod.quantity > 1 && <span className="text-txt-faintDark">x{mod.quantity}</span>}
+                                        {mod.quantity > 1 && <span className="text-txt-faint">x{mod.quantity}</span>}
                                         {modPrice > 0 && <span className="ml-auto text-marigold font-mono font-medium">₹{modPrice.toFixed(2)}</span>}
                                       </div>
                                     );
@@ -866,12 +866,12 @@ const TableDetails = () => {
                                 </div>
                               )}
                               {group.originalItems.length > 1 && (
-                                <div className="text-xs text-txt-faintDark mt-1">({group.originalItems.length} identical items)</div>
+                                <div className="text-xs text-txt-faint mt-1">({group.originalItems.length} identical items)</div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center font-display font-bold text-white">{group.groupedQty}</td>
-                            <td className="px-4 py-3 text-right font-mono text-txt-mutedDark">{formatCurrency(group.unitPrice || group.price)}</td>
-                            <td className="px-4 py-3 text-right font-mono font-semibold text-txt-light">
+                            <td className="px-4 py-3 text-center font-display font-bold text-ink-text">{group.groupedQty}</td>
+                            <td className="px-4 py-3 text-right font-mono text-txt-muted">{formatCurrency(group.unitPrice || group.price)}</td>
+                            <td className="px-4 py-3 text-right font-mono font-semibold text-ink-text">
                               {formatCurrency(groupTotal)}
                             </td>
                             <td className="px-4 py-3 text-center">
@@ -904,15 +904,15 @@ const TableDetails = () => {
           <div className="space-y-4 sm:space-y-6">
 
             {/* Bill Summary */}
-            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
-              <div className="p-4 border-b border-ink-line">
-                <h3 className="font-semibold text-txt-light flex items-center gap-2"><Receipt className="h-5 w-5 text-marigold" /> Bill Summary</h3>
+            <div className="bg-paper-card border border-line-light rounded-card overflow-hidden">
+              <div className="p-4 border-b border-line-light">
+                <h3 className="font-semibold text-ink-text flex items-center gap-2"><Receipt className="h-5 w-5 text-marigold" /> Bill Summary</h3>
               </div>
               <div className="p-4 text-sm">
                 {/* Itemized breakdown */}
                 {groupedNonCancelledItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faintDark mb-2">
+                    <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faint mb-2">
                       <span>Item</span>
                       <span>Amount</span>
                     </div>
@@ -927,12 +927,12 @@ const TableDetails = () => {
                         const productName = group.productName || group.name;
                         const hasModifiers = (group.modifiers || []).length > 0;
                         return (
-                          <div key={idx} className="flex items-start justify-between py-1.5 group hover:bg-white/5 -mx-1 px-1 rounded transition-colors">
+                          <div key={idx} className="flex items-start justify-between py-1.5 group hover:bg-paper-2 -mx-1 px-1 rounded transition-colors">
                             <div className="min-w-0 flex-1 mr-3">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-medium text-txt-light">{productName}</span>
+                                <span className="font-medium text-ink-text">{productName}</span>
                                 {group.variationName && (
-                                  <span className="text-[11px] text-txt-mutedDark bg-ink-card2 px-1.5 py-0.5 rounded font-medium">{group.variationName}</span>
+                                  <span className="text-[11px] text-txt-muted bg-paper-2 px-1.5 py-0.5 rounded font-medium">{group.variationName}</span>
                                 )}
                                 {group.groupedQty > 1 && (
                                   <span className="text-[11px] font-bold text-ink bg-marigold px-1.5 py-0.5 rounded-full leading-none font-mono">&times;{group.groupedQty}</span>
@@ -948,24 +948,24 @@ const TableDetails = () => {
                                 </div>
                               )}
                               {group.groupedQty > 1 && (
-                                <div className="text-[11px] text-txt-faintDark mt-0.5 font-mono">
+                                <div className="text-[11px] text-txt-faint mt-0.5 font-mono">
                                   {formatCurrency(perItemTotal)} each
                                 </div>
                               )}
                             </div>
-                            <span className="whitespace-nowrap font-mono font-semibold text-txt-light tabular-nums pt-0.5">{formatCurrency(groupTotal)}</span>
+                            <span className="whitespace-nowrap font-mono font-semibold text-ink-text tabular-nums pt-0.5">{formatCurrency(groupTotal)}</span>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="border-b border-dashed border-ink-line mt-2 mb-3" />
+                    <div className="border-b border-dashed border-line-light mt-2 mb-3" />
                   </div>
                 )}
 
                 {/* Coupons */}
-                <div className="mt-3 mb-4 p-3 rounded-tile border border-dashed border-ink-line bg-ink-card2 space-y-3">
+                <div className="mt-3 mb-4 p-3 rounded-tile border border-dashed border-line-light bg-paper-2 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-txt-light">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-ink-text">
                       <Tag className="h-4 w-4 text-marigold" />
                       <span>Coupons & Offers</span>
                     </div>
@@ -997,50 +997,50 @@ const TableDetails = () => {
                     revalidating={couponState.revalidating}
                   />
 
-                  <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faintDark">
+                  <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faint">
                     <span>Available Offers</span>
-                    <span className="text-txt-faintDark">Auto picks best savings</span>
+                    <span className="text-txt-faint">Auto picks best savings</span>
                   </div>
                   <CouponList coupons={couponState.suggestions} onApply={handleApplyFromList} />
                 </div>
 
                 {/* Totals */}
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-txt-mutedDark">
+                  <div className="flex justify-between text-txt-muted">
                     <span>Subtotal</span>
-                    <span className="font-mono tabular-nums text-txt-light">{formatCurrency(subtotal)}</span>
+                    <span className="font-mono tabular-nums text-ink-text">{formatCurrency(subtotal)}</span>
                   </div>
                   {discount > 0 && (
-                    <div className="flex justify-between text-success-bright">
+                    <div className="flex justify-between text-success-deep">
                       <span>Discount</span>
                       <span className="font-mono tabular-nums">-{formatCurrency(discount)}</span>
                     </div>
                   )}
                   {tax > 0 && (
-                    <div className="flex justify-between text-txt-mutedDark">
+                    <div className="flex justify-between text-txt-muted">
                       <span>Tax</span>
-                      <span className="font-mono tabular-nums text-txt-light">{formatCurrency(tax)}</span>
+                      <span className="font-mono tabular-nums text-ink-text">{formatCurrency(tax)}</span>
                     </div>
                   )}
                   {serviceCharge > 0 && (
-                    <div className="flex justify-between text-txt-mutedDark">
+                    <div className="flex justify-between text-txt-muted">
                       <span>Service Charge</span>
-                      <span className="font-mono tabular-nums text-txt-light">{formatCurrency(serviceCharge)}</span>
+                      <span className="font-mono tabular-nums text-ink-text">{formatCurrency(serviceCharge)}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Grand Total */}
-                <div className="border-t border-ink-line mt-3 pt-3 flex justify-between items-center">
-                  <span className="font-display font-bold text-lg text-white">Total</span>
+                <div className="border-t border-line-light mt-3 pt-3 flex justify-between items-center">
+                  <span className="font-display font-bold text-lg text-ink-text">Total</span>
                   <span className="font-mono font-bold text-lg text-marigold tabular-nums">{formatCurrency(total)}</span>
                 </div>
 
                 {/* Payment Status */}
                 <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-txt-mutedDark">Paid</span>
-                    <span className={`font-mono font-semibold tabular-nums ${paidAmount > 0 ? 'text-success-bright' : 'text-txt-faintDark'}`}>{formatCurrency(paidAmount)}</span>
+                    <span className="text-txt-muted">Paid</span>
+                    <span className={`font-mono font-semibold tabular-nums ${paidAmount > 0 ? 'text-success-deep' : 'text-txt-faint'}`}>{formatCurrency(paidAmount)}</span>
                   </div>
                   {balance > 0 && (
                     <div className="flex justify-between items-center bg-danger/[0.14] -mx-4 px-4 py-2">
@@ -1061,23 +1061,23 @@ const TableDetails = () => {
             </div>
 
             {/* Payments */}
-            <div className="bg-ink-card border border-ink-line rounded-card overflow-hidden">
-              <div className="p-4 border-b border-ink-line">
-                <h3 className="font-semibold text-txt-light flex items-center gap-2"><CreditCard className="h-5 w-5 text-marigold" /> Payments</h3>
+            <div className="bg-paper-card border border-line-light rounded-card overflow-hidden">
+              <div className="p-4 border-b border-line-light">
+                <h3 className="font-semibold text-ink-text flex items-center gap-2"><CreditCard className="h-5 w-5 text-marigold" /> Payments</h3>
               </div>
               <div className="p-4">
                 {payments.length === 0 ? (
-                  <p className="text-sm text-txt-faintDark text-center py-4">No payments yet</p>
+                  <p className="text-sm text-txt-faint text-center py-4">No payments yet</p>
                 ) : (
                   <div className="space-y-2">
                     {payments.map((p, idx) => (
-                      <div key={p.paymentUuid || idx} className="flex items-center justify-between p-3 bg-ink-card2 border border-ink-line rounded-tile">
+                      <div key={p.paymentUuid || idx} className="flex items-center justify-between p-3 bg-paper-2 border border-line-light rounded-tile">
                         <div>
-                          <div className="font-medium text-txt-light text-sm">{p.paymentMethod || p.method}</div>
-                          {p.transactionId && <div className="text-xs text-txt-faintDark font-mono">{p.transactionId}</div>}
+                          <div className="font-medium text-ink-text text-sm">{p.paymentMethod || p.method}</div>
+                          {p.transactionId && <div className="text-xs text-txt-faint font-mono">{p.transactionId}</div>}
                         </div>
                         <div className="text-right">
-                          <div className="font-mono font-semibold text-txt-light">{formatCurrency(p.amount)}</div>
+                          <div className="font-mono font-semibold text-ink-text">{formatCurrency(p.amount)}</div>
                           {p.status && <Badge variant={p.status === 'COMPLETED' ? 'success' : 'default'} className="text-xs">{p.status}</Badge>}
                         </div>
                       </div>
@@ -1088,8 +1088,8 @@ const TableDetails = () => {
             </div>
 
             {/* Action Grid */}
-            <div className="bg-ink-card border border-ink-line rounded-card p-4">
-              <p className="eyebrow text-[10px] text-txt-faintDark mb-3">Actions</p>
+            <div className="bg-paper-card border border-line-light rounded-card p-4">
+              <p className="eyebrow text-[10px] text-txt-faint mb-3">Actions</p>
               <div className="grid grid-cols-2 gap-2.5">
                 <BtnPrimary
                   className="w-full"
@@ -1101,7 +1101,7 @@ const TableDetails = () => {
 
                 {hasPendingItems && (
                   <BtnGhost
-                    className="w-full bg-ink-card2 border-ink-line text-marigold hover:bg-white/5"
+                    className="w-full bg-paper-2 border border-line-input text-marigold hover:bg-paper-3"
                     onClick={handleSendKot}
                     disabled={orderActionLoading}
                   >
@@ -1112,7 +1112,7 @@ const TableDetails = () => {
 
                 {hasBillingAccess && isOccupied && items.length > 0 && (
                   <BtnGhost
-                    className="w-full bg-ink-card2 border-ink-line text-txt-light hover:bg-white/5"
+                    className="w-full bg-paper-2 border border-line-input text-txt-dark hover:bg-paper-3"
                     onClick={handleGenerateBill}
                     disabled={orderActionLoading}
                   >
@@ -1123,7 +1123,7 @@ const TableDetails = () => {
 
                 {hasBillingAccess && (
                   <BtnGhost
-                    className="w-full bg-ink-card2 border-ink-line text-success-bright hover:bg-white/5"
+                    className="w-full bg-paper-2 border border-line-input text-success-deep hover:bg-paper-3"
                     onClick={() => {
                       setPaymentForm({ method: 'CASH', amount: balance > 0 ? balance.toFixed(2) : '', transactionId: '' });
                       setShowPaymentModal(true);
@@ -1142,7 +1142,7 @@ const TableDetails = () => {
                     <AlertCircle className="h-4 w-4" />
                     <span className="text-sm font-medium">Waiting for all items to be served</span>
                   </div>
-                  <p className="text-xs text-txt-mutedDark mt-1 font-mono">
+                  <p className="text-xs text-txt-muted mt-1 font-mono">
                     {nonCancelledItems.filter(i => i.kotStatus === 'SERVED').length}/{nonCancelledItems.length} items served
                   </p>
                 </div>
@@ -1162,8 +1162,8 @@ const TableDetails = () => {
 
               {/* Show info when items served but payment pending */}
               {allItemsServed && (paidAmount < total || total <= 0) && items.length > 0 && (
-                <div className="mt-3 bg-ink-card2 border border-ink-line rounded-tile p-3 text-center">
-                  <div className="flex items-center justify-center gap-2 text-txt-light">
+                <div className="mt-3 bg-paper-2 border border-line-light rounded-tile p-3 text-center">
+                  <div className="flex items-center justify-center gap-2 text-ink-text">
                     <CreditCard className="h-4 w-4 text-marigold" />
                     <span className="text-sm font-medium">All items served — complete payment to finish</span>
                   </div>
@@ -1456,7 +1456,7 @@ const TableDetails = () => {
         </div>
       </Modal>
       </div>
-    </DarkScreen>
+    </div>
   );
 };
 

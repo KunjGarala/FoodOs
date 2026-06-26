@@ -10,7 +10,7 @@ import {
 } from '../../store/orderSlice';
 import useWebSocket from '../../hooks/useWebSocket';
 import websocketService from '../../services/websocket';
-import { DarkScreen, Segmented, LivePill } from '../../components/ui/kit';
+import { Segmented, LivePill } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 
 // KOT ticket status → board column
@@ -127,7 +127,7 @@ const KitchenDisplay = () => {
     if (ready) return 'border-l-success';
     if (mins >= 20) return 'border-l-danger';
     if (mins >= 10) return 'border-l-marigold';
-    return 'border-l-ink-line';
+    return 'border-l-line-light';
   };
 
   const canBump = (col) => {
@@ -136,7 +136,7 @@ const KitchenDisplay = () => {
   };
 
   return (
-    <DarkScreen className="flex flex-col">
+    <div className="flex flex-col">
       {/* Toast */}
       {(error || success) && (
         <div className={cn('fixed top-4 right-4 left-4 sm:left-auto z-50 p-3 rounded-input shadow-float flex items-center gap-2 animate-slide-in sm:max-w-sm',
@@ -147,46 +147,46 @@ const KitchenDisplay = () => {
       )}
 
       {/* Header */}
-      <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-ink-line">
+      <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-line-light">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-tile bg-marigold/15 grid place-items-center">
               <Flame className="h-5 w-5 text-marigold" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-xl text-white tracking-[-0.01em]">Kitchen Display</h1>
-              <p className="text-xs text-txt-mutedDark">Live KOT feed</p>
+              <h1 className="font-display font-bold text-xl text-ink-text tracking-[-0.01em]">Kitchen Display</h1>
+              <p className="text-xs text-txt-muted">Live KOT feed</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-txt-mutedDark">Avg ticket <b className="text-txt-light">{avgTicket}m</b></span>
-            <LivePill dark />
+            <span className="text-xs font-mono text-txt-muted">Avg ticket <b className="text-ink-text">{avgTicket}m</b></span>
+            <LivePill />
             <button onClick={() => dispatch(fetchKitchenOrders(activeRestaurantId))} disabled={loading}
-              className="p-2 rounded-lg text-txt-mutedDark hover:text-white hover:bg-white/5">
+              className="p-2 rounded-lg text-txt-muted hover:text-ink-text hover:bg-paper-2">
               <RefreshCw className={cn('h-5 w-5', loading && 'animate-spin')} />
             </button>
           </div>
         </div>
         <div className="mt-4 overflow-x-auto scrollbar-hide">
-          <Segmented dark options={STATIONS.map((s) => ({ value: s, label: s }))} value={station} onChange={setStation} />
+          <Segmented options={STATIONS.map((s) => ({ value: s, label: s }))} value={station} onChange={setStation} />
         </div>
       </div>
 
       {/* Body */}
       {loading && !kitchenOrders?.length ? (
-        <div className="flex-1 grid place-items-center"><Loader2 className="h-8 w-8 animate-spin text-txt-faintDark" /></div>
+        <div className="flex-1 grid place-items-center"><Loader2 className="h-8 w-8 animate-spin text-txt-faint" /></div>
       ) : (
         <div className="flex-1 p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {COLS.map((col) => (
             <section key={col.key} className="flex flex-col min-w-0">
               <div className="flex items-center justify-between mb-3 px-1">
-                <h2 className="eyebrow text-[11px] text-txt-mutedDark">{col.label}</h2>
-                <span className="text-[11px] font-mono text-txt-faintDark bg-ink-card px-2 py-0.5 rounded-full">{columns[col.key].length}</span>
+                <h2 className="eyebrow text-[11px] text-txt-muted">{col.label}</h2>
+                <span className="text-[11px] font-mono text-txt-faint bg-paper-2 px-2 py-0.5 rounded-full">{columns[col.key].length}</span>
               </div>
 
               <div className="space-y-3">
                 {columns[col.key].length === 0 && (
-                  <div className="rounded-tile border border-dashed border-ink-line/60 py-10 text-center text-xs text-txt-faintDark">
+                  <div className="rounded-tile border border-dashed border-line-light py-10 text-center text-xs text-txt-faint">
                     No tickets
                   </div>
                 )}
@@ -197,18 +197,18 @@ const KitchenDisplay = () => {
                   return (
                     <article key={k.kotUuid}
                       className={cn('rounded-tile border-l-[3px] p-3.5', agingBorder(mins, ready),
-                        ready ? 'bg-success/[0.08] border border-success/20 border-l-success' : 'bg-ink-card border border-ink-line')}>
+                        ready ? 'bg-success/[0.08] border border-success/20 border-l-success' : 'bg-paper-card border border-line-light')}>
                       {/* head */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-display font-bold text-white text-[15px] truncate">
+                          <p className="font-display font-bold text-ink-text text-[15px] truncate">
                             {k.tableNumber ? `Table ${k.tableNumber}` : 'Takeaway'}
-                            <span className="ml-2 text-[11px] font-mono text-txt-faintDark">#{k.kotNumber || k.kotUuid?.slice(0, 6)}</span>
+                            <span className="ml-2 text-[11px] font-mono text-txt-faint">#{k.kotNumber || k.kotUuid?.slice(0, 6)}</span>
                           </p>
-                          <p className="text-[11px] text-txt-mutedDark truncate">{k.waiterName ? `Waiter · ${k.waiterName}` : 'Kitchen'}</p>
+                          <p className="text-[11px] text-txt-muted truncate">{k.waiterName ? `Waiter · ${k.waiterName}` : 'Kitchen'}</p>
                         </div>
                         <span className={cn('shrink-0 text-[11px] font-mono px-2 py-0.5 rounded-full',
-                          late ? 'bg-danger text-white' : 'bg-ink-card2 text-txt-mutedDark')}>
+                          late ? 'bg-danger text-white' : 'bg-paper-3 text-txt-muted')}>
                           {fmtElapsed(mins)}
                         </span>
                       </div>
@@ -219,13 +219,13 @@ const KitchenDisplay = () => {
                           <li key={item.kotItemUuid} className="flex gap-2 text-sm">
                             <span className="font-mono font-bold text-marigold shrink-0">{item.quantity}×</span>
                             <div className="min-w-0">
-                              <span className="text-txt-light">{item.productName || 'Item'}</span>
-                              {item.variationName && <span className="text-txt-faintDark"> · {item.variationName}</span>}
+                              <span className="text-ink-text">{item.productName || 'Item'}</span>
+                              {item.variationName && <span className="text-txt-faint"> · {item.variationName}</span>}
                               {item.modifiersText && (
-                                <div className="text-[11px] text-txt-mutedDark mt-0.5">{item.modifiersText.split(',').map((m) => `+ ${m.trim()}`).join('  ')}</div>
+                                <div className="text-[11px] text-txt-muted mt-0.5">{item.modifiersText.split(',').map((m) => `+ ${m.trim()}`).join('  ')}</div>
                               )}
                               {item.specialInstructions && (
-                                <div className="text-[11px] text-marigold-soft mt-0.5">⚑ {item.specialInstructions}</div>
+                                <div className="text-[11px] text-[#9a6500] mt-0.5">⚑ {item.specialInstructions}</div>
                               )}
                             </div>
                           </li>
@@ -233,7 +233,7 @@ const KitchenDisplay = () => {
                       </ul>
 
                       {k.orderNotes && (
-                        <p className="mt-2 text-[11px] text-marigold-soft bg-marigold/[0.08] rounded px-2 py-1">Note: {k.orderNotes}</p>
+                        <p className="mt-2 text-[11px] text-[#9a6500] bg-marigold/[0.10] rounded px-2 py-1">Note: {k.orderNotes}</p>
                       )}
 
                       {/* action */}
@@ -252,7 +252,7 @@ const KitchenDisplay = () => {
           ))}
         </div>
       )}
-    </DarkScreen>
+    </div>
   );
 };
 

@@ -47,7 +47,7 @@ export const CouponInput = ({
           <Button
             onClick={onApply}
             disabled={!code || loading || removing || disabled}
-            className="flex-1 sm:flex-none min-w-[110px] bg-slate-900 hover:bg-slate-800"
+            className="flex-1 sm:flex-none min-w-[110px]"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>{isApplied ? 'Re-apply' : 'Apply'}</span>}
           </Button>

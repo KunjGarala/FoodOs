@@ -22,12 +22,22 @@ body {
 }
 
 /* ── Redesign helpers ─────────────────────────────────── */
-/* Diagonal hairline stripes for the Live Floor map container */
+/* Diagonal hairline stripes for the Live Floor map container (dark surface) */
 .floor-stripes {
   background-image: repeating-linear-gradient(
     45deg,
     rgba(255, 255, 255, 0.015) 0px,
     rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 16px
+  );
+}
+/* Diagonal hairline stripes for the Live Floor map container (light surface) */
+.floor-stripes-light {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(13, 27, 42, 0.035) 0px,
+    rgba(13, 27, 42, 0.035) 1px,
     transparent 1px,
     transparent 16px
   );
