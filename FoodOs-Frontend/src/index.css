@@ -14,12 +14,39 @@ html {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+}
+
+/* ── Redesign helpers ─────────────────────────────────── */
+/* Diagonal hairline stripes for the Live Floor map container (dark surface) */
+.floor-stripes {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 16px
+  );
+}
+/* Diagonal hairline stripes for the Live Floor map container (light surface) */
+.floor-stripes-light {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(13, 27, 42, 0.035) 0px,
+    rgba(13, 27, 42, 0.035) 1px,
+    transparent 1px,
+    transparent 16px
+  );
+}
+/* Mono eyebrow label */
+.eyebrow {
+  font-family: 'Space Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 
 /* ── Scrollbar Utilities ──────────────────────────────── */

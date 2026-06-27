@@ -46,6 +46,8 @@ public class DashboardAnalyticsDto {
         private BigDecimal revenue;
         private Long       orderCount;
         private BigDecimal avgOrderValue;
+        private Long       covers;
+        private BigDecimal tablesTurned;
     }
 
     @Data
@@ -76,5 +78,6 @@ public class DashboardAnalyticsDto {
     public static class HourlyData {
         private int  hour;       // 0–23
         private Long orderCount;
+        private BigDecimal revenue;
     }
 }

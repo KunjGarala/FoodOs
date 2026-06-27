@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.foodos.restaurant.entity.enums.TableStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -42,6 +43,9 @@ public class TableFloorPlanDto {
 
     @Schema(description = "Current order UUID when table is occupied")
     private String currentOrderId;
+
+    @Schema(description = "Running total of the current order", example = "1280.50")
+    private BigDecimal currentOrderTotal;
 
     @Schema(description = "X-coordinate for floor plan", example = "120")
     private Integer posX;

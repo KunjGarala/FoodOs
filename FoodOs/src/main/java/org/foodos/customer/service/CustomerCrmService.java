@@ -46,6 +46,11 @@ public interface CustomerCrmService {
     Page<CustomerSummaryResponse> getTopCustomersByVisits(String restaurantUuid, Pageable pageable);
 
     /**
+     * Get the customer's recent orders timeline (date, total, type, etc.).
+     */
+    Page<CustomerOrderResponse> getCustomerOrders(String customerUuid, Pageable pageable);
+
+    /**
      * Sync/create customer record from an order.
      * Called internally when an order is created or completed.
      */

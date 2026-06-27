@@ -32,6 +32,7 @@ public class UserManagementService {
     private final WelcomeEmailService emailService;
     private final S3Service s3Service;
     private final UserProfileMapper userProfileMapper;
+    private final MeService meService;
 
     public UserAuthEntity createEmployee(SignupRequest request, UserAuthEntity currentUserParam, MultipartFile image) {
         // 0️⃣ Re-attach currentUser to current transaction to avoid LazyInitializationException
@@ -152,7 +153,10 @@ public class UserManagementService {
             user.setProfilePictureUrl(profileUrl);
         }
 
-        return userAuthRepository.save(user);
+        UserAuthEntity saved = userAuthRepository.save(user);
+        // Primary outlet / profile changed -> refresh this user's /me/context picker.
+        meService.evictContext(saved.getUserUuid());
+        return saved;
     }
 
     public UserAuthEntity updateEmployee(Long targetUserId, EmployeeUpdateRequest request, UserAuthEntity currentUserParam) {
@@ -213,6 +217,9 @@ public class UserManagementService {
         }
 
         targetUser.setUpdatedByUser(currentUser);
-        return userAuthRepository.save(targetUser);
+        UserAuthEntity saved = userAuthRepository.save(targetUser);
+        // Role / active status / profile changed -> refresh the target user's /me/context.
+        meService.evictContext(saved.getUserUuid());
+        return saved;
     }
 }

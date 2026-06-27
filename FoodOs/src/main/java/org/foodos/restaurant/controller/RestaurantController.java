@@ -11,6 +11,7 @@ import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.auth.utils.JwtUtil;
 import org.foodos.restaurant.dto.request.CreateRestaurantRequestDto;
 import org.foodos.restaurant.dto.request.UpdateRestaurantRequestDto;
+import org.foodos.restaurant.dto.response.HierarchySummaryResponseDto;
 import org.foodos.restaurant.dto.response.RestaurantHierarchyResponseDto;
 import org.foodos.restaurant.dto.response.RestaurantResponseDto;
 import org.foodos.restaurant.service.RestaurantService;
@@ -201,6 +202,24 @@ public class RestaurantController {
                 restaurantService.getRestaurantHierarchy(restaurantUuid);
 
         return ResponseEntity.ok(hierarchy);
+    }
+
+    /* ================= GET HIERARCHY SUMMARY (live KPIs) ================= */
+    @Operation(
+            summary = "Get hierarchy live KPI summary",
+            description = "Per-outlet sales/covers/tables for today plus group totals"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Summary fetched successfully"),
+            @ApiResponse(responseCode = "404", description = "Restaurant not found")
+    })
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication , 'OWNER')")
+    @GetMapping("/{restaurantUuid}/hierarchy/summary")
+    public ResponseEntity<HierarchySummaryResponseDto> getHierarchySummary(
+            @Parameter(description = "Restaurant UUID", required = true)
+            @PathVariable String restaurantUuid
+    ) {
+        return ResponseEntity.ok(restaurantService.getHierarchySummary(restaurantUuid));
     }
 
     /* ================= GET DETAIL ================= */

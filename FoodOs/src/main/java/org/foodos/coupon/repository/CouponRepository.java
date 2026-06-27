@@ -34,4 +34,15 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     @Query("SELECT c FROM Coupon c WHERE c.isDeleted = false AND c.isActive = true AND c.startDate <= :now AND c.endDate >= :now")
     List<Coupon> findActiveCoupons(@Param("now") LocalDateTime now);
+
+    @Query("SELECT COUNT(DISTINCT c) FROM Coupon c " +
+           "LEFT JOIN c.ownerRestaurant r " +
+           "LEFT JOIN org.foodos.coupon.entity.CouponRestaurantMapping m " +
+           "       ON m.coupon.id = c.id AND m.isDeleted = false " +
+           "WHERE c.isDeleted = false AND c.isActive = true " +
+           "AND c.startDate <= :now AND c.endDate >= :now " +
+           "AND ( c.scopeType = :globalScope OR m.restaurant.restaurantUuid = :restaurantUuid )")
+    Long countActiveForRestaurant(@Param("restaurantUuid") String restaurantUuid,
+                                  @Param("globalScope") org.foodos.coupon.entity.enums.CouponScopeType globalScope,
+                                  @Param("now") LocalDateTime now);
 }

@@ -3,37 +3,24 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Bell, Search, User, Menu, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { setActiveRestaurant } from '../../store/authSlice';
-import { restaurantAPI } from '../../services/api';
 
 export const Topbar = ({ onMenuClick }) => {
-  const { user, role, restaurantIds, activeRestaurantId } = useSelector((state) => state.auth);
+  const { user, role, restaurantIds, restaurants, activeRestaurantId } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
   const handleRestaurantChange = (e) => {
     dispatch(setActiveRestaurant(e.target.value));
   };
 
-  const [restaurantNames, setRestaurantNames] = React.useState({});
-
-  React.useEffect(() => {
-    const fetchRestaurantNames = async () => {
-      if (!restaurantIds || restaurantIds.length === 0) return;
-
-      const names = {};
-      await Promise.all(restaurantIds.map(async (id) => {
-        try {
-          const response = await restaurantAPI.getRestaurantDetail(id);
-          names[id] = response.data.name;
-        } catch (error) {
-          console.error(`Failed to fetch details for restaurant ${id}`, error);
-          names[id] = `Restaurant ${id}`; // Fallback
-        }
-      }));
-      setRestaurantNames(names);
-    };
-
-    fetchRestaurantNames();
-  }, [restaurantIds]);
+  // Outlet names come straight from /api/me/context (state.restaurants) — no
+  // more N per-outlet detail fetches. Map uuid → display name for the picker.
+  const restaurantNames = React.useMemo(() => {
+    const map = {};
+    (restaurants || []).forEach((r) => {
+      if (r?.restaurantUuid) map[r.restaurantUuid] = r.businessName || r.name;
+    });
+    return map;
+  }, [restaurants]);
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-64 z-20 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200">

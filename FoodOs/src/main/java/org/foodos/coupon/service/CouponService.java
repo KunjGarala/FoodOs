@@ -5,6 +5,7 @@ import org.foodos.coupon.dto.request.CreateCouponRequest;
 import org.foodos.coupon.dto.request.SuggestCouponRequest;
 import org.foodos.coupon.dto.request.ValidateCouponRequest;
 import org.foodos.coupon.dto.response.CouponResponse;
+import org.foodos.coupon.dto.response.CouponStatsResponse;
 import org.foodos.coupon.dto.response.CouponValidationResponse;
 import org.foodos.coupon.dto.response.CouponUsageSummaryResponse;
 import org.foodos.order.dto.response.OrderResponse;
@@ -42,4 +43,9 @@ public interface CouponService {
     void deleteCoupon(String couponUuid);
 
     CouponResponse toggleCouponStatus(String couponUuid, boolean isActive);
+
+    /**
+     * Header KPI strip for the Offers screen — restaurant-scoped, current calendar month.
+     */
+    CouponStatsResponse getCouponStats(String restaurantUuid);
 }

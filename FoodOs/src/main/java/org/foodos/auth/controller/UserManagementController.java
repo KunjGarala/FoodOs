@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.dto.Request.EmployeeUpdateRequest;
 import org.foodos.auth.dto.Request.ProfileUpdateDTO;
 import org.foodos.auth.dto.Request.SignupRequest;
+import org.foodos.auth.dto.Response.RoleResponse;
 import org.foodos.auth.entity.UserAuthEntity;
+import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.service.UserManagementService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -48,6 +52,19 @@ public class UserManagementController {
     ) {
         UserAuthEntity updatedUser = userManagementService.updateProfile(currentUser, request, image);
         return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
+    }
+
+    @GetMapping("/roles")
+    public ResponseEntity<List<RoleResponse>> listRoles() {
+        List<RoleResponse> roles = Arrays.stream(UserRole.values())
+                .map(role -> RoleResponse.builder()
+                        .name(role.name())
+                        .level(role.getLevel())
+                        .displayName(role.getDisplayName())
+                        .permissions(Arrays.asList(role.getPermissions()))
+                        .build())
+                .toList();
+        return ResponseEntity.ok(roles);
     }
 
     @PatchMapping(value = "/employee/{userId}")

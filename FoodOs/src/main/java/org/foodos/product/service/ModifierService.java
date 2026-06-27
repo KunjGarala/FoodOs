@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.product.dto.request.BulkCreateModifiersRequest;
 import org.foodos.product.dto.request.CreateModifierRequest;
 import org.foodos.product.dto.request.UpdateModifierRequest;
@@ -28,10 +29,12 @@ public class ModifierService {
     private final ModifierRepo modifierRepo;
     private final ModifierGroupRepo modifierGroupRepo;
     private final ModifierMapper modifierMapper;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     @Transactional
     public ModifierResponseDto createModifier(String restaurantUuid, String modifierGroupUuid,
                                              CreateModifierRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Creating modifier for modifier group: {}", modifierGroupUuid);
 
         // Validate modifier group
@@ -63,6 +66,7 @@ public class ModifierService {
     @Transactional
     public List<ModifierResponseDto> createModifiersBulk(String restaurantUuid, String modifierGroupUuid,
                                                         BulkCreateModifiersRequest request) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Creating {} modifiers in bulk for modifier group: {}", request.getModifiers().size(), modifierGroupUuid);
 
         // Validate modifier group
@@ -100,6 +104,7 @@ public class ModifierService {
     @Transactional(readOnly = true)
     public List<ModifierResponseDto> getModifiersByGroup(String restaurantUuid, String modifierGroupUuid,
                                                         boolean includeInactive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching modifiers for modifier group: {}", modifierGroupUuid);
 
         // Validate modifier group exists and belongs to restaurant
@@ -124,6 +129,7 @@ public class ModifierService {
 
     @Transactional(readOnly = true)
     public ModifierResponseDto getModifierById(String restaurantUuid, String modifierUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching modifier: {}", modifierUuid);
 
         Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)
@@ -140,6 +146,7 @@ public class ModifierService {
     @Transactional
     public ModifierResponseDto updateModifier(String restaurantUuid, String modifierUuid,
                                              UpdateModifierRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Updating modifier: {}", modifierUuid);
 
         // Find modifier
@@ -169,6 +176,7 @@ public class ModifierService {
 
     @Transactional
     public void deleteModifier(String restaurantUuid, String modifierUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Deleting modifier: {}", modifierUuid);
 
         Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)
@@ -186,6 +194,7 @@ public class ModifierService {
 
     @Transactional
     public void toggleModifierStatus(String restaurantUuid, String modifierUuid, boolean isActive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Toggling modifier status: {} to {}", modifierUuid, isActive);
 
         Modifier modifier = modifierRepo.findByModifierUuidAndIsDeletedFalse(modifierUuid)

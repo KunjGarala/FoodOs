@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.product.dto.request.CreateModifierGroupRequest;
 import org.foodos.product.dto.request.CreateModifierRequest;
 import org.foodos.product.dto.request.UpdateModifierGroupRequest;
@@ -30,9 +31,11 @@ public class ModifierGroupService {
     private final RestaurantRepo restaurantRepo;
     private final ModifierGroupMapper modifierGroupMapper;
     private final ModifierMapper modifierMapper;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     @Transactional
     public ModifierGroupResponseDto createModifierGroup(String restaurantUuid, CreateModifierGroupRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Creating modifier group for restaurant: {}", restaurantUuid);
 
         // Validate restaurant
@@ -72,6 +75,7 @@ public class ModifierGroupService {
 
     @Transactional(readOnly = true)
     public List<ModifierGroupResponseDto> getAllModifierGroups(String restaurantUuid, boolean includeInactive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching all modifier groups for restaurant: {}, includeInactive: {}",
                 restaurantUuid, includeInactive);
 
@@ -91,6 +95,7 @@ public class ModifierGroupService {
 
     @Transactional(readOnly = true)
     public ModifierGroupResponseDto getModifierGroupById(String restaurantUuid, String modifierGroupUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching modifier group: {} for restaurant: {}", modifierGroupUuid, restaurantUuid);
 
         ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
@@ -106,6 +111,7 @@ public class ModifierGroupService {
 
     @Transactional(readOnly = true)
     public List<ModifierGroupResponseDto> searchModifierGroups(String restaurantUuid, String searchTerm) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Searching modifier groups for restaurant: {}, searchTerm: {}", restaurantUuid, searchTerm);
 
         List<ModifierGroup> modifierGroups = modifierGroupRepo.searchModifierGroups(restaurantUuid, searchTerm);
@@ -118,6 +124,7 @@ public class ModifierGroupService {
     @Transactional
     public ModifierGroupResponseDto updateModifierGroup(String restaurantUuid, String modifierGroupUuid,
                                                        UpdateModifierGroupRequest dto) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Updating modifier group: {} for restaurant: {}", modifierGroupUuid, restaurantUuid);
 
         // Find modifier group
@@ -156,6 +163,7 @@ public class ModifierGroupService {
 
     @Transactional
     public void deleteModifierGroup(String restaurantUuid, String modifierGroupUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Deleting modifier group: {} for restaurant: {}", modifierGroupUuid, restaurantUuid);
 
         ModifierGroup modifierGroup = modifierGroupRepo.findByModifierGroupUuidAndIsDeletedFalse(modifierGroupUuid)
@@ -179,6 +187,7 @@ public class ModifierGroupService {
 
     @Transactional
     public void toggleModifierGroupStatus(String restaurantUuid, String modifierGroupUuid, boolean isActive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Toggling modifier group status: {} to {} for restaurant: {}",
                 modifierGroupUuid, isActive, restaurantUuid);
 

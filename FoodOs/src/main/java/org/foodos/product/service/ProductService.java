@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.common.utils.S3Service;
 import org.foodos.product.dto.request.CreateProductRequest;
 import org.foodos.product.dto.request.UpdateProductRequest;
@@ -43,9 +44,11 @@ public class ProductService {
     private final ProductMapper productMapper;
     private final ModifierGroupMapper modifierGroupMapper;
     private final EntityManager entityManager;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     @Transactional
     public ProductResponseDto createProduct(String restaurantUuid, CreateProductRequest dto, MultipartFile image) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Creating product for restaurant: {}", restaurantUuid);
 
         // Validate restaurant
@@ -86,6 +89,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getAllProducts(String restaurantUuid, boolean includeInactive) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching all products for restaurant: {}, includeInactive: {}", restaurantUuid, includeInactive);
 
         // Enable filter to show only non-deleted products
@@ -107,6 +111,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getProductsByCategory(String restaurantUuid, String categoryUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching products for restaurant: {}, category: {}", restaurantUuid, categoryUuid);
 
         // Validate category exists and belongs to restaurant
@@ -128,6 +133,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getFeaturedProducts(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching featured products for restaurant: {}", restaurantUuid);
 
         List<Product> products = productRepo
@@ -140,6 +146,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getBestsellerProducts(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching bestseller products for restaurant: {}", restaurantUuid);
 
         List<Product> products = productRepo
@@ -152,6 +159,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> searchProducts(String restaurantUuid, String searchTerm) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Searching products for restaurant: {}, searchTerm: {}", restaurantUuid, searchTerm);
 
         List<Product> products = productRepo.searchProducts(restaurantUuid, searchTerm);
@@ -163,6 +171,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponseDto getProductById(String restaurantUuid, String productUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching product: {} for restaurant: {}", productUuid, restaurantUuid);
 
         Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
@@ -179,6 +188,7 @@ public class ProductService {
     @Transactional
     public ProductResponseDto updateProduct(String restaurantUuid, String productUuid,
                                            UpdateProductRequest dto, MultipartFile image) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Updating product: {} for restaurant: {}", productUuid, restaurantUuid);
 
         // Find product
@@ -238,6 +248,7 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(String restaurantUuid, String productUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Deleting product: {} for restaurant: {}", productUuid, restaurantUuid);
 
         Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
@@ -255,6 +266,7 @@ public class ProductService {
 
     @Transactional
     public void toggleProductStatus(String restaurantUuid, String productUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
 
         Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with UUID: " + productUuid));
@@ -272,6 +284,7 @@ public class ProductService {
 
     @Transactional
     public void updateProductStock(String restaurantUuid, String productUuid, java.math.BigDecimal stockQuantity) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Updating product stock: {} to {} for restaurant: {}", productUuid, stockQuantity, restaurantUuid);
 
         Product product = productRepo.findByProductUuidAndIsDeletedFalse(productUuid)
@@ -292,6 +305,7 @@ public class ProductService {
     }
 
     public void toggleFeaturedStatus(String restaurantUuid, String productUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with UUID: " + restaurantUuid));
 
@@ -312,6 +326,7 @@ public class ProductService {
 
     @Transactional
     public void assignModifierGroupToProduct(String restaurantUuid, String productUuid, String modifierGroupUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Assigning modifier group: {} to product: {} for restaurant: {}",
                 modifierGroupUuid, productUuid, restaurantUuid);
 
@@ -346,6 +361,7 @@ public class ProductService {
 
     @Transactional
     public void removeModifierGroupFromProduct(String restaurantUuid, String productUuid, String modifierGroupUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Removing modifier group: {} from product: {} for restaurant: {}",
                 modifierGroupUuid, productUuid, restaurantUuid);
 
@@ -383,6 +399,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ModifierGroupResponseDto> getProductModifierGroups(String restaurantUuid, String productUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching modifier groups for product: {} in restaurant: {}", productUuid, restaurantUuid);
 
         // Validate and fetch product

@@ -42,6 +42,7 @@ public class ProductResponseDto {
     private LocalTime availableFrom;
     private LocalTime availableTo;
     private String availableDays;
+    private String defaultKitchenStation;
     private Long soldCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

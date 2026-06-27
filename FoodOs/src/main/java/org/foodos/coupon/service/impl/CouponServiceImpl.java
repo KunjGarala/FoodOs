@@ -10,6 +10,7 @@ import org.foodos.coupon.dto.request.SuggestCouponRequest;
 import org.foodos.coupon.dto.request.ValidateCouponRequest;
 import org.foodos.coupon.dto.request.UpdateCouponRequest;
 import org.foodos.coupon.dto.response.CouponResponse;
+import org.foodos.coupon.dto.response.CouponStatsResponse;
 import org.foodos.coupon.dto.response.CouponValidationResponse;
 import org.foodos.coupon.dto.response.CouponUsageSummaryResponse;
 import org.foodos.coupon.entity.Coupon;
@@ -21,6 +22,7 @@ import org.foodos.coupon.repository.CouponRepository;
 import org.foodos.coupon.repository.CouponRestaurantMappingRepository;
 import org.foodos.coupon.repository.CouponUsageRepository;
 import org.foodos.coupon.service.CouponService;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.customer.entity.Customer;
 import org.foodos.customer.repository.CustomerRepository;
 import org.foodos.order.dto.response.OrderResponse;
@@ -39,8 +41,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+<<<<<<< HEAD
 import java.time.LocalTime;
+=======
+import java.time.YearMonth;
+>>>>>>> master
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -60,11 +67,19 @@ public class CouponServiceImpl implements CouponService {
     private final UserAuthRepository userAuthRepository;
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     @Override
     @CacheEvict(value = "couponByCode", key = "#request.code.toUpperCase()")
     public CouponResponse createCoupon(CreateCouponRequest request, Long creatorUserId) {
         validateCreateRequest(request);
+
+        // Only let the creator attach a coupon to outlets they actually belong to.
+        if (request.getScopeType() == CouponScopeType.GLOBAL_CHAIN) {
+            restaurantAccessGuard.assertCanAccess(request.getOwnerRestaurantUuid());
+        } else if (request.getRestaurantUuids() != null) {
+            request.getRestaurantUuids().forEach(restaurantAccessGuard::assertCanAccess);
+        }
 
         if (couponRepository.existsByCodeIgnoreCaseAndIsDeletedFalse(request.getCode())) {
             throw new IllegalArgumentException("Coupon code already exists");
@@ -106,6 +121,7 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional(readOnly = true)
     public CouponValidationResponse validateCoupon(ValidateCouponRequest request) {
+        restaurantAccessGuard.assertCanAccess(request.getRestaurantUuid());
         LocalDateTime evalTime = request.getEvaluationTime() != null ? request.getEvaluationTime() : LocalDateTime.now();
         Coupon coupon = findActiveCouponCached(request.getCouponCode())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid coupon code"));
@@ -124,6 +140,7 @@ public class CouponServiceImpl implements CouponService {
         String normalizedCode = normalizeCode(request.getCouponCode());
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         ensureOrderMutable(order);
 
@@ -160,6 +177,7 @@ public class CouponServiceImpl implements CouponService {
     public OrderResponse removeCoupon(String orderUuid, Long currentUserId) {
         Order order = orderRepository.findByOrderUuidWithItems(orderUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
         ensureOrderMutable(order);
 
         if (order.getCoupon() == null) {
@@ -221,6 +239,7 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional(readOnly = true)
     public CouponValidationResponse suggestBestCoupon(SuggestCouponRequest request) {
+        restaurantAccessGuard.assertCanAccess(request.getRestaurantUuid());
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(request.getRestaurantUuid())
                 .orElseThrow(() -> new IllegalArgumentException("Restaurant not found"));
 
@@ -252,6 +271,7 @@ public class CouponServiceImpl implements CouponService {
     public Page<CouponResponse> getAllCoupons(String restaurantUuid, Pageable pageable) {
         Page<Coupon> coupons;
         if (StringUtils.hasText(restaurantUuid)) {
+            restaurantAccessGuard.assertCanAccess(restaurantUuid);
             coupons = couponRepository.findAllRelevantForRestaurant(restaurantUuid, CouponScopeType.GLOBAL_CHAIN, pageable);
         } else {
             coupons = couponRepository.findAllByIsDeletedFalse(pageable);
@@ -319,6 +339,37 @@ public class CouponServiceImpl implements CouponService {
         coupon.setIsActive(isActive);
         coupon = couponRepository.save(coupon);
         return buildCouponResponse(coupon, getMappedRestaurants(coupon));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CouponStatsResponse getCouponStats(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
+
+        LocalDateTime now = LocalDateTime.now();
+        YearMonth currentMonth = YearMonth.from(now);
+        LocalDateTime monthStart = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime monthEnd = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+
+        Long activeCoupons = couponRepository.countActiveForRestaurant(
+                restaurantUuid, CouponScopeType.GLOBAL_CHAIN, now);
+        Long redemptions = usageRepository.countByRestaurantUuidAndUsedAtBetween(
+                restaurantUuid, monthStart, monthEnd);
+        BigDecimal avgDiscount = usageRepository.avgDiscountByRestaurantUuidAndUsedAtBetween(
+                restaurantUuid, monthStart, monthEnd);
+        BigDecimal revenueInfluenced = usageRepository.sumOrderTotalsByRestaurantUuidAndUsedAtBetween(
+                restaurantUuid, monthStart, monthEnd);
+
+        return CouponStatsResponse.builder()
+                .activeCoupons(activeCoupons != null ? activeCoupons : 0L)
+                .redemptionsThisMonth(redemptions != null ? redemptions : 0L)
+                .avgDiscount(avgDiscount != null
+                        ? avgDiscount.setScale(2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO)
+                .revenueInfluenced(revenueInfluenced != null
+                        ? revenueInfluenced.setScale(2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO)
+                .build();
     }
 
     // ===== INTERNAL HELPERS =====
@@ -510,6 +561,7 @@ public class CouponServiceImpl implements CouponService {
                 .endDate(coupon.getEndDate())
                 .usageLimitGlobal(coupon.getUsageLimitGlobal())
                 .usageLimitPerUser(coupon.getUsageLimitPerUser())
+                .usageCount(usageRepository.countByCouponIdAndIsDeletedFalse(coupon.getId()))
                 .active(coupon.getIsActive())
                 .allowStacking(coupon.getAllowStacking())
                 .scopeType(coupon.getScopeType())

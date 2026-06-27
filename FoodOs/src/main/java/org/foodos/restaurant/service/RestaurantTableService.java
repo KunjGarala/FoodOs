@@ -6,12 +6,14 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.config.websocket.WebSocketEventService;
 import org.foodos.order.dto.request.CreateOrderRequest;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.KitchenOrderTicket;
 import org.foodos.order.entity.Order;
 import org.foodos.order.mapper.OrderMapper;
+import org.foodos.order.entity.enums.KotTicketStatus;
 import org.foodos.order.repository.KitchenOrderTicketRepository;
 import org.foodos.order.repository.OrderRepository;
 import org.foodos.order.service.OrderService;
@@ -47,12 +49,14 @@ public class RestaurantTableService {
     private final OrderRepository orderRepository;
     private final KitchenOrderTicketRepository kitchenOrderTicketRepository;
     private final WebSocketEventService webSocketEventService;
+    private final RestaurantAccessGuard restaurantAccessGuard;
 
     /**
      * 1️⃣ Create a new table for a restaurant
      */
     @Transactional
     public TableResponseDto createTable(CreateTableRequestDto requestDto, UserAuthEntity currentUser) {
+        restaurantAccessGuard.assertCanAccess(requestDto.getRestaurantUuid());
         log.info("Creating new table. Request: {}, User: {}", requestDto, currentUser.getUsername());
 
         // Validate restaurant exists
@@ -112,6 +116,8 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         // Capture State before update
         Boolean wasActive = table.getIsActive();
 
@@ -158,6 +164,8 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         TableStatus currentStatus = table.getStatus();
         TableStatus newStatus = requestDto.getStatus();
 
@@ -173,7 +181,8 @@ public class RestaurantTableService {
                 }
 
                 // Fetch the order entity and set it on the table
-                Order order = orderService.getOrderEntityByUuid(requestDto.getCurrentOrderId());
+                Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(requestDto.getCurrentOrderId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Order not found with UUID: " + requestDto.getCurrentOrderId()));
                 table.setCurrentOrder(order);
                 table.setSeatedAt(LocalDateTime.now());
                 table.setCurrentPax(requestDto.getCurrentPax());
@@ -249,6 +258,8 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         TableResponseDto response = tableMapper.toResponseDto(table);
 
         // Add current order details if table is occupied
@@ -279,6 +290,7 @@ public class RestaurantTableService {
      */
     @Transactional(readOnly = true)
     public Page<TableResponseDto> getAllTables(Pageable pageable, TableStatus status , String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching all tables. Page: {}, Size: {}, Status filter: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), status);
 
@@ -301,6 +313,7 @@ public class RestaurantTableService {
      */
     @Transactional(readOnly = true)
     public List<TableFloorPlanDto> getTablesByRestaurant(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Fetching active tables for restaurant UUID: {} (Floor plan view)", restaurantUuid);
 
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
@@ -323,6 +336,7 @@ public class RestaurantTableService {
      */
     @Transactional(readOnly = true)
     public List<RestaurantChainTablesSummaryDto> getTablesByRestaurantChain(String parentRestaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(parentRestaurantUuid);
         log.info("Fetching tables summary for restaurant chain. Parent UUID: {}", parentRestaurantUuid);
 
         Restaurant parentRestaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(parentRestaurantUuid)
@@ -363,6 +377,8 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         // Cannot delete if occupied
         if (table.getStatus() == TableStatus.OCCUPIED) {
             log.error("Cannot delete occupied table. Table: {}, Status: {}", tableUuid, table.getStatus());
@@ -394,6 +410,8 @@ public class RestaurantTableService {
                     log.error("Parent table not found with UUID: {}", requestDto.getParentTableUuid());
                     return new ResourceNotFoundException("Parent table not found");
                 });
+
+        restaurantAccessGuard.assertCanAccess(parentTable.getRestaurant().getRestaurantUuid());
 
         // Fetch child tables
         List<RestaurantTable> childTables = tableRepository
@@ -499,6 +517,8 @@ public class RestaurantTableService {
                     log.error("Source table not found with UUID: {}", requestDto.getFromTableUuid());
                     return new ResourceNotFoundException("Source table not found");
                 });
+
+        restaurantAccessGuard.assertCanAccess(fromTable.getRestaurant().getRestaurantUuid());
 
         RestaurantTable toTable = tableRepository.findByTableUuidAndIsDeletedFalse(requestDto.getToTableUuid())
                 .orElseThrow(() -> {
@@ -627,6 +647,7 @@ public class RestaurantTableService {
      */
     @Transactional(readOnly = true)
     public TableAnalyticsDto getTableAnalytics(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
         log.info("Generating table analytics for restaurant UUID: {}", restaurantUuid);
 
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(restaurantUuid)
@@ -670,6 +691,42 @@ public class RestaurantTableService {
                 .totalOrdersToday(occupiedTables.size())
                 .peakHour(LocalDateTime.now().getHour())
                 .averageGuestsPerTable(calculateAverageGuestsPerTable(occupiedTables))
+                .build();
+    }
+
+    /**
+     * Live "pressure band" KPIs for the floor view header strip.
+     */
+    @Transactional(readOnly = true)
+    public TableLiveSummaryDto getLiveSummary(String restaurantUuid) {
+        restaurantAccessGuard.assertCanAccess(restaurantUuid);
+
+        List<RestaurantTable> occupied = tableRepository.findOccupiedTablesByRestaurantUuid(restaurantUuid);
+
+        int coversSeated = occupied.stream()
+                .filter(t -> t.getCurrentPax() != null)
+                .mapToInt(RestaurantTable::getCurrentPax)
+                .sum();
+
+        Integer tablesTurning = tableRepository.countByRestaurantUuidAndStatus(restaurantUuid, TableStatus.BILLED);
+
+        LocalDateTime now = LocalDateTime.now();
+        double avgDwellMinutes = occupied.stream()
+                .filter(t -> t.getSeatedAt() != null)
+                .mapToLong(t -> Duration.between(t.getSeatedAt(), now).toMinutes())
+                .average()
+                .orElse(0.0);
+
+        Long kotsLate = kitchenOrderTicketRepository.countLateByRestaurantUuid(
+                restaurantUuid,
+                List.of(KotTicketStatus.SENT, KotTicketStatus.ACKNOWLEDGED, KotTicketStatus.IN_PROGRESS),
+                now.minusMinutes(20));
+
+        return TableLiveSummaryDto.builder()
+                .coversSeated(coversSeated)
+                .tablesTurning(tablesTurning != null ? tablesTurning : 0)
+                .avgDwellMinutes(avgDwellMinutes)
+                .kotsLate(kotsLate != null ? kotsLate : 0L)
                 .build();
     }
 
@@ -734,6 +791,8 @@ public class RestaurantTableService {
 
         RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
 
         if (!Boolean.TRUE.equals(table.getIsMerged())) {
             throw new BusinessException("Table is not merged");
@@ -844,6 +903,8 @@ public class RestaurantTableService {
         RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         if (table.getStatus() != TableStatus.VACANT) {
             throw new IllegalStateException("Table is not vacant");
         }
@@ -907,6 +968,8 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         UserAuthEntity waiter = userAuthRepository.findByUserUuidAndIsDeletedFalse(waiterUuid)
                 .orElseThrow(() -> {
                     log.error("Waiter not found with UUID: {}", waiterUuid);
@@ -943,6 +1006,8 @@ public class RestaurantTableService {
                     return new ResourceNotFoundException("Table not found with UUID: " + tableUuid);
                 });
 
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
+
         table.setCurrentWaiter(null);
         RestaurantTable updatedTable = tableRepository.save(table);
 
@@ -957,6 +1022,8 @@ public class RestaurantTableService {
     public TableDetailResponse getTableDetails(String tableUuid) {
         RestaurantTable table = tableRepository.findByTableUuidAndIsDeletedFalse(tableUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("Table not found with UUID: " + tableUuid));
+
+        restaurantAccessGuard.assertCanAccess(table.getRestaurant().getRestaurantUuid());
 
         TableResponseDto tableResponse = tableMapper.toResponseDto(table);
 

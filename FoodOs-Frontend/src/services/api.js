@@ -84,11 +84,24 @@ function wipeAccessToken() {
 // ─────────────────────────────────────────────────────────
 // REQUEST interceptor
 // ─────────────────────────────────────────────────────────
+// Public endpoints that must NOT carry an access token. Sending a stale/expired
+// token to /api/auth/login would make the JwtValidationFilter reject the request
+// with 401 before login can run, so these are always sent unauthenticated.
+const PUBLIC_AUTH_PATHS = [
+  'refresh-token',
+  '/api/auth/login',
+  '/api/auth/signup',
+  '/api/auth/request-password-reset',
+  '/api/auth/reset-password',
+  '/api/auth/verify-email',
+];
+
 api.interceptors.request.use((config) => {
-  // Attach the access token from localStorage (if present) to every request.
-  // The refresh-token endpoint itself does NOT need an access token — the
-  // backend authenticates it via the HttpOnly cookie sent by withCredentials.
-  if (!config.url?.includes('refresh-token')) {
+  // Attach the access token from localStorage (if present) to every request,
+  // except the public auth endpoints above (which authenticate by credentials
+  // or by the HttpOnly refresh-token cookie sent via withCredentials).
+  const isPublic = PUBLIC_AUTH_PATHS.some((p) => config.url?.includes(p));
+  if (!isPublic) {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -127,7 +140,7 @@ api.interceptors.response.use(
     }
 
     // ── 401 on the login endpoint itself → just reject ─
-    if (originalRequest.url?.includes('genrate-token')) {
+    if (originalRequest.url?.includes('/api/auth/login')) {
       return Promise.reject(error);
     }
 
@@ -229,17 +242,28 @@ api.interceptors.response.use(
 // ─────────────────────────────────────────────────────────
 export const authAPI = {
   signup:                (userData)  => api.post('/api/auth/signup', userData),
-  login:                 (creds)     => api.post('/genrate-token', creds),
+  login:                 (creds)     => api.post('/api/auth/login', creds),
   userWantCreateRestaurant: (flag)   => api.post(`/api/auth/user-want-create-restaurant?wantToCreateRestaurant=${flag}`),
   requestPasswordReset:  (email)     => api.post('/api/auth/request-password-reset', { email }),
   resetPassword:         (payload)   => api.post('/api/auth/reset-password', payload),
   logout:                ()          => api.post('/api/auth/logout'), // clears HttpOnly cookie server-side
 };
 
+// ─────────────────────────────────────────────────────────
+// "Me" — identity + accessible outlets, fetched on app mount.
+// Replaces the old JWT `restaurantIds` claim: the outlet list is now
+// served fresh (and cached server-side) instead of frozen into the token.
+// ─────────────────────────────────────────────────────────
+export const meAPI = {
+  getContext:     () => api.get('/api/me/context'),
+  getRestaurants: () => api.get('/api/me/restaurants'),
+};
+
 export const restaurantAPI = {
   createFirstRestaurant: (formData)                  => api.post('/api/restaurants/create-first', formData),
   createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),
   getRestaurantDetail:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/detail`),
+  getHierarchySummary:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/hierarchy/summary`),
 };
 
 export const employeeAPI = {
@@ -287,6 +311,9 @@ export const tableAPI = {
   
   // Get table analytics
   getTableAnalytics: (restaurantUuid) => api.get(`/api/v1/tables/analytics/${restaurantUuid}`),
+
+  // Live Floor pressure-band summary (coversSeated / tablesTurning / avgDwellMinutes / kotsLate)
+  getLiveSummary: (restaurantUuid) => api.get(`/api/v1/tables/restaurant/${restaurantUuid}/live-summary`),
 
   // Occupy a vacant table (creates a new order)
   occupyTable: (tableUuid, data = {}) => api.post(`/api/v1/tables/${tableUuid}/occupy`, data),
@@ -442,6 +469,8 @@ export const couponAPI = {
   delete: (couponUuid) => api.delete(`/api/v1/coupons/${couponUuid}`),
   
   toggleStatus: (couponUuid, isActive) => api.patch(`/api/v1/coupons/${couponUuid}/toggle-status?isActive=${isActive}`),
+
+  getStats: (restaurantUuid) => api.get('/api/v1/coupons/stats', { params: { restaurantUuid } }),
 };
 
 export const analyticsAPI = {
