@@ -10,7 +10,6 @@ import modifierGroupReducer  from './modifierGroupSlice';
 import modifierReducer       from './modifierSlice';
 import customerReducer       from './customerSlice';
 import couponReducer         from './couponSlice';
-import menuReducer           from './menuSlice';
 import analyticsReducer from './analyticsSlice';
 import { setupInterceptors } from '../services/api';
 
@@ -50,7 +49,6 @@ export const store = configureStore({
     modifiers: modifierReducer,
     customers: customerReducer,
     coupon: couponReducer,
-    menu: menuReducer,
     analytics: analyticsReducer,
   },
   middleware: (getDefault) => getDefault().concat(interceptorSyncMiddleware),
