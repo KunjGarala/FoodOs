@@ -395,6 +395,8 @@ const TableDetails = () => {
   const payments = activeOrder?.payments || [];
   const orderUuid = activeOrder?.orderUuid;
   const hasPendingItems = items.some((i) => i.kotStatus === 'PENDING' || !i.kotStatus);
+  // A closed/paid order can't take new items or payments.
+  const isCompleted = ['COMPLETED', 'PAID'].includes((activeOrder?.status || '').toUpperCase());
 
   // Check if all non-cancelled items are SERVED
   const nonCancelledItems = items.filter((i) => i.kotStatus !== 'CANCELLED' && i.status !== 'CANCELLED');
@@ -1102,11 +1104,24 @@ const TableDetails = () => {
             {/* Action Grid */}
             <div className="bg-paper-card border border-line-light rounded-card p-4">
               <p className="eyebrow text-[10px] text-txt-faint mb-3">Actions</p>
+
+              {isCompleted && (
+                <div className="mb-3 rounded-tile bg-success/[0.10] border border-success/30 p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-success-deep">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Order completed</span>
+                  </div>
+                  <p className="text-xs text-txt-muted mt-1">
+                    This order is closed and paid — no more items or payments. Start a new order from the floor.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2.5">
                 <BtnPrimary
                   className="w-full"
                   onClick={() => navigate(`/app/tables/${tableUuid}/add-items`)}
-                  disabled={orderActionLoading || isBilled}
+                  disabled={orderActionLoading || isBilled || isCompleted}
                 >
                   <Plus className="h-4 w-4" /> Add Items
                 </BtnPrimary>
@@ -1133,7 +1148,7 @@ const TableDetails = () => {
                   </BtnGhost>
                 )}
 
-                {hasBillingAccess && (
+                {hasBillingAccess && !isCompleted && (
                   <BtnGhost
                     className="w-full bg-paper-2 border border-line-input text-success-deep hover:bg-paper-3"
                     onClick={() => {
@@ -1161,7 +1176,7 @@ const TableDetails = () => {
               )}
 
               {/* Complete Order - only when ALL items served AND payment complete */}
-              {allItemsServed && paidAmount >= total && total > 0 && (
+              {!isCompleted && allItemsServed && paidAmount >= total && total > 0 && (
                 <button
                   className="mt-3 w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-input bg-success text-white font-semibold text-sm hover:brightness-105 transition disabled:opacity-50"
                   onClick={handleCompleteOrder}

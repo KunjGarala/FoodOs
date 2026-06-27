@@ -7,11 +7,11 @@ import { tableAPI } from '../services/api';
 
 // Valid status transitions matching backend validation
 export const VALID_STATUS_TRANSITIONS = {
-  VACANT: ['OCCUPIED', 'RESERVED'],
-  OCCUPIED: ['BILLED', 'VACANT'],
-  BILLED: ['DIRTY', 'VACANT'],
-  DIRTY: ['VACANT'],
-  RESERVED: ['OCCUPIED', 'VACANT'],
+  VACANT: ['OCCUPIED', 'RESERVED', 'DIRTY'],
+  OCCUPIED: ['BILLED', 'DIRTY', 'VACANT'],
+  BILLED: ['VACANT', 'DIRTY', 'OCCUPIED'],
+  DIRTY: ['VACANT', 'OCCUPIED'],
+  RESERVED: ['OCCUPIED', 'VACANT', 'DIRTY'],
 };
 
 // ─────────────────────────────────────────────────────────
