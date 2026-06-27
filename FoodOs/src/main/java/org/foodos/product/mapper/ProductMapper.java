@@ -88,6 +88,20 @@ public interface ProductMapper {
                     dto.setIsRequired(modifierGroup.getIsRequired());
                     dto.setMinSelection(modifierGroup.getMinSelection());
                     dto.setMaxSelection(modifierGroup.getMaxSelection());
+                    if (modifierGroup.getModifiers() != null) {
+                        dto.setModifiers(modifierGroup.getModifiers().stream()
+                                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                                .map(m -> {
+                                    ProductResponseDto.ModifierOptionSummaryDto o = new ProductResponseDto.ModifierOptionSummaryDto();
+                                    o.setModifierUuid(m.getModifierUuid());
+                                    o.setName(m.getName());
+                                    o.setPriceAdd(m.getPriceAdd());
+                                    o.setIsDefault(m.getIsDefault());
+                                    o.setIsActive(m.getIsActive());
+                                    return o;
+                                })
+                                .collect(Collectors.toList()));
+                    }
                     return dto;
                 })
                 .collect(Collectors.toList());

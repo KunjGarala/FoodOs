@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from './ui/Modal';
-import { Button } from './ui/Button';
-import { Package, X } from 'lucide-react';
+import { BtnGhost } from './ui/kit';
+import { Layers } from 'lucide-react';
 import VariationManager from './VariationManager';
 import BulkVariationManager from './BulkVariationManager';
 
@@ -18,30 +18,25 @@ const VariationManagerModal = ({ isOpen, onClose, restaurantUuid, productUuid, p
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={handleClose}
-      size="full"
+      size="xl"
       title={
-        <div className="flex items-center gap-2">
-          <Package className="h-5 w-5 text-indigo-500" />
-          <span>Manage Variations - {productName}</span>
-        </div>
+        <span className="eyebrow text-[11px] text-txt-faint">Item Editor ▸ Variations</span>
       }
     >
       <div className="space-y-4">
         {/* Toggle button */}
         {!showBulkAdd && (
           <div className="flex justify-end">
-            <Button
+            <BtnGhost
               type="button"
-              size="sm"
-              variant="outline"
               onClick={() => setShowBulkAdd(true)}
-              className="text-purple-600 border-purple-300 hover:bg-purple-50"
+              className="h-9 px-3 text-sm"
             >
-              <Package className="h-4 w-4 mr-1" /> Add Multiple Variations
-            </Button>
+              <Layers className="h-4 w-4" /> Add Multiple
+            </BtnGhost>
           </div>
         )}
 
@@ -53,9 +48,11 @@ const VariationManagerModal = ({ isOpen, onClose, restaurantUuid, productUuid, p
             onComplete={handleBulkComplete}
           />
         ) : (
-          <VariationManager 
-            restaurantUuid={restaurantUuid} 
-            productUuid={productUuid} 
+          <VariationManager
+            restaurantUuid={restaurantUuid}
+            productUuid={productUuid}
+            productName={productName}
+            onClose={handleClose}
           />
         )}
       </div>

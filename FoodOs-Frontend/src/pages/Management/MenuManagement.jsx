@@ -28,6 +28,7 @@ import {
   Pill,
   Toggle,
   BtnPrimary,
+  BtnGhost,
 } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 
@@ -35,6 +36,7 @@ const MENU_TABS = [
   { label: 'Items', path: '/app/menu' },
   { label: 'Categories', path: '/app/categories' },
   { label: 'Modifier groups', path: '/app/modifiers' },
+  { label: 'Variations', path: null },
 ];
 
 // Deterministic accent color for initials thumbnails
@@ -75,9 +77,16 @@ const MenuManagement = () => {
   };
 
   // Redux state
-  const { activeRestaurantId } = useSelector((state) => state.auth);
+  const { activeRestaurantId, restaurants } = useSelector((state) => state.auth);
   const { products, loading, actionLoading, error, success } = useSelector((state) => state.products);
   const { categories } = useSelector((state) => state.categories);
+
+  const restaurantName =
+    (restaurants || []).find((r) => r?.restaurantUuid === activeRestaurantId)
+      ?.businessName ||
+    (restaurants || []).find((r) => r?.restaurantUuid === activeRestaurantId)
+      ?.name ||
+    'Outlet';
 
   // Fetch products and categories on mount
   useEffect(() => {
@@ -178,6 +187,13 @@ const MenuManagement = () => {
       ? null
       : new Set([categoryFilter, ...(childCategoryMap[categoryFilter] || [])]);
 
+  // Item count per category (parents include their children's items).
+  const countForCategory = (categoryUuid) => {
+    if (categoryUuid === 'all') return products.length;
+    const accept = new Set([categoryUuid, ...(childCategoryMap[categoryUuid] || [])]);
+    return products.filter((p) => accept.has(p.categoryUuid)).length;
+  };
+
   // Filter products
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -255,6 +271,92 @@ const MenuManagement = () => {
       {initials(product.name)}
     </div>
   );
+
+  // Selection summary label for a modifier group ("PICK 1" / "ANY" / "PICK 2-3")
+  const selectionLabel = (group) => {
+    const min = group.minSelection ?? 0;
+    const max = group.maxSelection ?? 0;
+    if (group.isRequired && min > 0 && min === max) return `PICK ${min}`;
+    if (min > 0 && max > min) return `PICK ${min}-${max}`;
+    if (min > 0 && min === max) return `PICK ${min}`;
+    return 'ANY';
+  };
+
+  // Inline modifier-group + variation preview chips (frame 08 style).
+  // Returns null when there is no chip-able data so caller can fall back.
+  const renderModifierPreview = (product) => {
+    const variations = product.variations || [];
+    const groups = (product.modifierGroups || []).filter(Boolean);
+    if (variations.length === 0 && groups.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        {variations.length > 0 && (
+          <div>
+            <p className="eyebrow text-[10px] text-txt-faint mb-2">
+              Variations · {variations.length === 1 ? 'PICK 1' : 'PICK 1'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {variations.map((v) => (
+                <span
+                  key={v.variationUuid}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                    v.isDefault
+                      ? 'bg-ink text-white border-ink'
+                      : 'bg-paper-card text-txt-muted border-line-light',
+                  )}
+                >
+                  {v.name}
+                  {v.price != null && (
+                    <span className="font-mono text-[11px] opacity-80">₹{v.price}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {groups.map((group) => {
+          const options = group.modifiers || group.options || [];
+          return (
+            <div key={group.modifierGroupUuid || group.name}>
+              <p className="eyebrow text-[10px] text-txt-faint mb-2">
+                {group.name} · {selectionLabel(group)}
+              </p>
+              {options.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {options.map((opt, i) => {
+                    const priceAdd = opt.priceAdd ?? opt.priceAdjustment ?? 0;
+                    return (
+                      <span
+                        key={opt.modifierUuid || `${group.name}-${i}`}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
+                          opt.isDefault
+                            ? 'bg-ink text-white border-ink'
+                            : 'bg-paper-card text-txt-muted border-line-light',
+                        )}
+                      >
+                        {opt.name}
+                        {priceAdd > 0 && (
+                          <span className="font-mono text-[11px] text-marigold">
+                            +₹{priceAdd}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-txt-faint italic">No options</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderExpandedDetails = (product) => (
     <div className="space-y-6">
@@ -467,11 +569,11 @@ const MenuManagement = () => {
 
       <PageHeader
         title="Menu"
-        subtitle="Manage your items, categories and pricing"
+        subtitle={`${restaurantName} · ${products.length} ${products.length === 1 ? 'item' : 'items'}`}
         actions={(
           <BtnPrimary onClick={() => navigate('/app/menu/new')} disabled={actionLoading}>
             <Plus className="h-4 w-4" />
-            Add Item
+            Add item
           </BtnPrimary>
         )}
       />
@@ -484,7 +586,7 @@ const MenuManagement = () => {
             return (
               <button
                 key={tab.path}
-                onClick={() => navigate(tab.path)}
+                onClick={() => tab.path && navigate(tab.path)}
                 className={cn(
                   'whitespace-nowrap px-3 py-2.5 text-sm font-medium border-b-2 transition-colors',
                   active
@@ -499,20 +601,20 @@ const MenuManagement = () => {
         </nav>
       </div>
 
-      {/* Search + mobile category dropdown */}
+      {/* Compact search + mobile category dropdown */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <div className="relative flex-1 sm:max-w-sm">
+        <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-faint" />
           <input
-            placeholder="Search by name, SKU..."
+            placeholder="Search items..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 pl-9 pr-3 rounded-input border border-line-input bg-paper-card text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
+            className="w-full h-9 pl-9 pr-3 rounded-input border border-line-input bg-paper-card text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
           />
         </div>
         {/* Mobile category dropdown */}
         <select
-          className="lg:hidden h-10 px-3 rounded-input border border-line-input bg-paper-card text-sm text-ink-text focus:outline-none focus:ring-2 focus:ring-marigold/40"
+          className="lg:hidden h-9 px-3 rounded-input border border-line-input bg-paper-card text-sm text-ink-text focus:outline-none focus:ring-2 focus:ring-marigold/40"
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
         >
@@ -525,54 +627,66 @@ const MenuManagement = () => {
         </select>
       </div>
 
-      <div className="flex gap-6">
+      {/* 2-column body: category sidebar + items table */}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
         {/* Category sidebar (desktop) */}
-        <aside className="hidden lg:block w-56 shrink-0">
-          <Panel className="p-2 sticky top-4">
-            <p className="eyebrow text-[10px] text-txt-faint px-2 py-1.5">Categories</p>
-            <nav className="space-y-0.5">
-              <button
-                onClick={() => setCategoryFilter('all')}
-                className={cn(
-                  'w-full text-left px-3 py-2 rounded-input text-sm transition-colors',
-                  categoryFilter === 'all'
-                    ? 'bg-ink text-white font-semibold'
-                    : 'text-txt-muted hover:bg-paper-2 hover:text-ink-text',
-                )}
-              >
-                All Categories
-              </button>
-              {allCategories.map((cat) => {
-                const active = categoryFilter === cat.categoryUuid;
-                return (
-                  <button
-                    key={cat.categoryUuid}
-                    onClick={() => setCategoryFilter(cat.categoryUuid)}
-                    className={cn(
-                      'w-full text-left px-3 py-2 rounded-input text-sm transition-colors truncate',
-                      !cat.isParent && 'pl-6',
-                      active
-                        ? 'bg-ink text-white font-semibold'
-                        : 'text-txt-muted hover:bg-paper-2 hover:text-ink-text',
-                    )}
-                  >
-                    {!cat.isParent && <span className="text-txt-faint mr-1">—</span>}
+        <aside className="hidden lg:block">
+          <div className="sticky top-4 space-y-1">
+            <p className="eyebrow text-[10px] text-txt-faint px-1 pb-2">Categories</p>
+            {(() => {
+              const allActive = categoryFilter === 'all';
+              return (
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  className={cn(
+                    'w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-input text-sm transition-colors',
+                    allActive
+                      ? 'bg-ink text-white font-semibold'
+                      : 'text-txt-muted hover:bg-paper-2 hover:text-ink-text',
+                  )}
+                >
+                  <span className="truncate">All Categories</span>
+                  <span className={cn('font-mono text-xs', allActive ? 'text-marigold' : 'text-txt-faint')}>
+                    {countForCategory('all')}
+                  </span>
+                </button>
+              );
+            })()}
+            {allCategories.map((cat) => {
+              const active = categoryFilter === cat.categoryUuid;
+              return (
+                <button
+                  key={cat.categoryUuid}
+                  onClick={() => setCategoryFilter(cat.categoryUuid)}
+                  className={cn(
+                    'w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-input text-sm transition-colors',
+                    !cat.isParent && 'pl-6',
+                    active
+                      ? 'bg-ink text-white font-semibold'
+                      : 'text-txt-muted hover:bg-paper-2 hover:text-ink-text',
+                  )}
+                >
+                  <span className="truncate flex items-center min-w-0">
+                    {!cat.isParent && <span className={cn('mr-1', active ? 'text-white/60' : 'text-txt-faint')}>—</span>}
                     {cat.name}
-                  </button>
-                );
-              })}
-            </nav>
-          </Panel>
+                  </span>
+                  <span className={cn('font-mono text-xs shrink-0', active ? 'text-marigold' : 'text-txt-faint')}>
+                    {countForCategory(cat.categoryUuid)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </aside>
 
-        {/* Item list */}
-        <div className="flex-1 min-w-0">
+        {/* Items table */}
+        <div className="min-w-0">
           <Panel className="overflow-hidden">
             {loading ? (
               <div className="divide-y divide-line-light">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-4 p-4 animate-pulse">
-                    <div className="h-10 w-10 rounded-tile bg-paper-2" />
+                    <div className="h-11 w-11 rounded-tile bg-paper-2" />
                     <div className="flex-1 space-y-2">
                       <div className="h-3.5 w-1/3 rounded-full bg-paper-2" />
                       <div className="h-3 w-1/4 rounded-full bg-paper-2" />
@@ -592,14 +706,11 @@ const MenuManagement = () => {
               <>
                 {/* Table header (desktop) */}
                 <div className="hidden md:flex items-center gap-4 px-5 py-3 bg-paper-2 border-b border-line-light eyebrow text-[10px] text-txt-faint">
-                  <span className="w-6 shrink-0" />
+                  <span className="w-5 shrink-0" />
                   <span className="flex-1 min-w-0">Item</span>
-                  <span className="w-36 shrink-0">Category</span>
                   <span className="w-24 shrink-0 text-right">Price</span>
-                  <span className="w-20 shrink-0 text-center">Mods</span>
-                  <span className="w-16 shrink-0 text-center">Featured</span>
-                  <span className="w-24 shrink-0 text-center">Available</span>
-                  <span className="w-20 shrink-0 text-right">Actions</span>
+                  <span className="w-28 shrink-0">Modifiers</span>
+                  <span className="w-20 shrink-0 text-center">Available</span>
                 </div>
 
                 <div className="divide-y divide-line-light">
@@ -609,12 +720,13 @@ const MenuManagement = () => {
                     const isExpanded = expandedProductIds.has(product.productUuid);
                     const modCount =
                       (product.modifierGroups && product.modifierGroups.length) || 0;
+                    const goToEditor = () => navigate(`/app/menu/${product.productUuid}/edit`);
 
                     return (
                       <div
                         key={product.productUuid}
                         className={cn(
-                          'transition-colors',
+                          'group transition-colors',
                           isExpanded && 'bg-paper-2/60',
                           !isActive && 'opacity-60',
                         )}
@@ -623,42 +735,42 @@ const MenuManagement = () => {
                         <div className="hidden md:flex items-center gap-4 px-5 py-3 hover:bg-paper-2/50">
                           <button
                             onClick={() => toggleProductExpansion(product.productUuid)}
-                            className="w-6 shrink-0 flex justify-center p-1 -m-1 rounded-input hover:bg-paper-3 text-txt-faint"
+                            className="w-5 shrink-0 flex justify-center p-1 -m-1 rounded-input hover:bg-paper-3 text-txt-faint"
+                            title={isExpanded ? 'Collapse' : 'Expand'}
                           >
                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <DietMark type={product.dietaryType} />
-                              <span className="font-medium text-ink-text truncate">{product.name}</span>
-                              {!isActive && <Pill tone="danger">86&apos;d</Pill>}
+
+                          {/* ITEM */}
+                          <button
+                            onClick={goToEditor}
+                            className="flex-1 min-w-0 flex items-center gap-3 text-left"
+                          >
+                            <DietMark type={product.dietaryType} />
+                            <div className="h-11 w-11 rounded-tile bg-paper-2 border border-line-light shrink-0" />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-display font-medium text-ink-text truncate">{product.name}</span>
+                                {!isActive && <Pill tone="danger">86&apos;d</Pill>}
+                              </div>
+                              {product.sku && (
+                                <span className="text-xs text-txt-faint font-mono">{product.sku}</span>
+                              )}
                             </div>
-                            {product.sku && (
-                              <span className="text-xs text-txt-faint font-mono">{product.sku}</span>
-                            )}
-                          </div>
-                          <span className="w-36 shrink-0 text-sm text-txt-muted truncate">
-                            {product.categoryName || 'Uncategorized'}
-                          </span>
+                          </button>
+
+                          {/* PRICE */}
                           <span className="w-24 shrink-0 text-right font-mono font-semibold text-ink-text">₹{price}</span>
-                          <span className="w-20 shrink-0 text-center text-sm text-txt-muted font-mono">
-                            {modCount > 0 ? `${modCount} grp` : '—'}
+
+                          {/* MODIFIERS */}
+                          <span className="w-28 shrink-0 text-sm font-mono">
+                            {modCount > 0
+                              ? <span className="text-marigold">{modCount} {modCount === 1 ? 'group' : 'groups'}</span>
+                              : <span className="text-txt-faint">—</span>}
                           </span>
-                          <div className="w-16 shrink-0 flex justify-center">
-                            <button
-                              onClick={() => handleToggleFeatured(product.productUuid)}
-                              disabled={actionLoading}
-                              className="p-1 rounded-input hover:bg-paper-3 transition-colors"
-                            >
-                              <Star
-                                className={cn(
-                                  'h-5 w-5',
-                                  product.isFeatured ? 'fill-marigold text-marigold' : 'text-line-input',
-                                )}
-                              />
-                            </button>
-                          </div>
-                          <div className="w-24 shrink-0 flex justify-center">
+
+                          {/* AVAILABLE */}
+                          <div className="w-20 shrink-0 flex justify-center">
                             <Toggle
                               checked={isActive}
                               onChange={() => handleToggleAvailability(product.productUuid)}
@@ -666,43 +778,30 @@ const MenuManagement = () => {
                               size="sm"
                             />
                           </div>
-                          <div className="w-20 shrink-0 flex gap-1 justify-end">
-                            <button
-                              onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
-                              disabled={actionLoading}
-                              className="h-8 w-8 inline-flex items-center justify-center rounded-input text-txt-faint hover:text-marigold hover:bg-paper-3 transition-colors disabled:opacity-50"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.productUuid)}
-                              disabled={actionLoading}
-                              className="h-8 w-8 inline-flex items-center justify-center rounded-input text-txt-faint hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
                         </div>
 
                         {/* Mobile card */}
                         <div className="md:hidden p-4">
                           <div className="flex items-start gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <DietMark type={product.dietaryType} />
-                                <span className="font-medium text-ink-text truncate">{product.name}</span>
+                            <button
+                              onClick={() => navigate(`/app/menu/${product.productUuid}/edit`)}
+                              className="flex-1 min-w-0 flex items-start gap-3 text-left"
+                            >
+                              <DietMark type={product.dietaryType} />
+                              <div className="h-10 w-10 rounded-tile bg-paper-2 border border-line-light shrink-0" />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-display font-medium text-ink-text truncate">{product.name}</span>
+                                  {!isActive && <Pill tone="danger">86&apos;d</Pill>}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  <span className="font-mono font-semibold text-ink-text">₹{price}</span>
+                                  {modCount > 0 && (
+                                    <span className="text-xs font-mono text-marigold">{modCount} {modCount === 1 ? 'group' : 'groups'}</span>
+                                  )}
+                                </div>
                               </div>
-                              {product.sku && (
-                                <span className="text-xs text-txt-faint font-mono">{product.sku}</span>
-                              )}
-                              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                <span className="font-mono font-semibold text-ink-text">₹{price}</span>
-                                {product.categoryName && (
-                                  <Pill tone="neutral">{product.categoryName}</Pill>
-                                )}
-                                {!isActive && <Pill tone="danger">86&apos;d</Pill>}
-                              </div>
-                            </div>
+                            </button>
                             <button
                               onClick={() => toggleProductExpansion(product.productUuid)}
                               className="p-1 rounded-input hover:bg-paper-3 text-txt-faint shrink-0"
@@ -745,10 +844,13 @@ const MenuManagement = () => {
                           </div>
                         </div>
 
-                        {/* Expanded details */}
+                        {/* Expanded panel */}
                         {isExpanded && (
-                          <div className="px-5 pb-5 pt-1 border-t border-line-light bg-paper-2/40">
-                            {renderExpandedDetails(product)}
+                          <div className="px-5 py-5 border-t border-line-light bg-paper-2/40 space-y-5">
+                            {/* Modifier / variation preview chips (frame 08) */}
+                            {renderModifierPreview(product) || renderExpandedDetails(product)}
+
+                            
                           </div>
                         )}
                       </div>

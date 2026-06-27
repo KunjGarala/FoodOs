@@ -69,5 +69,15 @@ public class ProductResponseDto {
         private Boolean isRequired;
         private Integer minSelection;
         private Integer maxSelection;
+        private List<ModifierOptionSummaryDto> modifiers;
+    }
+
+    @Data
+    public static class ModifierOptionSummaryDto {
+        private String modifierUuid;
+        private String name;
+        private BigDecimal priceAdd;
+        private Boolean isDefault;
+        private Boolean isActive;
     }
 }

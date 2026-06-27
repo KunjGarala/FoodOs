@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Badge } from './ui/Badge';
-import {
-  Plus, Edit2, Trash2, Check, X, Star, Loader2, Package,
-} from 'lucide-react';
+import { GripVertical, Plus, Loader2, X } from 'lucide-react';
+import { BtnPrimary, BtnGhost } from './ui/kit';
+import { cn } from '../utils/cn';
 import {
   fetchVariations,
   createVariation,
@@ -30,14 +26,24 @@ const emptyForm = {
   sortOrder: 0,
 };
 
-const VariationManager = ({ restaurantUuid, productUuid }) => {
+// Presentational-only selects (no matching backend fields — local UI to match the mockup)
+const OPTION_TYPES = ['Size', 'Version', 'Portion', 'Style'];
+const GUEST_SELECTS = ['Exactly 1', 'At least 1', 'Any number'];
+
+const inputCls =
+  'h-10 w-full px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold';
+
+const VariationManager = ({ restaurantUuid, productUuid, productName, onClose }) => {
   const dispatch = useDispatch();
   const { variations, loading, actionLoading, error, success } = useSelector(s => s.variations);
 
-  const [showAddRow, setShowAddRow] = useState(false);
   const [addForm, setAddForm] = useState(emptyForm);
   const [editingUuid, setEditingUuid] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
+
+  // Presentational-only top selects (no backend fields)
+  const [optionType, setOptionType] = useState(OPTION_TYPES[0]);
+  const [guestSelects, setGuestSelects] = useState(GUEST_SELECTS[0]);
 
   // Fetch on mount
   useEffect(() => {
@@ -55,7 +61,7 @@ const VariationManager = ({ restaurantUuid, productUuid }) => {
     if (success) { const t = setTimeout(() => dispatch(clearSuccess()), 3000); return () => clearTimeout(t); }
   }, [success, dispatch]);
 
-  // ── Handlers ────────────────────────────────────────────
+  // ── Handlers (logic preserved) ──────────────────────────
   const handleAdd = async () => {
     if (!addForm.name || !addForm.price) return;
     try {
@@ -74,7 +80,6 @@ const VariationManager = ({ restaurantUuid, productUuid }) => {
         },
       })).unwrap();
       setAddForm(emptyForm);
-      setShowAddRow(false);
     } catch { /* error is in redux */ }
   };
 
@@ -123,6 +128,7 @@ const VariationManager = ({ restaurantUuid, productUuid }) => {
     dispatch(deleteVariation({ restaurantUuid, productUuid, variationUuid }));
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleToggleStatus = (v) => {
     dispatch(toggleVariationStatus({
       restaurantUuid,
@@ -136,200 +142,206 @@ const VariationManager = ({ restaurantUuid, productUuid }) => {
     dispatch(setDefaultVariation({ restaurantUuid, productUuid, variationUuid }));
   };
 
-  // ── Shared styles ───────────────────────────────────────
-  const cellInput = 'flex h-8 w-full rounded border border-slate-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all';
+  // Inline save of an editing row's name/price as the user types is committed on blur.
+  const commitEdit = () => {
+    if (editingUuid) handleUpdate();
+  };
+
+  // ── Derived ─────────────────────────────────────────────
+  const defaultVariation = variations.find(v => v.isDefault);
+  const defaultName = defaultVariation ? defaultVariation.name : 'None';
 
   // ── Render ──────────────────────────────────────────────
   return (
-    <Card className="col-span-1 lg:col-span-3">
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Package className="h-4 w-4 text-indigo-500" />
-          Product Variations
-          {variations.length > 0 && (
-            <span className="text-xs font-normal text-slate-400">({variations.length})</span>
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="mb-4">
+        <h3 className="font-display font-bold text-[20px] tracking-[-0.01em] text-ink-text">Variations</h3>
+        <p className="text-sm text-txt-muted mt-0.5">
+          Sizes or versions of {productName || 'this item'}
+        </p>
+      </div>
+
+      {/* Notification inline */}
+      {(error || success) && (
+        <div
+          className={cn(
+            'mb-4 px-3 py-2 rounded-input text-sm font-medium border',
+            error
+              ? 'bg-danger/[0.08] text-danger-deep border-danger/30'
+              : 'bg-success/[0.08] text-success-deep border-success/30',
           )}
-        </CardTitle>
-        {!showAddRow && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-blue-600 hover:text-blue-800"
-            onClick={() => setShowAddRow(true)}
-            disabled={actionLoading}
+        >
+          {error || success}
+        </div>
+      )}
+
+      {/* Top selects (presentational UI to match mockup) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        <div>
+          <label className="eyebrow text-[11px] text-txt-faint mb-1.5 block">Option Type</label>
+          <select
+            value={optionType}
+            onChange={e => setOptionType(e.target.value)}
+            className={inputCls}
           >
-            <Plus className="h-4 w-4 mr-1" /> Add Variation
-          </Button>
-        )}
-      </CardHeader>
+            {OPTION_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="eyebrow text-[11px] text-txt-faint mb-1.5 block">Guest Selects</label>
+          <select
+            value={guestSelects}
+            onChange={e => setGuestSelects(e.target.value)}
+            className={inputCls}
+          >
+            {GUEST_SELECTS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+      </div>
 
-      <CardContent className="pt-0">
-        {/* Notification inline */}
-        {(error || success) && (
-          <div className={`mb-3 p-2 rounded text-sm font-medium ${error ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-            {error || success}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-txt-faint" />
+        </div>
+      ) : (
+        <div>
+          {/* Column headers */}
+          <div className="flex items-center gap-3 px-1 pb-2">
+            <span className="w-5 shrink-0" />
+            <span className="eyebrow text-[11px] text-txt-faint flex-1">Variation</span>
+            <span className="eyebrow text-[11px] text-txt-faint w-28 shrink-0">Price</span>
+            <span className="eyebrow text-[11px] text-txt-faint w-16 shrink-0 text-center">Default</span>
+            <span className="w-7 shrink-0" />
           </div>
-        )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          {/* Rows */}
+          <div className="space-y-2">
+            {variations.length === 0 && (
+              <div className="rounded-input border border-dashed border-line-input py-8 text-center text-sm text-txt-faint">
+                No variations yet. Use the row below to add one.
+              </div>
+            )}
+
+            {variations.map((v) => {
+              const isEditing = editingUuid === v.variationUuid;
+              const name = isEditing ? editForm.name : v.name;
+              const price = isEditing ? editForm.price : v.price;
+              return (
+                <div key={v.variationUuid} className="flex items-center gap-3">
+                  <span className="w-5 shrink-0 flex justify-center text-txt-faint cursor-grab" aria-hidden="true">
+                    <GripVertical className="h-4 w-4" />
+                  </span>
+
+                  {/* Variation name */}
+                  <input
+                    className={cn(inputCls, 'flex-1')}
+                    value={name}
+                    onFocus={() => { if (!isEditing) startEdit(v); }}
+                    onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                    onBlur={commitEdit}
+                    disabled={actionLoading}
+                  />
+
+                  {/* Price */}
+                  <div className="relative w-28 shrink-0">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-txt-faint">₹</span>
+                    <input
+                      className={cn(inputCls, 'pl-7 text-right')}
+                      type="number"
+                      step="0.01"
+                      value={price}
+                      onFocus={() => { if (!isEditing) startEdit(v); }}
+                      onChange={e => setEditForm(p => ({ ...p, price: e.target.value }))}
+                      onBlur={commitEdit}
+                      disabled={actionLoading}
+                    />
+                  </div>
+
+                  {/* Default radio */}
+                  <div className="w-16 shrink-0 flex justify-center">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={!!v.isDefault}
+                      onClick={() => handleSetDefault(v.variationUuid)}
+                      disabled={actionLoading || v.isDefault}
+                      title={v.isDefault ? 'Default variation' : 'Set as default'}
+                      className={cn(
+                        'h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors disabled:cursor-default',
+                        v.isDefault ? 'border-marigold' : 'border-line-input hover:border-marigold/60',
+                      )}
+                    >
+                      {v.isDefault && <span className="h-2.5 w-2.5 rounded-full bg-marigold" />}
+                    </button>
+                  </div>
+
+                  {/* Delete */}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(v.variationUuid)}
+                    disabled={actionLoading}
+                    title="Delete variation"
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-input text-txt-faint hover:text-danger hover:bg-danger/[0.08] transition-colors disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Add row (dashed) */}
+            <div className="flex items-center gap-3 rounded-input border border-dashed border-line-input p-2 mt-3">
+              <span className="w-5 shrink-0" />
+              <input
+                className={cn(inputCls, 'flex-1')}
+                placeholder="New variation name…"
+                value={addForm.name}
+                onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+                disabled={actionLoading}
+              />
+              <div className="relative w-28 shrink-0">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-txt-faint">₹</span>
+                <input
+                  className={cn(inputCls, 'pl-7 text-right')}
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={addForm.price}
+                  onChange={e => setAddForm(p => ({ ...p, price: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+                  disabled={actionLoading}
+                />
+              </div>
+              <div className="w-16 shrink-0 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  disabled={actionLoading || !addForm.name || !addForm.price}
+                  title="Add variation"
+                  className="h-8 w-8 flex items-center justify-center rounded-input bg-marigold text-ink hover:brightness-105 active:brightness-95 transition disabled:opacity-40"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <span className="w-7 shrink-0" />
+            </div>
           </div>
-        ) : (
-          <div className="bg-white rounded border border-slate-200 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 text-xs font-medium">
-                <tr>
-                  <th className="px-3 py-2 text-left">Name</th>
-                  <th className="px-3 py-2 text-left">Short Code</th>
-                  <th className="px-3 py-2 text-right">Price (₹)</th>
-                  <th className="px-3 py-2 text-right">Cost (₹)</th>
-                  <th className="px-3 py-2 text-left">SKU</th>
-                  <th className="px-3 py-2 text-center">Default</th>
-                  <th className="px-3 py-2 text-center">Status</th>
-                  <th className="px-3 py-2 text-center">Order</th>
-                  <th className="px-3 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {variations.length === 0 && !showAddRow && (
-                  <tr>
-                    <td colSpan="9" className="px-3 py-6 text-center text-slate-400 italic">
-                      No variations yet. Click "Add Variation" to create one.
-                    </td>
-                  </tr>
-                )}
+        </div>
+      )}
 
-                {variations.map((v) => {
-                  const isEditing = editingUuid === v.variationUuid;
-
-                  if (isEditing) {
-                    return (
-                      <tr key={v.variationUuid} className="bg-blue-50/40">
-                        <td className="px-3 py-2">
-                          <input className={cellInput} value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input className={cellInput} value={editForm.shortCode} onChange={e => setEditForm(p => ({ ...p, shortCode: e.target.value }))} maxLength={10} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input className={cellInput + ' text-right'} type="number" step="0.01" value={editForm.price} onChange={e => setEditForm(p => ({ ...p, price: e.target.value }))} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input className={cellInput + ' text-right'} type="number" step="0.01" value={editForm.costPrice} onChange={e => setEditForm(p => ({ ...p, costPrice: e.target.value }))} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input className={cellInput} value={editForm.sku} onChange={e => setEditForm(p => ({ ...p, sku: e.target.value }))} maxLength={50} />
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <input type="checkbox" checked={editForm.isDefault} onChange={e => setEditForm(p => ({ ...p, isDefault: e.target.checked }))} className="rounded border-slate-300 text-yellow-500 focus:ring-yellow-400" />
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <input type="checkbox" checked={editForm.isActive} onChange={e => setEditForm(p => ({ ...p, isActive: e.target.checked }))} className="rounded border-slate-300 text-green-500 focus:ring-green-400" />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input className={cellInput + ' text-center w-16 mx-auto'} type="number" value={editForm.sortOrder} onChange={e => setEditForm(p => ({ ...p, sortOrder: e.target.value }))} min="0" />
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <div className="flex gap-1 justify-end">
-                            <button type="button" onClick={handleUpdate} disabled={actionLoading} className="p-1 rounded hover:bg-green-100 text-green-600">
-                              <Check className="h-4 w-4" />
-                            </button>
-                            <button type="button" onClick={cancelEdit} className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }
-
-                  return (
-                    <tr key={v.variationUuid} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-3 py-2 font-medium text-slate-800">{v.name}</td>
-                      <td className="px-3 py-2 text-slate-500 font-mono text-xs">{v.shortCode || '—'}</td>
-                      <td className="px-3 py-2 text-right font-semibold">₹{v.price}</td>
-                      <td className="px-3 py-2 text-right text-slate-500">{v.costPrice != null ? `₹${v.costPrice}` : '—'}</td>
-                      <td className="px-3 py-2 text-slate-500 font-mono text-xs">{v.sku || '—'}</td>
-                      <td className="px-3 py-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleSetDefault(v.variationUuid)}
-                          disabled={actionLoading || v.isDefault}
-                          className="p-1 rounded hover:bg-yellow-50 transition-colors disabled:opacity-50"
-                          title={v.isDefault ? 'Default variation' : 'Set as default'}
-                        >
-                          <Star className={`h-4 w-4 ${v.isDefault ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <button type="button" onClick={() => handleToggleStatus(v)} disabled={actionLoading}>
-                          <Badge variant={v.isActive ? 'success' : 'danger'}>
-                            {v.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-center text-slate-400">{v.sortOrder ?? 0}</td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <button type="button" onClick={() => startEdit(v)} disabled={actionLoading} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors">
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button type="button" onClick={() => handleDelete(v.variationUuid)} disabled={actionLoading} className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-red-600 transition-colors">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {/* Add row */}
-                {showAddRow && (
-                  <tr className="bg-green-50/30">
-                    <td className="px-3 py-2">
-                      <input className={cellInput} placeholder="Name *" value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input className={cellInput} placeholder="Code" value={addForm.shortCode} onChange={e => setAddForm(p => ({ ...p, shortCode: e.target.value }))} maxLength={10} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input className={cellInput + ' text-right'} type="number" step="0.01" placeholder="0.00 *" value={addForm.price} onChange={e => setAddForm(p => ({ ...p, price: e.target.value }))} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input className={cellInput + ' text-right'} type="number" step="0.01" placeholder="0.00" value={addForm.costPrice} onChange={e => setAddForm(p => ({ ...p, costPrice: e.target.value }))} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input className={cellInput} placeholder="SKU" value={addForm.sku} onChange={e => setAddForm(p => ({ ...p, sku: e.target.value }))} maxLength={50} />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={addForm.isDefault} onChange={e => setAddForm(p => ({ ...p, isDefault: e.target.checked }))} className="rounded border-slate-300" />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input type="checkbox" checked={addForm.isActive} onChange={e => setAddForm(p => ({ ...p, isActive: e.target.checked }))} className="rounded border-slate-300" />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input className={cellInput + ' text-center w-16 mx-auto'} type="number" value={addForm.sortOrder} onChange={e => setAddForm(p => ({ ...p, sortOrder: e.target.value }))} min="0" />
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="flex gap-1 justify-end">
-                        <button type="button" onClick={handleAdd} disabled={actionLoading || !addForm.name || !addForm.price} className="p-1 rounded hover:bg-green-100 text-green-600 disabled:opacity-40">
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button type="button" onClick={() => { setShowAddRow(false); setAddForm(emptyForm); }} className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* Footer */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 pt-4 border-t border-line-light">
+        <p className="text-xs text-txt-muted">
+          {variations.length} variation{variations.length === 1 ? '' : 's'} · {defaultName} is default
+        </p>
+        <div className="flex items-center gap-2 justify-end">
+          <BtnGhost onClick={onClose}>Cancel</BtnGhost>
+          <BtnPrimary onClick={onClose} disabled={actionLoading}>Save variations</BtnPrimary>
+        </div>
+      </div>
+    </div>
   );
 };
 

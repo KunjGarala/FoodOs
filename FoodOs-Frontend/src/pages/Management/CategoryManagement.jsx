@@ -7,21 +7,18 @@ import {
   Panel,
   Pill,
   Toggle,
+  Segmented,
   BtnPrimary,
   BtnGhost,
 } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 import {
-  Edit2,
   Trash2,
   Plus,
   Loader2,
   AlertCircle,
   CheckCircle,
-  Search,
   FolderOpen,
-  ChevronRight,
-  ChevronDown,
   GripVertical,
   X,
 } from 'lucide-react';
@@ -30,7 +27,6 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  fetchCategoryByUuid,
   toggleActiveStatus,
   clearError,
   clearSuccess,
@@ -41,6 +37,16 @@ const SUB_TABS = [
   { label: 'Items', path: '/app/menu' },
   { label: 'Categories', path: '/app/categories' },
   { label: 'Modifier groups', path: '/app/modifiers' },
+  { label: 'Variations', path: null },
+];
+
+// Availability UI options. Mapped to availableForDineIn (non-breaking):
+// "all"/"lunch" -> available for dine-in true, "dinner" also true. The chosen
+// slot is persisted via iconName-free local field; falls back gracefully.
+const AVAILABILITY_OPTIONS = [
+  { value: 'all', label: 'All day' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
 ];
 
 const CategoryManagement = () => {
@@ -48,10 +54,10 @@ const CategoryManagement = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState({});
+  const [selectedId, setSelectedId] = useState(null);
+  const [showPanelMobile, setShowPanelMobile] = useState(false);
 
-  // Form state
+  // Form state (used by both the settings panel and the create modal)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -64,17 +70,22 @@ const CategoryManagement = () => {
     isVisibleInMenu: true,
     availableForDineIn: true,
   });
+  // Availability slot (local UI state mapped onto save; non-breaking).
+  const [availability, setAvailability] = useState('all');
 
   // Redux state
-  const { activeRestaurantId } = useSelector((state) => state.auth);
+  const { activeRestaurantId, restaurants } = useSelector((state) => state.auth);
   const {
     categories,
-    currentCategory,
     loading,
     actionLoading,
     error,
     success
   } = useSelector((state) => state.categories);
+
+  const restaurantName =
+    restaurants?.find((r) => r.restaurantUuid === activeRestaurantId)?.name ||
+    'Your restaurant';
 
   // Fetch categories on mount
   useEffect(() => {
@@ -98,73 +109,76 @@ const CategoryManagement = () => {
     }
   }, [success, dispatch]);
 
-  const handleOpenModal = (category = null) => {
-    if (category) {
-      setEditingCategory(category);
-      setFormData({
-        name: category.name,
-        description: category.description || '',
-        parentCategoryUuid: category.parentCategoryUuid || '',
-        sortOrder: category.sortOrder || 0,
-        imageUrl: category.imageUrl || '',
-        iconName: category.iconName || '',
-        colorCode: category.colorCode || '#3B82F6',
-        isActive: category.isActive !== false,
-        isVisibleInMenu: category.isVisibleInMenu !== false,
-        availableForDineIn: category.availableForDineIn !== false,
-      });
-    } else {
-      setEditingCategory(null);
-      setFormData({
-        name: '',
-        description: '',
-        parentCategoryUuid: '',
-        sortOrder: 0,
-        imageUrl: '',
-        iconName: '',
-        colorCode: '#3B82F6',
-        isActive: true,
-        isVisibleInMenu: true,
-        availableForDineIn: true,
-      });
-    }
+  const emptyForm = {
+    name: '',
+    description: '',
+    parentCategoryUuid: '',
+    sortOrder: 0,
+    imageUrl: '',
+    iconName: '',
+    colorCode: '#3B82F6',
+    isActive: true,
+    isVisibleInMenu: true,
+    availableForDineIn: true,
+  };
+
+  const categoryId = (c) => c?.categoryUuid || c?.uuid;
+
+  const fillForm = (category) => ({
+    name: category.name,
+    description: category.description || '',
+    parentCategoryUuid: category.parentCategoryUuid || '',
+    sortOrder: category.sortOrder || 0,
+    imageUrl: category.imageUrl || '',
+    iconName: category.iconName || '',
+    colorCode: category.colorCode || '#3B82F6',
+    isActive: category.isActive !== false,
+    isVisibleInMenu: category.isVisibleInMenu !== false,
+    availableForDineIn: category.availableForDineIn !== false,
+  });
+
+  // Select a category row into the settings panel.
+  const handleSelect = (category) => {
+    setEditingCategory(category);
+    setSelectedId(categoryId(category));
+    setFormData(fillForm(category));
+    setAvailability('all');
+    setShowPanelMobile(true);
+  };
+
+  const handleOpenModal = () => {
+    setEditingCategory(null);
+    setFormData(emptyForm);
+    setAvailability('all');
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingCategory(null);
-    setFormData({
-      name: '',
-      description: '',
-      parentCategoryUuid: '',
-      sortOrder: 0,
-      imageUrl: '',
-      iconName: '',
-      colorCode: '#3B82F6',
-      isActive: true,
-      isVisibleInMenu: true,
-      availableForDineIn: true,
-    });
+    setFormData(emptyForm);
     dispatch(clearCurrentCategory());
   };
 
+  // Build the API payload from the current form + availability mapping.
+  const buildPayload = () => ({
+    name: formData.name,
+    description: formData.description || undefined,
+    parentCategoryUuid: formData.parentCategoryUuid || undefined,
+    sortOrder: parseInt(formData.sortOrder) || 0,
+    imageUrl: formData.imageUrl || undefined,
+    iconName: formData.iconName || undefined,
+    colorCode: formData.colorCode || undefined,
+    isActive: formData.isActive,
+    isVisibleInMenu: formData.isVisibleInMenu,
+    // availability "all" maps to dine-in available; specific slots keep it true too.
+    availableForDineIn:
+      availability === 'all' ? formData.availableForDineIn : true,
+  });
+
+  // Create from the modal.
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const categoryData = {
-      name: formData.name,
-      description: formData.description || undefined,
-      parentCategoryUuid: formData.parentCategoryUuid || undefined,
-      sortOrder: parseInt(formData.sortOrder) || 0,
-      imageUrl: formData.imageUrl || undefined,
-      iconName: formData.iconName || undefined,
-      colorCode: formData.colorCode || undefined,
-      isActive: formData.isActive,
-      isVisibleInMenu: formData.isVisibleInMenu,
-      availableForDineIn: formData.availableForDineIn,
-    };
-
+    const categoryData = buildPayload();
     try {
       if (editingCategory) {
         await dispatch(updateCategory({
@@ -179,82 +193,59 @@ const CategoryManagement = () => {
         })).unwrap();
       }
       handleCloseModal();
-      // Refresh categories list
       dispatch(fetchCategories(activeRestaurantId));
-    } catch (error) {
-      console.error('Failed to save category:', error);
+    } catch (err) {
+      console.error('Failed to save category:', err);
     }
   };
 
-  const handleDelete = async (categoryUuid) => {
+  // Save from the settings panel.
+  const handleSavePanel = async () => {
+    if (!editingCategory) return;
+    const categoryData = buildPayload();
+    try {
+      await dispatch(updateCategory({
+        restaurantUuid: activeRestaurantId,
+        categoryUuid: editingCategory.categoryUuid,
+        categoryData,
+      })).unwrap();
+      dispatch(fetchCategories(activeRestaurantId));
+      setShowPanelMobile(false);
+    } catch (err) {
+      console.error('Failed to save category:', err);
+    }
+  };
+
+  const handleDelete = async (uuid) => {
     if (window.confirm('Are you sure you want to delete this category? All products in this category will be affected.')) {
       try {
         await dispatch(deleteCategory({
           restaurantUuid: activeRestaurantId,
-          categoryUuid,
+          categoryUuid: uuid,
         })).unwrap();
-        // Refresh categories list
+        if (selectedId === uuid) {
+          setSelectedId(null);
+          setEditingCategory(null);
+        }
         dispatch(fetchCategories(activeRestaurantId));
-      } catch (error) {
-        console.error('Failed to delete category:', error);
+      } catch (err) {
+        console.error('Failed to delete category:', err);
       }
     }
   };
 
-  const handleToggleActive = async (categoryUuid, e) => {
+  const handleToggleActive = async (uuid, e) => {
     e?.stopPropagation();
-    console.log('Toggle clicked for category:', categoryUuid);
-    console.log('Restaurant UUID:', activeRestaurantId);
     try {
       await dispatch(toggleActiveStatus({
         restaurantUuid: activeRestaurantId,
-        categoryUuid,
+        categoryUuid: uuid,
       })).unwrap();
-      console.log('Toggle successful');
-      // Refresh categories to show updated status
       dispatch(fetchCategories(activeRestaurantId));
-    } catch (error) {
-      console.error('Failed to toggle category status:', error);
+    } catch (err) {
+      console.error('Failed to toggle category status:', err);
     }
   };
-
-  const handleToggleExpand = async (categoryUuid) => {
-    // Toggle expansion state
-    const isCurrentlyExpanded = expandedCategories[categoryUuid];
-
-    if (!isCurrentlyExpanded) {
-      // Fetch category details with subcategories
-      try {
-        await dispatch(fetchCategoryByUuid({
-          restaurantUuid: activeRestaurantId,
-          categoryUuid,
-        })).unwrap();
-
-        setExpandedCategories(prev => ({
-          ...prev,
-          [categoryUuid]: true
-        }));
-      } catch (error) {
-        console.error('Failed to fetch category details:', error);
-      }
-    } else {
-      // Collapse
-      setExpandedCategories(prev => {
-        const newState = { ...prev };
-        delete newState[categoryUuid];
-        return newState;
-      });
-    }
-  };
-
-  // Filter categories
-  const filteredCategories = categories.filter(category => {
-    const matchesSearch =
-      category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    return matchesSearch;
-  });
 
   const initials = (name) =>
     (name || '?')
@@ -265,58 +256,61 @@ const CategoryManagement = () => {
       .join('')
       .toUpperCase();
 
-  // A single category row (also reused for subcategories with a slight indent).
-  const CategoryRow = ({ category, isSub = false, parent = null }) => {
-    const isActive = category.isActive !== false;
-    const categoryId = category.categoryUuid || category.uuid;
-    const isExpanded = expandedCategories[categoryId];
-    const hasSubcategories =
-      currentCategory?.categoryUuid === categoryId &&
-      currentCategory?.subCategories?.length > 0;
+  const itemCountOf = (category) =>
+    category.productCount ??
+    category.itemCount ??
+    category.productsCount ??
+    (Array.isArray(category.products) ? category.products.length : 0);
+
+  // A single category row.
+  const CategoryRow = ({ category }) => {
+    const id = categoryId(category);
     const isVisible = category.isVisibleInMenu !== false;
+    const selected = selectedId === id;
+    const count = itemCountOf(category);
+    const slot =
+      category.availableForDineIn === false ? 'closed' : 'all';
+    const meta =
+      slot === 'closed'
+        ? `${count} items · hidden`
+        : `${count} items · all day`;
 
     return (
       <div
+        role="button"
+        tabIndex={0}
+        onClick={() => handleSelect(category)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelect(category);
+          }
+        }}
         className={cn(
-          'group flex items-center gap-3 px-3 sm:px-4 py-3 transition-colors hover:bg-paper-2',
-          isSub && 'pl-10 sm:pl-14 bg-paper-2/40',
+          'group flex items-center gap-3 p-4 bg-paper-card rounded-card cursor-pointer transition-colors hover:bg-paper-2',
+          selected
+            ? 'border-2 border-marigold'
+            : 'border border-line-light',
         )}
       >
-        {/* Drag handle */}
-        <button
-          type="button"
-          className="cursor-grab text-txt-faint hover:text-txt-muted shrink-0 touch-none"
+        {/* Drag handle (visual affordance) */}
+        <span
+          className="cursor-grab text-txt-faint group-hover:text-txt-muted shrink-0 touch-none"
           title="Drag to reorder"
           aria-label="Drag to reorder"
+          onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="h-4 w-4" />
-        </button>
-
-        {/* Expand toggle (top-level only) */}
-        {!isSub ? (
-          <button
-            onClick={() => handleToggleExpand(categoryId)}
-            className="p-1 -ml-1 rounded-input text-txt-muted hover:bg-paper-3 transition-colors shrink-0"
-            title={isExpanded ? 'Collapse' : 'Expand'}
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </button>
-        ) : (
-          <span className="w-5 shrink-0" />
-        )}
+        </span>
 
         {/* Thumbnail / initials block */}
         <div
-          className={cn(
-            'shrink-0 rounded-tile flex items-center justify-center overflow-hidden font-display font-bold text-white',
-            isSub ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs',
-          )}
-          style={{ backgroundColor: category.colorCode || '#9a6500' }}
+          className="shrink-0 h-11 w-11 rounded-tile flex items-center justify-center overflow-hidden font-display font-bold text-white text-xs bg-paper-2"
+          style={
+            category.imageUrl
+              ? undefined
+              : { backgroundColor: category.colorCode || '#9a6500' }
+          }
         >
           {category.imageUrl ? (
             <img
@@ -332,82 +326,127 @@ const CategoryManagement = () => {
         {/* Name + meta */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                'font-medium text-ink-text truncate',
-                isSub ? 'text-sm' : 'text-[15px]',
-              )}
-            >
+            <span className="font-display font-semibold text-[15px] text-ink-text truncate">
               {category.name}
             </span>
-            {isSub && <Pill tone="neutral">Child</Pill>}
             {!isVisible && <Pill tone="neutral">Hidden</Pill>}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-txt-muted truncate">
-              {category.description || 'No description'}
-            </span>
-            <span className="text-txt-faint">·</span>
-            <span className="font-mono text-[11px] text-txt-faint">
-              #{category.sortOrder || 0}
-            </span>
-          </div>
+          <p className="text-xs text-txt-muted truncate mt-0.5">{meta}</p>
         </div>
 
-        {/* Availability pill */}
+        {/* Delete (hover) */}
         <button
-          type="button"
-          onClick={(e) => handleToggleActive(categoryId, e)}
-          title="Click to toggle active status"
-          className="shrink-0 hidden sm:inline-flex"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(id);
+          }}
+          disabled={actionLoading}
+          className="p-2 rounded-input text-txt-faint hover:text-danger hover:bg-danger/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 shrink-0"
+          title="Delete"
+          aria-label="Delete category"
         >
-          <Pill tone={isActive ? 'success' : 'danger'}>
-            {isActive ? 'Available' : 'Unavailable'}
-          </Pill>
+          <Trash2 className="h-4 w-4" />
         </button>
 
-        {/* Visible toggle */}
-        <div className="shrink-0 hidden sm:block">
+        {/* Visible / active toggle */}
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <Toggle
             size="sm"
             checked={isVisible}
-            onChange={() => handleToggleActive(categoryId)}
+            onChange={() => handleToggleActive(id)}
             disabled={actionLoading}
           />
         </div>
+      </div>
+    );
+  };
 
-        {/* Row actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() =>
-              isSub
-                ? handleOpenModal({
-                    ...category,
-                    parentCategoryUuid: parent?.id,
-                    parentCategoryName: parent?.name,
-                  })
-                : handleOpenModal(category)
-            }
-            disabled={actionLoading}
-            className="p-2 rounded-input text-txt-muted hover:text-marigold hover:bg-marigold/10 transition-colors disabled:opacity-50"
-            title="Edit"
-            aria-label="Edit category"
-          >
-            <Edit2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(categoryId)}
-            disabled={actionLoading}
-            className="p-2 rounded-input text-txt-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
-            title="Delete"
-            aria-label="Delete category"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+  // Settings panel content (shared between sticky desktop panel & mobile drawer).
+  const renderSettings = () => {
+    if (!editingCategory) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+          <div className="h-12 w-12 rounded-tile bg-paper-2 flex items-center justify-center mb-3">
+            <FolderOpen className="h-6 w-6 text-txt-faint" />
+          </div>
+          <p className="text-sm font-medium text-ink-text">No category selected</p>
+          <p className="text-xs text-txt-faint mt-1">
+            Pick a category on the left to edit its settings.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-5">
+        <div>
+          <p className="eyebrow text-[11px] text-txt-faint">Category</p>
+          <h3 className="font-display font-bold text-lg text-ink-text truncate mt-0.5">
+            {formData.name || editingCategory.name}
+          </h3>
         </div>
 
-        {/* Subcategories render outside this row, handled by parent map */}
-        {!isSub && isExpanded && hasSubcategories && null}
+        <div>
+          <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+            Name
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            maxLength={100}
+            className="h-10 w-full px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
+          />
+        </div>
+
+        <div>
+          <label className="eyebrow text-[11px] text-txt-faint block mb-1.5">
+            Description
+          </label>
+          <input
+            type="text"
+            placeholder="Short description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            maxLength={1000}
+            className="h-10 w-full px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
+          />
+        </div>
+
+        <div>
+          <label className="eyebrow text-[11px] text-txt-faint block mb-2">
+            Availability
+          </label>
+          <Segmented
+            options={AVAILABILITY_OPTIONS}
+            value={availability}
+            onChange={setAvailability}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex items-center justify-between py-1">
+          <span className="text-sm font-medium text-ink-text">Visible on menu</span>
+          <Toggle
+            checked={formData.isVisibleInMenu}
+            onChange={(v) => setFormData({ ...formData, isVisibleInMenu: v })}
+          />
+        </div>
+
+        <BtnPrimary
+          onClick={handleSavePanel}
+          disabled={actionLoading}
+          className="w-full"
+        >
+          {actionLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save category'
+          )}
+        </BtnPrimary>
       </div>
     );
   };
@@ -437,10 +476,10 @@ const CategoryManagement = () => {
 
       <PageHeader
         eyebrow="Menu"
-        title="Categories"
-        subtitle="Organize your menu items into categories"
+        title="Menu"
+        subtitle={`${restaurantName} · ${categories.length} categories · drag to reorder`}
         actions={
-          <BtnPrimary onClick={() => handleOpenModal()} disabled={actionLoading}>
+          <BtnPrimary onClick={handleOpenModal} disabled={actionLoading}>
             <Plus className="h-4 w-4" />
             Add category
           </BtnPrimary>
@@ -448,19 +487,22 @@ const CategoryManagement = () => {
       />
 
       {/* Sub-tabs (underline / marigold) */}
-      <nav className="flex items-center gap-6 border-b border-line-light">
+      <nav className="flex items-center gap-6 border-b border-line-light overflow-x-auto">
         {SUB_TABS.map((tab) => {
           const active = tab.label === 'Categories';
           return (
             <button
               key={tab.label}
               type="button"
-              onClick={() => !active && navigate(tab.path)}
+              onClick={() => tab.path && !active && navigate(tab.path)}
+              disabled={!tab.path}
               className={cn(
-                'relative -mb-px pb-3 text-sm font-medium transition-colors',
+                'relative -mb-px pb-3 text-sm font-medium transition-colors whitespace-nowrap',
                 active
                   ? 'text-ink-text'
-                  : 'text-txt-muted hover:text-ink-text',
+                  : tab.path
+                    ? 'text-txt-muted hover:text-ink-text'
+                    : 'text-txt-faint cursor-default',
               )}
             >
               {tab.label}
@@ -472,89 +514,75 @@ const CategoryManagement = () => {
         })}
       </nav>
 
-      <Panel className="overflow-hidden">
-        {/* Search bar */}
-        <div className="p-3 sm:p-4 border-b border-line-light">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-faint" />
-            <input
-              type="text"
-              placeholder="Search categories..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-10 pr-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold"
-            />
-          </div>
-        </div>
-
-        {/* List body */}
+      {/* 2-column body */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+        {/* LEFT: category list */}
         <div>
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-marigold" />
             </div>
-          ) : filteredCategories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-txt-muted">
-              <div className="h-14 w-14 rounded-tile bg-paper-3 flex items-center justify-center mb-3">
+          ) : categories.length === 0 ? (
+            <Panel className="flex flex-col items-center justify-center h-64 text-txt-muted">
+              <div className="h-14 w-14 rounded-tile bg-paper-2 flex items-center justify-center mb-3">
                 <FolderOpen className="h-7 w-7 text-txt-faint" />
               </div>
               <p className="text-sm font-medium text-ink-text">No categories found</p>
               <p className="text-xs text-txt-faint mt-1">
                 Create a category to start organizing your menu
               </p>
-              <BtnPrimary onClick={() => handleOpenModal()} className="mt-4">
+              <BtnPrimary onClick={handleOpenModal} className="mt-4">
                 <Plus className="h-4 w-4" />
                 Create your first category
               </BtnPrimary>
-            </div>
+            </Panel>
           ) : (
-            <div className="divide-y divide-line-light">
-              {filteredCategories.map((category) => {
-                const categoryId = category.categoryUuid || category.uuid;
-                const isExpanded = expandedCategories[categoryId];
-                const hasSubcategories =
-                  currentCategory?.categoryUuid === categoryId &&
-                  currentCategory?.subCategories?.length > 0;
-
-                return (
-                  <React.Fragment key={categoryId}>
-                    <CategoryRow category={category} />
-                    {isExpanded &&
-                      hasSubcategories &&
-                      currentCategory.subCategories.map((subCat) => (
-                        <CategoryRow
-                          key={subCat.categoryUuid}
-                          category={subCat}
-                          isSub
-                          parent={{ id: categoryId, name: category.name }}
-                        />
-                      ))}
-                  </React.Fragment>
-                );
-              })}
+            <div className="space-y-3">
+              {categories.map((category) => (
+                <CategoryRow key={categoryId(category)} category={category} />
+              ))}
             </div>
           )}
         </div>
 
-        {/* Footer count */}
-        {!loading && filteredCategories.length > 0 && (
-          <div className="px-4 py-3 border-t border-line-light bg-paper-2">
-            <p className="text-xs text-txt-muted">
-              Showing{' '}
-              <span className="font-mono text-ink-text">{filteredCategories.length}</span>{' '}
-              of{' '}
-              <span className="font-mono text-ink-text">{categories.length}</span>{' '}
-              categories
-            </p>
-          </div>
-        )}
-      </Panel>
+        {/* RIGHT: settings panel (sticky, desktop) */}
+        <Panel className="hidden lg:block sticky top-6 p-5">
+          {renderSettings()}
+        </Panel>
+      </div>
 
-      {/* Create/Edit Modal — re-skinned settings sheet */}
+      {/* Mobile settings drawer */}
+      {showPanelMobile && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-ink/50"
+            onClick={() => setShowPanelMobile(false)}
+          />
+          <div className="absolute bottom-0 inset-x-0 rounded-t-card bg-paper-card shadow-float max-h-[88vh] overflow-y-auto animate-slide-up">
+            <div className="flex items-center justify-between p-4 border-b border-line-light">
+              <h3 className="font-display font-bold text-base text-ink-text">
+                Category settings
+              </h3>
+              <button
+                onClick={() => setShowPanelMobile(false)}
+                className="text-txt-faint hover:text-ink-text p-1"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {renderSettings()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create category modal (full editor) */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={editingCategory ? 'Edit category' : 'New category'}
+        title="New category"
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -599,9 +627,9 @@ const CategoryManagement = () => {
                 >
                   <option value="">None (Top Level)</option>
                   {categories
-                    .filter(cat => (cat.categoryUuid || cat.uuid) !== (editingCategory?.categoryUuid || editingCategory?.uuid))
+                    .filter(cat => categoryId(cat) !== categoryId(editingCategory))
                     .map(cat => (
-                      <option key={cat.categoryUuid || cat.uuid} value={cat.categoryUuid || cat.uuid}>
+                      <option key={categoryId(cat)} value={categoryId(cat)}>
                         {cat.name}
                       </option>
                     ))}
@@ -720,8 +748,6 @@ const CategoryManagement = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Saving...
                 </>
-              ) : editingCategory ? (
-                'Update category'
               ) : (
                 'Create category'
               )}
