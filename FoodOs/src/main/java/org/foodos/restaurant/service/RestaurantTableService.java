@@ -12,6 +12,7 @@ import org.foodos.order.dto.request.CreateOrderRequest;
 import org.foodos.order.dto.response.OrderResponse;
 import org.foodos.order.entity.KitchenOrderTicket;
 import org.foodos.order.entity.Order;
+import org.foodos.order.entity.enums.OrderStatus;
 import org.foodos.order.mapper.OrderMapper;
 import org.foodos.order.entity.enums.KotTicketStatus;
 import org.foodos.order.repository.KitchenOrderTicketRepository;
@@ -200,6 +201,20 @@ public class RestaurantTableService {
                 break;
 
             case VACANT:
+                // Don't free a table that still has an unpaid bill — the payment must be
+                // settled (or the order cancelled) first.
+                Order activeOrder = table.getCurrentOrder();
+                if (activeOrder != null
+                        && activeOrder.getStatus() != OrderStatus.CANCELLED
+                        && activeOrder.getStatus() != OrderStatus.VOID
+                        && activeOrder.getBalanceAmount() != null
+                        && activeOrder.getBalanceAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    log.warn("Blocked VACANT on table {}: outstanding balance {}",
+                            table.getTableNumber(), activeOrder.getBalanceAmount());
+                    throw new BusinessException(
+                            "Settle the bill before making the table vacant. Amount due: ₹"
+                                    + activeOrder.getBalanceAmount());
+                }
                 table.clearOrder();
                 // Removed auto-demerge logic. Tables must be manually demerged.
                 log.info("Table {} marked as VACANT", table.getTableNumber());
@@ -734,11 +749,11 @@ public class RestaurantTableService {
 
     private void validateStatusTransition(TableStatus currentStatus, TableStatus newStatus) {
         Map<TableStatus, Set<TableStatus>> validTransitions = Map.of(
-                TableStatus.VACANT, Set.of(TableStatus.OCCUPIED, TableStatus.RESERVED),
-                TableStatus.OCCUPIED, Set.of(TableStatus.BILLED, TableStatus.VACANT),
-                TableStatus.BILLED, Set.of(TableStatus.DIRTY, TableStatus.VACANT),
-                TableStatus.DIRTY, Set.of(TableStatus.VACANT),
-                TableStatus.RESERVED, Set.of(TableStatus.OCCUPIED, TableStatus.VACANT));
+                TableStatus.VACANT, Set.of(TableStatus.OCCUPIED, TableStatus.RESERVED, TableStatus.DIRTY),
+                TableStatus.OCCUPIED, Set.of(TableStatus.BILLED, TableStatus.DIRTY, TableStatus.VACANT),
+                TableStatus.BILLED, Set.of(TableStatus.VACANT, TableStatus.DIRTY, TableStatus.OCCUPIED),
+                TableStatus.DIRTY, Set.of(TableStatus.VACANT, TableStatus.OCCUPIED),
+                TableStatus.RESERVED, Set.of(TableStatus.OCCUPIED, TableStatus.VACANT, TableStatus.DIRTY));
 
         Set<TableStatus> allowedTransitions = validTransitions.getOrDefault(currentStatus, Collections.emptySet());
 

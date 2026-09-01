@@ -2,17 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  PageHeader,
-  Panel,
   Toggle,
   Segmented,
   BtnPrimary,
   BtnGhost,
+  Pill,
 } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 import {
   Loader2, AlertCircle, CheckCircle,
-  Package, IndianRupee, CalendarClock,
+  ImagePlus, GripVertical, Plus, ChevronRight,
 } from 'lucide-react';
 import {
   createProduct,
@@ -23,6 +22,9 @@ import {
   clearCurrentProduct,
 } from '../../store/productSlice';
 import { fetchCategories } from '../../store/categorySlice';
+import { fetchVariations } from '../../store/variationSlice';
+import VariationManagerModal from '../../components/VariationManagerModal';
+import ModifierGroupAssignmentModal from '../../components/ModifierGroupAssignmentModal';
 
 const daysOfWeek = [
   { id: 'MON', label: 'Mon' },
@@ -54,11 +56,24 @@ const initialFormData = {
   availableFrom: '',
   availableTo: '',
   availableDays: [],
+  defaultKitchenStation: 'GRILL',
+  // UI-only (not part of the submit payload)
+  trackInventory: false,
 };
 
 const INPUT_CLS =
-  'w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold disabled:opacity-60 disabled:cursor-not-allowed';
+  'w-full h-10 px-3 rounded-input bg-paper-card border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold disabled:opacity-60 disabled:cursor-not-allowed';
 const LABEL_CLS = 'eyebrow text-[11px] text-txt-faint block mb-1.5';
+
+const RailCard = ({ title, action, children }) => (
+  <div className="bg-paper-card border border-line-light rounded-card overflow-hidden">
+    <div className="flex items-center justify-between px-4 py-3 border-b border-line-light">
+      <h3 className="font-display font-bold text-sm text-ink-text">{title}</h3>
+      {action}
+    </div>
+    <div className="p-4">{children}</div>
+  </div>
+);
 
 const ProductForm = () => {
   const dispatch = useDispatch();
@@ -69,8 +84,11 @@ const ProductForm = () => {
   const { activeRestaurantId } = useSelector((state) => state.auth);
   const { currentProduct, actionLoading, error, success } = useSelector((state) => state.products);
   const { categories } = useSelector((state) => state.categories);
+  const { variations } = useSelector((state) => state.variations);
 
   const [formData, setFormData] = useState(initialFormData);
+  const [variationModalOpen, setVariationModalOpen] = useState(false);
+  const [modifierModalOpen, setModifierModalOpen] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -83,6 +101,7 @@ const ProductForm = () => {
   useEffect(() => {
     if (isEditMode && activeRestaurantId) {
       dispatch(fetchProductByUuid({ restaurantUuid: activeRestaurantId, productUuid }));
+      dispatch(fetchVariations({ restaurantUuid: activeRestaurantId, productUuid }));
     }
     return () => {
       dispatch(clearCurrentProduct());
@@ -112,6 +131,8 @@ const ProductForm = () => {
         availableFrom: currentProduct.availableFrom || '',
         availableTo: currentProduct.availableTo || '',
         availableDays: currentProduct.availableDays ? currentProduct.availableDays.split(',') : [],
+        defaultKitchenStation: currentProduct.defaultKitchenStation || 'GRILL',
+        trackInventory: Boolean(currentProduct.trackInventory),
       });
     }
   }, [isEditMode, currentProduct]);
@@ -165,6 +186,7 @@ const ProductForm = () => {
       availableFrom: formData.availableFrom || undefined,
       availableTo: formData.availableTo || undefined,
       availableDays: formData.availableDays.length > 0 ? formData.availableDays.join(',') : undefined,
+      defaultKitchenStation: formData.defaultKitchenStation || undefined,
     };
 
     try {
@@ -216,13 +238,24 @@ const ProductForm = () => {
 
   const allCategories = flattenCategories(categories);
 
-  const statusFlags = [
-    { id: 'isActive', label: 'Active', desc: 'Item is available for ordering' },
-    { id: 'isFeatured', label: 'Featured', desc: 'Show in featured section' },
-    { id: 'isBestseller', label: 'Bestseller', desc: 'Display bestseller badge' },
-    { id: 'hasVariations', label: 'Has variations', desc: 'Item has size / variation options' },
-    { id: 'hasModifiers', label: 'Has modifiers', desc: 'Item has add-ons / modifiers' },
+  // Assigned modifier groups / variations for the right rail (edit mode only).
+  const assignedGroups = currentProduct?.modifierGroups || [];
+  const productVariations = isEditMode ? (variations || []) : [];
+
+  const groupMeta = (g) => {
+    const req = g.isRequired ? 'Required' : 'Optional';
+    if (g.isRequired && g.minSelection) return `${req} · pick ${g.minSelection}`;
+    if (!g.isRequired && g.maxSelection) return `${req} · max ${g.maxSelection}`;
+    return req;
+  };
+
+  const stationOptions = [
+    { value: 'GRILL', label: 'Grill' },
+    { value: 'FRY', label: 'Fry' },
+    { value: 'COLD', label: 'Cold' },
   ];
+
+  const currentStock = currentProduct?.currentStock ?? 0;
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
@@ -241,52 +274,51 @@ const ProductForm = () => {
         </div>
       )}
 
-      {/* Ink breadcrumb / action bar */}
-      <div className="mb-6 rounded-card bg-ink text-txt-light px-5 py-4 sm:px-6 sm:py-5 shadow-float">
-        <PageHeader
-          eyebrow="Menu · Item editor"
-          title={isEditMode ? 'Edit menu item' : 'Add new menu item'}
-          subtitle={isEditMode ? 'Update the product details below.' : 'Fill in the details to create a new item.'}
-          className="[&_h1]:text-white [&_.eyebrow]:text-txt-faintDark [&_p]:text-txt-mutedDark"
-          actions={
-            <>
-              <BtnGhost
-                type="button"
-                onClick={() => navigate('/app/menu')}
-                disabled={actionLoading}
-                className="bg-transparent text-txt-light border-ink-line hover:bg-ink-card"
-              >
-                Cancel
-              </BtnGhost>
-              <BtnPrimary type="submit" form="product-form" disabled={actionLoading}>
-                {actionLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Saving...
-                  </>
-                ) : isEditMode ? (
-                  'Update item'
-                ) : (
-                  'Save item'
-                )}
-              </BtnPrimary>
-            </>
-          }
-        />
+      {/* ─── DARK ink top bar: breadcrumb + actions ─── */}
+      <div className="rounded-t-card bg-ink text-txt-light px-5 py-4 sm:px-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shadow-float">
+        <div className="min-w-0">
+          <p className="eyebrow text-[10px] text-txt-faintDark mb-1">Menu · Item editor</p>
+          <nav className="flex items-center gap-1.5 text-sm font-mono text-txt-mutedDark min-w-0">
+            <span>Menu</span>
+            <span className="text-marigold">›</span>
+            <span>Items</span>
+            <span className="text-marigold">›</span>
+            <span className="text-txt-light truncate">
+              {isEditMode ? `Edit · ${formData.name || 'Item'}` : 'New item'}
+            </span>
+          </nav>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <BtnGhost
+            type="button"
+            onClick={() => navigate('/app/menu')}
+            disabled={actionLoading}
+            className="bg-transparent text-txt-light border-ink-line hover:bg-ink-card"
+          >
+            Cancel
+          </BtnGhost>
+          <BtnPrimary type="submit" form="product-form" disabled={actionLoading}>
+            {actionLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+              </>
+            ) : isEditMode ? (
+              'Save item'
+            ) : (
+              'Save item'
+            )}
+          </BtnPrimary>
+        </div>
       </div>
 
-      {/* Body — 2-col, stacks on mobile */}
+      {/* ─── Body — light paper, 2-col ─── */}
       <form
         id="product-form"
         onSubmit={handleSubmit}
-        className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6"
+        className="bg-paper-2 border border-t-0 border-line-light rounded-b-card p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6"
       >
         {/* ─── LEFT: core form ─── */}
-        <Panel className="p-5 sm:p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-marigold" />
-            <h2 className="font-display font-bold text-base text-ink-text">Basic information</h2>
-          </div>
-
+        <div className="space-y-5">
           <div>
             <label className={LABEL_CLS}>Item name *</label>
             <input
@@ -297,47 +329,6 @@ const ProductForm = () => {
               required
               className={INPUT_CLS}
             />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={LABEL_CLS}>SKU</label>
-              <input
-                type="text"
-                placeholder="e.g. M001"
-                value={formData.sku}
-                onChange={(e) => set('sku', e.target.value)}
-                className={INPUT_CLS}
-              />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Food code</label>
-              <input
-                type="text"
-                placeholder="e.g. FC001"
-                value={formData.foodCode}
-                onChange={(e) => set('foodCode', e.target.value)}
-                maxLength={20}
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={LABEL_CLS}>Category *</label>
-            <select
-              className={INPUT_CLS}
-              value={formData.categoryUuid}
-              onChange={(e) => set('categoryUuid', e.target.value)}
-              required
-            >
-              <option value="">Select category</option>
-              {allCategories.map(cat => (
-                <option key={cat.categoryUuid} value={cat.categoryUuid}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div>
@@ -351,26 +342,101 @@ const ProductForm = () => {
             />
           </div>
 
-          {/* Pricing */}
-          <div className="border-t border-line-light pt-5">
-            <div className="flex items-center gap-2 mb-4">
-              <IndianRupee className="h-4 w-4 text-success" />
-              <h2 className="font-display font-bold text-base text-ink-text">Pricing &amp; details</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={LABEL_CLS}>Category *</label>
+              <select
+                className={INPUT_CLS}
+                value={formData.categoryUuid}
+                onChange={(e) => set('categoryUuid', e.target.value)}
+                required
+              >
+                <option value="">Select category</option>
+                {allCategories.map(cat => (
+                  <option key={cat.categoryUuid} value={cat.categoryUuid}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
+            <div>
+              <label className={LABEL_CLS}>Base price (₹) *</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.basePrice}
+                onChange={(e) => set('basePrice', e.target.value)}
+                required
+                className={cn(INPUT_CLS, 'font-mono')}
+              />
+            </div>
+          </div>
 
+          {/* Food type */}
+          <div>
+            <label className={LABEL_CLS}>Food type *</label>
+            <Segmented
+              options={[
+                { value: 'VEG', label: 'Veg' },
+                { value: 'NON_VEG', label: 'Non-veg' },
+              ]}
+              value={formData.dietaryType === 'NON_VEG' ? 'NON_VEG' : 'VEG'}
+              onChange={(value) => set('dietaryType', value)}
+            />
+          </div>
+
+          {/* Track stock */}
+          <div className="flex items-center justify-between gap-4 rounded-tile border border-line-light bg-paper-card p-3.5">
+            <div className="min-w-0">
+              <span className="block text-sm font-medium text-ink-text">Track stock</span>
+              <span className="block text-xs text-txt-muted mt-0.5 font-mono">
+                {currentStock} left
+              </span>
+            </div>
+            <Toggle
+              checked={formData.trackInventory}
+              onChange={(checked) => set('trackInventory', checked)}
+            />
+          </div>
+
+          {/* Photo dropzone */}
+          <div>
+            <label className={LABEL_CLS}>Product photo</label>
+            <div className="flex flex-col items-center justify-center gap-2 rounded-tile border-2 border-dashed border-line-input bg-paper-2 px-4 py-10 text-center">
+              <ImagePlus className="h-7 w-7 text-txt-faint" />
+              <p className="eyebrow text-[11px] text-txt-faint">Product photo · drag to upload</p>
+              <p className="text-xs text-txt-faint">PNG or JPG, up to 5MB</p>
+            </div>
+          </div>
+
+          {/* Secondary details — preserved fields */}
+          <div className="border-t border-line-light pt-5 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={LABEL_CLS}>Base price (₹) *</label>
+                <label className={LABEL_CLS}>SKU</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.basePrice}
-                  onChange={(e) => set('basePrice', e.target.value)}
-                  required
+                  type="text"
+                  placeholder="e.g. M001"
+                  value={formData.sku}
+                  onChange={(e) => set('sku', e.target.value)}
                   className={INPUT_CLS}
                 />
               </div>
+              <div>
+                <label className={LABEL_CLS}>Food code</label>
+                <input
+                  type="text"
+                  placeholder="e.g. FC001"
+                  value={formData.foodCode}
+                  onChange={(e) => set('foodCode', e.target.value)}
+                  maxLength={20}
+                  className={INPUT_CLS}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Cost price (₹)</label>
                 <input
@@ -379,28 +445,23 @@ const ProductForm = () => {
                   placeholder="0.00"
                   value={formData.costPrice}
                   onChange={(e) => set('costPrice', e.target.value)}
+                  className={cn(INPUT_CLS, 'font-mono')}
+                />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Sort order</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={formData.sortOrder}
+                  onChange={(e) => set('sortOrder', e.target.value)}
+                  min="0"
                   className={INPUT_CLS}
                 />
               </div>
             </div>
 
-            <div className="mt-4">
-              <label className={LABEL_CLS}>Food type *</label>
-              <Segmented
-                options={[
-                  { value: 'VEG', label: 'Veg' },
-                  { value: 'NON_VEG', label: 'Non-veg' },
-                  { value: 'VEGAN', label: 'Vegan' },
-                  { value: 'GLUTEN_FREE', label: 'Gluten-free' },
-                  { value: 'DAIRY_FREE', label: 'Dairy-free' },
-                ]}
-                value={formData.dietaryType}
-                onChange={(value) => set('dietaryType', value)}
-                className="flex-wrap"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Prep time (min)</label>
                 <input
@@ -424,39 +485,6 @@ const ProductForm = () => {
                   className={INPUT_CLS}
                 />
               </div>
-            </div>
-
-            <div className="mt-4">
-              <label className={LABEL_CLS}>Sort order</label>
-              <input
-                type="number"
-                placeholder="0"
-                value={formData.sortOrder}
-                onChange={(e) => set('sortOrder', e.target.value)}
-                min="0"
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
-
-          {/* Photo dropzone (presentation placeholder) */}
-          <div className="border-t border-line-light pt-5">
-            <label className={LABEL_CLS}>Item photo</label>
-            <div className="flex flex-col items-center justify-center gap-2 rounded-tile border-2 border-dashed border-line-input bg-paper-2 px-4 py-8 text-center">
-              <Package className="h-7 w-7 text-txt-faint" />
-              <p className="text-sm font-medium text-txt-muted">Drag &amp; drop an image here</p>
-              <p className="text-xs text-txt-faint">PNG or JPG, up to 5MB</p>
-            </div>
-          </div>
-        </Panel>
-
-        {/* ─── RIGHT rail ─── */}
-        <div className="space-y-6">
-          {/* Availability */}
-          <Panel className="p-5 sm:p-6 space-y-5">
-            <div className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-marigold" />
-              <h2 className="font-display font-bold text-base text-ink-text">Availability</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -494,7 +522,7 @@ const ProductForm = () => {
                         'px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors',
                         active
                           ? 'bg-marigold text-ink border-marigold'
-                          : 'bg-paper-2 text-txt-muted border-line-input hover:bg-paper-3',
+                          : 'bg-paper-card text-txt-muted border-line-input hover:bg-paper-2',
                       )}
                     >
                       {day.label}
@@ -503,31 +531,157 @@ const ProductForm = () => {
                 })}
               </div>
             </div>
-          </Panel>
 
-          {/* Status flags */}
-          <Panel className="p-5 sm:p-6 space-y-4">
-            <h2 className="font-display font-bold text-base text-ink-text">Status flags</h2>
-            <div className="space-y-3">
-              {statusFlags.map(flag => (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { id: 'isActive', label: 'Active' },
+                { id: 'isFeatured', label: 'Featured' },
+                { id: 'isBestseller', label: 'Bestseller' },
+              ].map(flag => (
                 <div
                   key={flag.id}
-                  className="flex items-start justify-between gap-4 rounded-tile border border-line-light bg-paper-2 p-3.5"
+                  className="flex items-center justify-between gap-3 rounded-tile border border-line-light bg-paper-card p-3"
                 >
-                  <div className="min-w-0">
-                    <span className="block text-sm font-medium text-ink-text">{flag.label}</span>
-                    <span className="block text-xs text-txt-muted mt-0.5">{flag.desc}</span>
-                  </div>
+                  <span className="text-sm font-medium text-ink-text">{flag.label}</span>
                   <Toggle
+                    size="sm"
                     checked={formData[flag.id]}
                     onChange={(checked) => set(flag.id, checked)}
                   />
                 </div>
               ))}
             </div>
-          </Panel>
+          </div>
+        </div>
+
+        {/* ─── RIGHT rail ─── */}
+        <div className="space-y-6">
+          {/* Modifier groups */}
+          <RailCard
+            title="Modifier groups"
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  if (isEditMode) setModifierModalOpen(true);
+                }}
+                disabled={!isEditMode}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#9a6500] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-3.5 w-3.5" /> Assign
+              </button>
+            }
+          >
+            {!isEditMode ? (
+              <p className="text-xs text-txt-faint">Save the item first to assign modifier groups.</p>
+            ) : assignedGroups.length === 0 ? (
+              <p className="text-xs text-txt-faint">No modifier groups assigned yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {assignedGroups.map(g => (
+                  <li
+                    key={g.modifierGroupUuid}
+                    className="flex items-center gap-3 rounded-tile border border-line-light bg-paper-2 px-3 py-2.5"
+                  >
+                    <GripVertical className="h-4 w-4 text-txt-faint shrink-0 cursor-grab" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-ink-text truncate">{g.name}</span>
+                      <span className="block text-[11px] text-txt-muted mt-0.5">{groupMeta(g)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </RailCard>
+
+          {/* Variations */}
+          <RailCard
+            title="Variations"
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  if (isEditMode) setVariationModalOpen(true);
+                }}
+                disabled={!isEditMode}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#9a6500] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add
+              </button>
+            }
+          >
+            {!isEditMode ? (
+              <p className="text-xs text-txt-faint">Save the item first to add variations.</p>
+            ) : productVariations.length === 0 ? (
+              <p className="text-xs text-txt-faint">No variations yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {productVariations.map(v => (
+                  <li
+                    key={v.variationUuid}
+                    className="flex items-center justify-between gap-3 rounded-tile border border-line-light bg-paper-2 px-3 py-2.5"
+                  >
+                    <span className="text-sm font-medium text-ink-text truncate">{v.name}</span>
+                    <span className="text-sm font-mono text-ink-text shrink-0">
+                      ₹{Number(v.price ?? 0).toLocaleString('en-IN')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </RailCard>
+
+          {/* Kitchen routing */}
+          <RailCard title="Kitchen routing">
+            <Segmented
+              options={stationOptions}
+              value={formData.defaultKitchenStation}
+              onChange={(value) => set('defaultKitchenStation', value)}
+              className="w-full [&>button]:flex-1"
+            />
+            <p className="text-[11px] text-txt-muted mt-3 flex items-center gap-1">
+              <ChevronRight className="h-3 w-3 text-marigold" />
+              Tickets route to the {stationOptions.find(s => s.value === formData.defaultKitchenStation)?.label} station.
+            </p>
+          </RailCard>
+
+          {(formData.hasVariations || formData.hasModifiers) && (
+            <div className="flex flex-wrap gap-2 px-1">
+              {formData.hasVariations && <Pill tone="marigold">Has variations</Pill>}
+              {formData.hasModifiers && <Pill tone="gold">Has modifiers</Pill>}
+            </div>
+          )}
         </div>
       </form>
+
+      {/* Variation Management Modal (existing flow) */}
+      <VariationManagerModal
+        isOpen={variationModalOpen}
+        onClose={() => {
+          setVariationModalOpen(false);
+          if (activeRestaurantId && productUuid) {
+            dispatch(fetchVariations({ restaurantUuid: activeRestaurantId, productUuid }));
+            dispatch(fetchProductByUuid({ restaurantUuid: activeRestaurantId, productUuid }));
+          }
+        }}
+        restaurantUuid={activeRestaurantId}
+        productUuid={productUuid}
+        productName={formData.name}
+      />
+
+      {/* Modifier Group Assignment Modal (existing flow) */}
+      <ModifierGroupAssignmentModal
+        isOpen={modifierModalOpen}
+        onClose={() => {
+          setModifierModalOpen(false);
+          if (activeRestaurantId && productUuid) {
+            dispatch(fetchProductByUuid({ restaurantUuid: activeRestaurantId, productUuid }));
+          }
+        }}
+        restaurantUuid={activeRestaurantId}
+        productUuid={productUuid}
+        productName={formData.name}
+      />
     </div>
   );
 };

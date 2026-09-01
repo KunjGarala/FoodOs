@@ -271,31 +271,6 @@ const CouponEditor = () => {
               />
             </div>
 
-<<<<<<< HEAD
-        {/* Section 2: Discount Configuration */}
-        <Card className="overflow-hidden border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-amber-500" />
-            <h2 className="text-lg font-semibold text-slate-800">Discount Details</h2>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Discount Type <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <select
-                  className="w-full pl-10 pr-4 py-2.5 text-sm appearance-none border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-shadow"
-                  value={formData.discountType}
-                  onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                >
-                  <option value="PERCENTAGE">Percentage (%)</option>
-                  <option value="FIXED">Fixed Amount (₹)</option>
-                </select>
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                  {formData.discountType === 'PERCENTAGE' ? <Percent className="w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-                </div>
-              </div>
-=======
             {/* Discount type */}
             <div>
               <label className={LABEL_CLS}>Discount type *</label>
@@ -307,7 +282,6 @@ const CouponEditor = () => {
                 value={formData.discountType}
                 onChange={(value) => setFormData({ ...formData, discountType: value })}
               />
->>>>>>> master
             </div>
 
             {/* Value + cap */}
@@ -318,182 +292,28 @@ const CouponEditor = () => {
                   type="number"
                   step="0.01"
                   min="0.01"
-<<<<<<< HEAD
-                  placeholder={formData.discountType === 'PERCENTAGE' ? "20" : "150.00"}
-=======
                   placeholder={isPercent ? '20' : '15.00'}
->>>>>>> master
                   value={formData.discountValue}
                   onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
                   required
                   className={INPUT_CLS}
                 />
-<<<<<<< HEAD
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                  {formData.discountType === 'PERCENTAGE' ? '%' : '₹'}
-                </div>
-              </div>
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Minimum Order Amount <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.minOrderAmount}
-                  onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
-                  required
-                  className="pl-9"
-                />
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">₹</div>
-              </div>
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Max Cap Amount</label>
-              <div className="relative">
-                <Input
-=======
               </div>
               <div>
                 <label className={LABEL_CLS}>Max cap amount</label>
                 <input
->>>>>>> master
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="Optional max cap"
                   value={formData.maxDiscountAmount}
                   onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
-<<<<<<< HEAD
-                  disabled={formData.discountType === 'FIXED'}
-                  className={`pl-9 ${formData.discountType === 'FIXED' ? 'bg-slate-100 cursor-not-allowed' : ''}`}
-                />
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">₹</div>
-              </div>
-              {formData.discountType === 'PERCENTAGE' && (
-                <p className="text-xs text-slate-500 mt-1.5">Maximum discount a customer can receive.</p>
-              )}
-            </div>
-
-          </div>
-        </Card>
-
-        {/* Section 3: Validity and Limits */}
-        <Card className="overflow-hidden border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-600" />
-            <h2 className="text-lg font-semibold text-slate-800">Validity & Limits</h2>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Start Date & Time <span className="text-red-500">*</span></label>
-              <Input
-                type="datetime-local"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">End Date & Time <span className="text-red-500">*</span></label>
-              <Input
-                type="datetime-local"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Usage Limit (Global)</label>
-              <Input
-                type="number"
-                min="1"
-                placeholder="Leave blank for infinite"
-                value={formData.usageLimitGlobal}
-                onChange={(e) => setFormData({ ...formData, usageLimitGlobal: e.target.value })}
-              />
-              <p className="text-xs text-slate-500 mt-1.5">Total times this coupon can be used by anyone.</p>
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Per-Customer Limit</label>
-              <Input
-                type="number"
-                min="1"
-                placeholder="Leave blank for infinite"
-                value={formData.usageLimitPerUser}
-                onChange={(e) => setFormData({ ...formData, usageLimitPerUser: e.target.value })}
-              />
-              <p className="text-xs text-slate-500 mt-1.5">Max times a single customer can redeem this code.</p>
-            </div>
-            
-          </div>
-        </Card>
-
-        {/* Section 4: Settings */}
-        <Card className="overflow-hidden border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-purple-600" />
-            <h2 className="text-lg font-semibold text-slate-800">Advanced Settings</h2>
-          </div>
-          <div className="p-6 space-y-5">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/60">
-                <p className="text-sm font-semibold text-slate-800 mb-2">Scope</p>
-                <p className="text-xs text-slate-500 mb-3">Choose whether this coupon is limited to the active restaurant or applies across the full chain.</p>
-
-                <div className="space-y-2">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scope"
-                      value="RESTAURANT_SPECIFIC"
-                      checked={formData.scopeType === 'RESTAURANT_SPECIFIC'}
-                      onChange={(e) => setFormData({ ...formData, scopeType: e.target.value })}
-                      disabled={isEditMode}
-                      className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                    />
-                    <div>
-                      <span className="block text-sm font-medium text-slate-800">Single restaurant</span>
-                      <span className="block text-xs text-slate-500">Only usable at the currently active restaurant.</span>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scope"
-                      value="GLOBAL_CHAIN"
-                      checked={formData.scopeType === 'GLOBAL_CHAIN'}
-                      onChange={(e) => setFormData({ ...formData, scopeType: e.target.value })}
-                      disabled={isEditMode}
-                      className="mt-1 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                    />
-                    <div>
-                      <span className="block text-sm font-medium text-slate-800">Entire chain</span>
-                      <span className="block text-xs text-slate-500">Applies to all outlets under this restaurant group.</span>
-                    </div>
-                  </label>
-
-                  {isEditMode && (
-                    <p className="text-[11px] text-slate-500 mt-1">Scope is fixed after creation to avoid breaking existing mappings.</p>
-                  )}
-                </div>
-=======
                   disabled={formData.discountType === 'FLAT_AMOUNT'}
                   className={INPUT_CLS}
                 />
                 {isPercent && (
                   <p className="text-xs text-txt-faint mt-1.5">Maximum discount a customer can receive.</p>
                 )}
->>>>>>> master
               </div>
             </div>
 

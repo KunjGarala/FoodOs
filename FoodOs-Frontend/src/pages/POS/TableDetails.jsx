@@ -395,6 +395,8 @@ const TableDetails = () => {
   const payments = activeOrder?.payments || [];
   const orderUuid = activeOrder?.orderUuid;
   const hasPendingItems = items.some((i) => i.kotStatus === 'PENDING' || !i.kotStatus);
+  // A closed/paid order can't take new items or payments.
+  const isCompleted = ['COMPLETED', 'PAID'].includes((activeOrder?.status || '').toUpperCase());
 
   // Check if all non-cancelled items are SERVED
   const nonCancelledItems = items.filter((i) => i.kotStatus !== 'CANCELLED' && i.status !== 'CANCELLED');
@@ -1009,28 +1011,11 @@ const TableDetails = () => {
                     revalidating={couponState.revalidating}
                   />
 
-<<<<<<< HEAD
-                  <button
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (orderUuid) params.set('orderUuid', orderUuid);
-                      if (subtotal > 0) params.set('subtotal', subtotal.toFixed(2));
-                      if (activeOrder?.customerUuid) params.set('customerUuid', activeOrder.customerUuid);
-                      navigate(`/app/tables/${tableUuid}/offers?${params.toString()}`);
-                    }}
-                    disabled={!orderUuid}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Tag className="h-4 w-4" />
-                    Show All Offers
-                  </button>
-=======
                   <div className="flex items-center justify-between eyebrow text-[10px] text-txt-faint">
                     <span>Available Offers</span>
                     <span className="text-txt-faint">Auto picks best savings</span>
                   </div>
                   <CouponList coupons={couponState.suggestions} onApply={handleApplyFromList} />
->>>>>>> master
                 </div>
 
                 {/* Totals */}
@@ -1119,11 +1104,24 @@ const TableDetails = () => {
             {/* Action Grid */}
             <div className="bg-paper-card border border-line-light rounded-card p-4">
               <p className="eyebrow text-[10px] text-txt-faint mb-3">Actions</p>
+
+              {isCompleted && (
+                <div className="mb-3 rounded-tile bg-success/[0.10] border border-success/30 p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-success-deep">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Order completed</span>
+                  </div>
+                  <p className="text-xs text-txt-muted mt-1">
+                    This order is closed and paid — no more items or payments. Start a new order from the floor.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2.5">
                 <BtnPrimary
                   className="w-full"
                   onClick={() => navigate(`/app/tables/${tableUuid}/add-items`)}
-                  disabled={orderActionLoading || isBilled}
+                  disabled={orderActionLoading || isBilled || isCompleted}
                 >
                   <Plus className="h-4 w-4" /> Add Items
                 </BtnPrimary>
@@ -1139,30 +1137,18 @@ const TableDetails = () => {
                   </BtnGhost>
                 )}
 
-<<<<<<< HEAD
-                {/* {hasBillingAccess && isOccupied && items.length > 0 && (
-                  <Button
-                    variant="outline"
-                    className="w-full border-violet-200 text-violet-700 hover:bg-violet-50"
-=======
                 {hasBillingAccess && isOccupied && items.length > 0 && (
                   <BtnGhost
                     className="w-full bg-paper-2 border border-line-input text-txt-dark hover:bg-paper-3"
->>>>>>> master
                     onClick={handleGenerateBill}
                     disabled={orderActionLoading}
                   >
                     {orderActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
                     Generate Bill
-<<<<<<< HEAD
-                  </Button>
-                )} */}
-=======
                   </BtnGhost>
                 )}
->>>>>>> master
 
-                {hasBillingAccess && (
+                {hasBillingAccess && !isCompleted && (
                   <BtnGhost
                     className="w-full bg-paper-2 border border-line-input text-success-deep hover:bg-paper-3"
                     onClick={() => {
@@ -1190,7 +1176,7 @@ const TableDetails = () => {
               )}
 
               {/* Complete Order - only when ALL items served AND payment complete */}
-              {allItemsServed && paidAmount >= total && total > 0 && (
+              {!isCompleted && allItemsServed && paidAmount >= total && total > 0 && (
                 <button
                   className="mt-3 w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-input bg-success text-white font-semibold text-sm hover:brightness-105 transition disabled:opacity-50"
                   onClick={handleCompleteOrder}

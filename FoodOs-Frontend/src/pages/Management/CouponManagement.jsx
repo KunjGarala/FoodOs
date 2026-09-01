@@ -179,102 +179,6 @@ const CouponManagement = () => {
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="flex-1 overflow-auto bg-slate-50/30">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            </div>
-          ) : filteredCoupons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-              <Tag className="h-12 w-12 mb-2 opacity-50" />
-              <p>No coupons found</p>
-              <Button onClick={() => navigate('/app/coupons/new')} variant="secondary" className="mt-4">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Coupon
-              </Button>
-            </div>
-          ) : (
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3">Code</th>
-                  <th className="px-6 py-3">Discount</th>
-                  <th className="px-6 py-3">Scope</th>
-                  <th className="px-6 py-3">Validity</th>
-                  <th className="px-6 py-3">Limits</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredCoupons.map((coupon) => (
-                  <tr key={coupon.couponUuid} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-900">{coupon.code}</div>
-                      <div className="text-xs text-slate-500 truncate max-w-[150px]" title={coupon.name}>{coupon.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">
-                        {coupon.discountType === 'PERCENTAGE' 
-                          ? `${coupon.discountValue}% off` 
-                          : `₹${coupon.discountValue} off`}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Min: ₹{coupon.minOrderAmount}
-                        {coupon.maxDiscountAmount ? ` | Max: ₹${coupon.maxDiscountAmount}` : ''}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant={coupon.scopeType === 'GLOBAL_CHAIN' ? 'primary' : 'outline'} className="text-xs">
-                        {coupon.scopeType === 'GLOBAL_CHAIN' ? 'Chain-wide' : 'Single restaurant'}
-                      </Badge>
-                      <div className="text-xs text-slate-500 mt-1">
-                        {coupon.scopeType === 'GLOBAL_CHAIN' ? 'Applies across the restaurant group' : 'Limited to this outlet'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-slate-700">{new Date(coupon.startDate).toLocaleDateString()}</div>
-                      <div className="text-xs text-slate-500">to {new Date(coupon.endDate).toLocaleDateString()}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-slate-700">Global: {coupon.usageLimitGlobal || 'Unlimited'}</div>
-                      <div className="text-xs text-slate-500">Per User: {coupon.usageLimitPerUser || 'Unlimited'}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant={coupon.active ? 'success' : 'danger'} className="text-xs">
-                        {coupon.active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleToggleStatus(coupon)}
-                          disabled={actionLoading}
-                          className={`p-2 rounded transition-colors ${coupon.active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
-                          title={coupon.active ? "Deactivate" : "Activate"}
-                        >
-                          <Power className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => navigate(`/app/coupons/${coupon.couponUuid}/edit`)}
-                          disabled={actionLoading}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(coupon.couponUuid)}
-                          disabled={actionLoading}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-=======
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-txt-faint" />
@@ -302,7 +206,6 @@ const CouponManagement = () => {
                     <th className="eyebrow px-6 py-3 text-[10px]">Used / limit</th>
                     <th className="eyebrow px-6 py-3 text-[10px]">Status</th>
                     <th className="eyebrow px-6 py-3 text-right text-[10px]">Actions</th>
->>>>>>> master
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-light">

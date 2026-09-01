@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle } from 'lucide-react';
-import { PageHeader, Panel } from '../../components/ui/kit';
+import { AlertCircle, CheckCircle, Plus } from 'lucide-react';
+import { PageHeader, Panel, BtnPrimary } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 import ModifierGroupManager from '../../components/ModifierGroupManager';
-import ModifierManagerModal from '../../components/ModifierManagerModal';
 import {
   fetchModifierGroups,
   clearError,
@@ -16,16 +15,22 @@ const MENU_TABS = [
   { label: 'Items', path: '/app/menu' },
   { label: 'Categories', path: '/app/categories' },
   { label: 'Modifier groups', path: '/app/modifiers' },
+  { label: 'Variations', path: null },
 ];
 
 const ModifierManagement = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { activeRestaurantId } = useSelector((state) => state.auth);
-  const { error, success } = useSelector((state) => state.modifierGroups);
+  const { activeRestaurantId, restaurants } = useSelector((state) => state.auth);
+  const { modifierGroups, error, success } = useSelector((state) => state.modifierGroups);
 
-  const [selectedModifierGroup, setSelectedModifierGroup] = useState(null);
-  const [isModifierModalOpen, setIsModifierModalOpen] = useState(false);
+  // Signal the builder to start a blank group (incremented by "+ New group").
+  const [newSignal, setNewSignal] = useState(0);
+
+  const restaurantName =
+    (restaurants || []).find((r) => r?.restaurantUuid === activeRestaurantId)?.businessName ||
+    (restaurants || []).find((r) => r?.restaurantUuid === activeRestaurantId)?.name ||
+    'Outlet';
 
   // Fetch modifier groups on mount
   useEffect(() => {
@@ -49,22 +54,19 @@ const ModifierManagement = () => {
     }
   }, [success, dispatch]);
 
-  const handleManageModifiers = (modifierGroup) => {
-    setSelectedModifierGroup(modifierGroup);
-    setIsModifierModalOpen(true);
-  };
-
-  const handleCloseModifierModal = () => {
-    setIsModifierModalOpen(false);
-    setSelectedModifierGroup(null);
-  };
+  const groupCount = modifierGroups?.length ?? 0;
 
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Menu"
-        title="Modifier Groups & Add-ons"
-        subtitle="Build option groups like Toppings, Spice Level or Add-ons for your menu items."
+        title="Menu"
+        subtitle={`${restaurantName} · ${groupCount} modifier group${groupCount === 1 ? '' : 's'}`}
+        actions={
+          <BtnPrimary onClick={() => setNewSignal((n) => n + 1)} disabled={!activeRestaurantId}>
+            <Plus className="h-4 w-4" /> New group
+          </BtnPrimary>
+        }
       />
 
       {/* Menu sub-tabs */}
@@ -75,7 +77,7 @@ const ModifierManagement = () => {
             return (
               <button
                 key={tab.path}
-                onClick={() => navigate(tab.path)}
+                onClick={() => tab.path && navigate(tab.path)}
                 className={cn(
                   'whitespace-nowrap px-3 py-2.5 text-sm font-medium border-b-2 transition-colors',
                   active
@@ -105,28 +107,17 @@ const ModifierManagement = () => {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content — two-pane inline builder */}
       {activeRestaurantId ? (
         <ModifierGroupManager
           restaurantUuid={activeRestaurantId}
-          onManageModifiers={handleManageModifiers}
+          newSignal={newSignal}
         />
       ) : (
         <Panel className="p-10 text-center">
           <AlertCircle className="mx-auto mb-3 h-12 w-12 text-txt-faint" />
           <p className="text-sm text-txt-muted">No restaurant selected</p>
         </Panel>
-      )}
-
-      {/* Modifier Management Modal */}
-      {selectedModifierGroup && (
-        <ModifierManagerModal
-          isOpen={isModifierModalOpen}
-          onClose={handleCloseModifierModal}
-          restaurantUuid={activeRestaurantId}
-          modifierGroupUuid={selectedModifierGroup.modifierGroupUuid}
-          modifierGroupName={selectedModifierGroup.name}
-        />
       )}
     </div>
   );
