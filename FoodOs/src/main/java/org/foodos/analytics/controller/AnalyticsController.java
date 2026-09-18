@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.foodos.analytics.dto.DashboardAnalyticsDto;
 import org.foodos.analytics.service.AnalyticsService;
+import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,15 @@ public class AnalyticsController {
     public ResponseEntity<DashboardAnalyticsDto> getDashboardAnalytics(
             @PathVariable String restaurantUuid,
             @RequestParam(defaultValue = "7") int days) {
+
+        if (restaurantUuid == null || restaurantUuid.isBlank()) {
+            throw new BusinessException("Restaurant ID is required to fetch analytics. Please select a restaurant first.");
+        }
+
+        if (days < 1 || days > 90) {
+            throw new BusinessException(
+                    "The analytics period must be between 1 and 90 days. You requested " + days + " days.");
+        }
 
         log.info("Analytics request: restaurant={}, days={}", restaurantUuid, days);
 

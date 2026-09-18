@@ -8,9 +8,33 @@ export const fetchDashboardAnalytics = createAsyncThunk(
       const response = await analyticsAPI.getDashboardAnalytics(restaurantUuid, days);
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to fetch dashboard analytics'
-      );
+      // Extract the most descriptive error message from the backend response
+      const data = error.response?.data;
+      let message = 'Failed to fetch dashboard analytics';
+
+      if (data) {
+        // Backend ApiError format: { status, error, message, timestamp, path }
+        if (typeof data.message === 'string' && data.message.trim()) {
+          message = data.message;
+        } else if (typeof data.error === 'string' && data.error.trim()) {
+          message = data.error.replace(/_/g, ' ').toLowerCase();
+          // Capitalize first letter
+          message = message.charAt(0).toUpperCase() + message.slice(1);
+        } else if (typeof data === 'string' && data.trim()) {
+          message = data;
+        }
+      } else if (error.message) {
+        // Network errors or other axios errors
+        if (error.code === 'ERR_NETWORK') {
+          message = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (error.code === 'ECONNABORTED') {
+          message = 'The request timed out. Please try again.';
+        } else {
+          message = error.message;
+        }
+      }
+
+      return rejectWithValue(message);
     }
   }
 );

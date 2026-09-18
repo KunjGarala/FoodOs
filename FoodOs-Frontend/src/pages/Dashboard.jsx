@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Search, RefreshCw, Plus, ArrowUpRight } from 'lucide-react';
+import { Search, RefreshCw, Plus, ArrowUpRight, AlertCircle, X } from 'lucide-react';
 import {
   PageHeader, Kpi, Panel, LivePill, BtnPrimary, BtnGhost, Pill,
 } from '../components/ui/kit';
@@ -33,6 +33,8 @@ const Dashboard = () => {
   const days = useSelector(selectDashboardAnalyticsDays);
   const navigate = useNavigate();
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const canViewAnalytics = useMemo(
     () => ['OWNER', 'MANAGER', 'ADMIN'].includes((role || '').toUpperCase()),
     [role],
@@ -52,7 +54,19 @@ const Dashboard = () => {
   const topItems = analytics?.topItems || [];
   const hourlyOrders = analytics?.hourlyOrders || [];
 
+  // Filter topItems based on search query
+  const filteredTopItems = useMemo(() => {
+    if (!searchQuery.trim()) return topItems;
+    const q = searchQuery.toLowerCase().trim();
+    return topItems.filter((item) =>
+      item.productName?.toLowerCase().includes(q)
+    );
+  }, [topItems, searchQuery]);
+
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // Range label for panels
+  const rangeLabel = days === 1 ? 'Today' : `Last ${days} days`;
 
   // No-restaurant state
   if (role !== 'GUEST' && (!restaurantIds || restaurantIds.length === 0)) {
@@ -83,14 +97,29 @@ const Dashboard = () => {
         actions={
           <>
             <LivePill />
-            <div className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-input bg-paper-card border border-line-input text-txt-muted">
-              <Search className="h-4 w-4" />
-              <span className="text-sm">Search</span>
+            {/* Functional search input */}
+            <div className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-input bg-paper-card border border-line-input text-txt-muted focus-within:border-marigold focus-within:ring-1 focus-within:ring-marigold/30 transition-all">
+              <Search className="h-4 w-4 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search items…"
+                className="bg-transparent border-none outline-none text-sm text-ink-text placeholder:text-txt-muted w-28 lg:w-40"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-txt-faint hover:text-ink-text transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <select
               value={days}
               onChange={(e) => dispatch(setAnalyticsDays(Number(e.target.value)))}
-              className="h-10 rounded-input border border-line-input bg-paper-card px-3 text-sm text-txt-dark"
+              className="h-10 rounded-input border border-line-input bg-paper-card px-3 text-sm text-txt-dark font-medium cursor-pointer hover:border-marigold transition-colors"
             >
               <option value={7}>7 days</option>
               <option value={14}>14 days</option>
@@ -107,8 +136,23 @@ const Dashboard = () => {
         }
       />
 
+      {/* Error display — descriptive with icon + retry */}
       {error && (
-        <div className="rounded-input border border-danger/30 bg-danger/[0.06] px-3 py-2 text-sm text-danger-deep">{error}</div>
+        <div className="rounded-card border border-danger/30 bg-danger/[0.06] px-4 py-3 flex items-start gap-3">
+          <div className="bg-danger/10 p-1.5 rounded-full shrink-0 mt-0.5">
+            <AlertCircle className="h-4 w-4 text-danger-deep" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm text-danger-deep">Failed to load analytics</p>
+            <p className="text-sm text-danger-deep/80 mt-0.5">{error}</p>
+          </div>
+          <BtnGhost
+            onClick={() => dispatch(fetchDashboardAnalytics({ restaurantUuid: activeRestaurantId, days }))}
+            className="shrink-0 text-xs h-8 px-3 border-danger/20 text-danger-deep hover:bg-danger/10"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </BtnGhost>
+        </div>
       )}
       {!canViewAnalytics && (
         <div className="rounded-input border border-marigold/30 bg-marigold/[0.08] px-3 py-2 text-sm text-[#9a6500]">
@@ -129,7 +173,7 @@ const Dashboard = () => {
         <Panel className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="eyebrow text-[10px] text-txt-faint">Revenue</p>
+              <p className="eyebrow text-[11px] text-txt-muted">Revenue · Today</p>
               <h3 className="font-display font-semibold text-base text-ink-text">Sales by hour</h3>
             </div>
             <Pill tone="marigold">Peak {(() => {
@@ -156,13 +200,39 @@ const Dashboard = () => {
         <Panel className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="eyebrow text-[10px] text-txt-faint">Best performers</p>
+              <p className="eyebrow text-[11px] text-txt-muted">Best performers · {rangeLabel}</p>
               <h3 className="font-display font-semibold text-base text-ink-text">Top sellers</h3>
             </div>
+            {searchQuery && (
+              <Pill tone="marigold">
+                {filteredTopItems.length} of {topItems.length}
+              </Pill>
+            )}
           </div>
           <div className="space-y-3">
-            {topItems.length === 0 && <p className="text-sm text-txt-muted">No item sales in this range.</p>}
-            {topItems.map((item, i) => (
+            {/* Mobile search bar */}
+            <div className="sm:hidden flex items-center gap-2 h-9 px-3 rounded-input bg-paper-2 border border-line-input text-txt-muted focus-within:border-marigold transition-all mb-2">
+              <Search className="h-3.5 w-3.5 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search items…"
+                className="bg-transparent border-none outline-none text-sm text-ink-text placeholder:text-txt-muted flex-1"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="text-txt-faint hover:text-ink-text">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {filteredTopItems.length === 0 && searchQuery && (
+              <p className="text-sm text-txt-muted py-4 text-center">
+                No items matching "<span className="font-medium text-ink-text">{searchQuery}</span>"
+              </p>
+            )}
+            {filteredTopItems.length === 0 && !searchQuery && <p className="text-sm text-txt-muted">No item sales in this range.</p>}
+            {filteredTopItems.map((item, i) => (
               <div key={item.productName} className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-tile bg-paper-3 grid place-items-center font-display font-bold text-sm text-marigold shrink-0">
                   {i + 1}
