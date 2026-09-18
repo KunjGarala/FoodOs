@@ -5,7 +5,7 @@ import { restaurantAPI } from '../services/api';
 import { updateTokenAndRole } from '../store/authSlice';
 import { Panel, Segmented, BtnPrimary, BtnGhost } from '../components/ui/kit';
 import { cn } from '../utils/cn';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 import {
   Building2,
   MapPin,

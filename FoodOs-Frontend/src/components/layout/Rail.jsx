@@ -5,7 +5,7 @@ import { LogOut, Check } from 'lucide-react';
 import { logout, setActiveRestaurant } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
 import { navForRole, resolvePath, isNavActive } from './navItems';
-import logoUrl from '../../assets/foodos-logo.svg';
+import logoUrl from '../../assets/small-logo.png';
 
 /**
  * Fixed 80px icon rail for lg+ screens. Dark ink surface.
@@ -45,7 +45,7 @@ export const Rail = () => {
     <aside className="hidden lg:flex fixed top-0 left-0 z-40 h-screen w-20 bg-ink-700 flex-col items-center py-4">
       {/* Logo */}
       <NavLink to="/app" end className="shrink-0">
-        <img src={logoUrl} alt="FoodOS" className="h-11 w-11 rounded-xl" />
+        <img src={logoUrl} alt="FoodOS" className="w-14 h-auto" />
       </NavLink>
 
       {/* Nav tiles */}

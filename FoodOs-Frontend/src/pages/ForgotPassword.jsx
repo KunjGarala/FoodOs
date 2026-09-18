@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { BtnPrimary, BtnGhost } from '../components/ui/kit';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
 
 const ForgotPassword = () => {
@@ -56,7 +56,7 @@ const ForgotPassword = () => {
             <div className="w-full max-w-md">
                 {/* logo + heading */}
                 <div className="flex flex-col items-center text-center mb-8">
-                    <img src={logoUrl} alt="FoodOS" className="h-12 w-12 mb-5" />
+                    <img src={logoUrl} alt="FoodOS" className="h-12 w-auto mb-5" />
                     <p className="eyebrow text-[11px] text-marigold mb-2">Account recovery</p>
                     <h2 className="font-display font-bold text-[26px] tracking-[-0.01em] text-ink-text">
                         Reset your password

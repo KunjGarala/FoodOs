@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { BtnPrimary, BtnGhost } from '../components/ui/kit';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 import { Lock, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const ResetPassword = () => {
@@ -83,7 +83,7 @@ const ResetPassword = () => {
          return (
             <div className="min-h-screen grid place-items-center bg-paper px-4 py-12">
                 <div className="w-full max-w-md text-center">
-                    <img src={logoUrl} alt="FoodOS" className="h-12 w-12 mx-auto mb-6" />
+                    <img src={logoUrl} alt="FoodOS" className="h-12 w-auto mx-auto mb-6" />
                     <div className="bg-paper-card border border-line-light rounded-card shadow-card p-7">
                         <div className="mx-auto mb-4 grid place-items-center h-14 w-14 rounded-full bg-danger/[0.1]">
                             <AlertCircle className="h-7 w-7 text-danger-deep" />
@@ -104,7 +104,7 @@ const ResetPassword = () => {
             <div className="w-full max-w-md">
                 {/* logo + heading */}
                 <div className="flex flex-col items-center text-center mb-8">
-                    <img src={logoUrl} alt="FoodOS" className="h-12 w-12 mb-5" />
+                    <img src={logoUrl} alt="FoodOS" className="h-12 w-auto mb-5" />
                     <p className="eyebrow text-[11px] text-marigold mb-2">Account recovery</p>
                     <h2 className="font-display font-bold text-[26px] tracking-[-0.01em] text-ink-text">
                         Set new password

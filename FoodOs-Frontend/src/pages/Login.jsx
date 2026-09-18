@@ -6,7 +6,7 @@ import { authAPI } from '../services/api';
 import { Modal } from '../components/ui/Modal';
 import { BtnPrimary, BtnGhost } from '../components/ui/kit';
 import { cn } from '../utils/cn';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 import { AlertCircle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
@@ -162,10 +162,7 @@ const Login = () => {
                     <div className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-marigold/20 blur-3xl" />
                     <div className="pointer-events-none absolute bottom-[-6rem] right-[-4rem] h-72 w-72 rounded-full bg-gold/10 blur-3xl" />
                     <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
-                        <img src={logoUrl} alt="FoodOS" className="h-16 w-16 mb-6" />
-                        <h1 className="font-display font-bold text-4xl tracking-[-0.02em] text-white">
-                            FoodOS
-                        </h1>
+                        <img src={logoUrl} alt="FoodOS" className="h-16 w-auto mb-6" />
                         <p className="eyebrow text-[11px] text-marigold mt-3">
                             Restaurant Operating System
                         </p>
@@ -180,7 +177,7 @@ const Login = () => {
                     <div className="w-full max-w-md">
                         {/* mobile logo (brand panel hidden below lg) */}
                         <div className="flex flex-col items-center lg:items-start mb-8">
-                            <img src={logoUrl} alt="FoodOS" className="h-12 w-12 mb-5 lg:hidden" />
+                            <img src={logoUrl} alt="FoodOS" className="h-12 w-auto mb-5 lg:hidden" />
                             <h2 className="font-display font-bold text-[26px] tracking-[-0.01em] text-ink-text">
                                 Welcome back
                             </h2>
