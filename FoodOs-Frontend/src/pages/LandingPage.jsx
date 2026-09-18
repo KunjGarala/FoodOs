@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { BtnPrimary, BtnGhost } from '../components/ui/kit';
 import { cn } from '../utils/cn';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 
 /* ─── Animated counter hook ────────────────────────────────────────────────── */
 function useCountUp(end, duration = 2000, startOnView = true) {
@@ -215,10 +215,7 @@ const LandingPage = () => {
           <div className="flex justify-between items-center h-16 md:h-18">
             {/* Logo */}
             <div className="flex items-center gap-2.5">
-              <img src={logoUrl} alt="FoodOS" className="h-9 w-9 rounded-tile" />
-              <span className="font-display font-bold text-xl tracking-tight text-txt-light">
-                Food<span className="text-marigold">OS</span>
-              </span>
+              <img src={logoUrl} alt="FoodOS" className="h-9 w-auto" />
             </div>
 
             {/* Desktop Nav Links */}
@@ -586,10 +583,7 @@ const LandingPage = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
               <div className="col-span-2 md:col-span-1">
                 <div className="flex items-center gap-2.5 mb-4">
-                  <img src={logoUrl} alt="FoodOS" className="h-8 w-8 rounded-tile" />
-                  <span className="font-display font-bold text-lg text-txt-light">
-                    Food<span className="text-marigold">OS</span>
-                  </span>
+                  <img src={logoUrl} alt="FoodOS" className="h-8 w-auto" />
                 </div>
                 <p className="text-sm text-txt-mutedDark leading-relaxed">
                   Making restaurant management simple, efficient, and profitable.

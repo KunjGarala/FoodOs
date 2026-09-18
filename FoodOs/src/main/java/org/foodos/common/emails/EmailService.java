@@ -19,7 +19,7 @@ public class EmailService {
     @Autowired
     private JavaMailSender javaMailSender;
 
-    @Value("${spring.mail.properties.domain_name:foodos@example.com}")
+    @Value("${spring.mail.properties.domain_name}")
     String from;
 
     @Async
@@ -30,6 +30,7 @@ public class EmailService {
             mailMessage.setSubject(subject);
             mailMessage.setText(body);
             mailMessage.setFrom(from);
+            log.info("Trying to send email to {}", to);
             javaMailSender.send(mailMessage);
             log.info("Email sent successfully to {}", to);
         } catch (Exception e) {
@@ -49,6 +50,7 @@ public class EmailService {
             helper.setFrom(from);
             helper.setText(htmlBody, true);
 
+            log.info("Trying to send HTML email to {}", to);
             javaMailSender.send(message);
             log.info("HTML email sent successfully to {}", to);
 

@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { signup, clearError } from '../store/authSlice';
 import { BtnPrimary, BtnGhost } from '../components/ui/kit';
 import { cn } from '../utils/cn';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 import { User, Mail, Lock, Store, Check, AlertCircle, Upload } from 'lucide-react';
 
 const TRIAL_BULLETS = [
@@ -98,7 +98,6 @@ const Signup = () => {
             <aside className="hidden lg:flex lg:w-[44%] flex-col justify-between bg-ink text-txt-light p-12">
                 <div className="flex items-center gap-3">
                     <img src={logoUrl} alt="FoodOS" className="h-9 w-auto" />
-                    <span className="font-display font-bold text-lg text-white tracking-tight">FoodOS</span>
                 </div>
 
                 <div className="max-w-md">
@@ -129,9 +128,8 @@ const Signup = () => {
             <main className="flex-1 flex items-center justify-center px-5 py-10 sm:px-8">
                 <div className="w-full max-w-md">
                     {/* small logo — visible only when brand panel is hidden */}
-                    <div className="lg:hidden flex items-center gap-2 justify-center mb-8">
+                    <div className="lg:hidden flex items-center justify-center mb-8">
                         <img src={logoUrl} alt="FoodOS" className="h-8 w-auto" />
-                        <span className="font-display font-bold text-lg text-ink-text tracking-tight">FoodOS</span>
                     </div>
 
                     <div className="mb-7">

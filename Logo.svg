@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600">
   <defs>
     <style>
-      .outline { fill: none; stroke: #0d1b2a; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
-      .fill-orange { fill: #fca311; }
-      .fill-gold { fill: #e5c185; }
-      .fill-dark { fill: #0d1b2a; }
+      .outline { fill: none; stroke: #17202A; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+      .fill-orange { fill: #E85D04; }
+      .fill-gold { fill: #F4A261; }
+      .fill-dark { fill: #17202A; }
     </style>
   </defs>
 

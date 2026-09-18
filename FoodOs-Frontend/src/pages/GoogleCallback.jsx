@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setGoogleAuthTokens, fetchMeContext } from '../store/authSlice';
-import logoUrl from '../assets/foodos-logo.svg';
+import logoUrl from '../assets/foodos-logo.png';
 import { Loader2, XCircle } from 'lucide-react';
 
 const GoogleCallback = () => {
@@ -60,7 +60,7 @@ const GoogleCallback = () => {
   return (
     <div className="min-h-screen grid place-items-center bg-paper px-4 py-12">
       <div className="w-full max-w-md">
-        <img src={logoUrl} alt="FoodOS" className="h-12 w-12 mx-auto mb-6" />
+        <img src={logoUrl} alt="FoodOS" className="h-12 w-auto mx-auto mb-6" />
 
         <div className="bg-paper-card border border-line-light rounded-card shadow-card p-8 text-center">
           {error ? (
