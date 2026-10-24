@@ -7,10 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.foodos.auth.dto.Request.EmployeeUpdateRequest;
 import org.foodos.auth.dto.Request.ProfileUpdateDTO;
 import org.foodos.auth.dto.Request.SignupRequest;
+import org.foodos.auth.dto.Response.ProfileResponseDTO;
 import org.foodos.auth.dto.Response.RoleResponse;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
+import org.foodos.auth.service.ProfileEmailOtpService;
 import org.foodos.auth.service.UserManagementService;
+import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,6 +31,79 @@ import java.util.Map;
 public class UserManagementController {
 
     private final UserManagementService userManagementService;
+    private final ProfileEmailOtpService profileEmailOtpService;
+
+    @GetMapping("/profile")
+    public ResponseEntity<ProfileResponseDTO> getProfile(
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        return ResponseEntity.ok(userManagementService.getProfile(currentUser));
+    }
+
+    @PatchMapping("/profile")
+    public ResponseEntity<ProfileResponseDTO> updateProfileJson(
+            @RequestBody @Valid ProfileUpdateDTO request,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        return ResponseEntity.ok(userManagementService.updateProfileDirect(currentUser, request));
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<ProfileResponseDTO> updateProfilePut(
+            @RequestBody @Valid ProfileUpdateDTO request,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        return ResponseEntity.ok(userManagementService.updateProfileDirect(currentUser, request));
+    }
+
+    @PostMapping("/profile/email-otp/send")
+    public ResponseEntity<?> sendEmailChangeOtp(
+            @RequestBody Map<String, String> body,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        String newEmail = body.get("newEmail");
+        if (newEmail == null || newEmail.isBlank()) {
+            throw new BusinessException("newEmail is required");
+        }
+        profileEmailOtpService.sendEmailChangeOtp(currentUser.getId(), newEmail);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Verification code sent to " + newEmail.trim()
+        ));
+    }
+
+    @PostMapping("/profile/email-otp/verify")
+    public ResponseEntity<?> verifyEmailChangeOtp(
+            @RequestBody Map<String, String> body,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        String newEmail = body.get("newEmail");
+        String otp = body.get("otp");
+        if (newEmail == null || otp == null) {
+            throw new BusinessException("Both newEmail and otp are required");
+        }
+        profileEmailOtpService.verifyEmailChangeOtp(currentUser.getId(), newEmail, otp);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Email updated successfully to " + newEmail.trim(),
+                "email", newEmail.trim()
+        ));
+    }
 
     @PostMapping(value = "/create-employee", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createEmployee(

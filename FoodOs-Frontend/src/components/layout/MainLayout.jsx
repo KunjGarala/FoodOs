@@ -5,6 +5,8 @@ import { Rail } from './Rail';
 import { BottomTabs } from './BottomTabs';
 import { fetchMeContext } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
+import { NotificationListener } from '../notification/NotificationListener';
+import { NotificationBell } from '../notification/NotificationBell';
 
 /**
  * App shell: fixed 80px icon rail (lg+) / bottom tab bar (< lg).
@@ -27,7 +29,12 @@ export const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-paper text-ink-text font-sans">
+      <NotificationListener />
       <Rail />
+      {/* Floating top-right notification & sound control */}
+      <div className="fixed top-3 right-4 z-40 flex items-center gap-2">
+        <NotificationBell className="bg-slate-900/90 text-white p-1 rounded-2xl shadow-lg border border-slate-700 backdrop-blur-md" />
+      </div>
       <div className="lg:ml-20 min-h-screen flex flex-col">
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <Outlet />

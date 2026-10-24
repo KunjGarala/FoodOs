@@ -10,7 +10,7 @@ import {
   BtnGhost,
 } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
-import { User, Mail, Phone, Lock, IdCard, AlertCircle, ShieldCheck } from 'lucide-react';
+import { User, Mail, Phone, Lock, IdCard, AlertCircle, ShieldCheck, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { employeeAPI } from '../../services/api';
 
 const INPUT_CLS =
@@ -42,10 +42,12 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
     employeeCode: '',
     role: '',
     pin: '',
+    password: '',
     isActive: true,
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   // Presentational per-member permission toggles (local only, not submitted).
   const [permissions, setPermissions] = useState(ROLE_PERMISSIONS.CASHIER);
@@ -60,7 +62,8 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
         employeeCode: employee.employeeCode || '',
         role: nextRole,
         isActive: employee.isActive ?? true,
-        pin: '', // PIN is always empty initially
+        pin: '',
+    password: '', // PIN is always empty initially
       });
       setPermissions(ROLE_PERMISSIONS[nextRole] || ROLE_PERMISSIONS.CASHIER);
       setErrors({});
@@ -91,6 +94,7 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
     if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) newErrors.email = 'Invalid email format';
     if (!formData.phoneNumber.match(/^\d{10}$/)) newErrors.phoneNumber = 'Phone number must be 10 digits';
     if (formData.pin && !formData.pin.match(/^\d{4,6}$/)) newErrors.pin = 'PIN must be 4-6 digits';
+    if (formData.password && formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
 
     // Prevent Role escalation
     if (['ADMIN', 'OWNER'].includes(formData.role)) newErrors.role = 'Cannot assign this role';
@@ -117,6 +121,10 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
       // Only include PIN if user entered something
       if (formData.pin) {
         payload.pin = formData.pin;
+      }
+
+      if (formData.password && formData.password.trim()) {
+        payload.password = formData.password.trim();
       }
 
       const targetId = employee?.userUuid || employee?.userId || employee?.id || employee?.uuid;
@@ -216,6 +224,7 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                 {/* Email */}
                 <div>
                   <label className={LABEL_CLS}>Email</label>
@@ -253,6 +262,33 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                {/* Change Password */}
+                <div>
+                  <label className={LABEL_CLS}>
+                    New Password <span className="font-normal normal-case text-txt-faint">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-txt-faint" />
+                    <input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Leave blank to keep"
+                      className={cn(INPUT_CLS, 'pl-9 pr-10', errors.password && 'border-danger focus:border-danger focus:ring-danger/30')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-txt-faint hover:text-ink-text"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="mt-1 text-xs text-danger-deep">{errors.password}</p>}
+                </div>
+
                 {/* PIN */}
                 <div>
                   <label className={LABEL_CLS}>

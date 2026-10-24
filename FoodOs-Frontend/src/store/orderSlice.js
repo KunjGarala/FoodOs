@@ -403,6 +403,9 @@ const orderSlice = createSlice({
     handleOrderWsEvent: (state, action) => {
       const data = action.payload;
       if (!data) return;
+      if (!Array.isArray(state.kitchenOrders)) {
+        state.kitchenOrders = [];
+      }
 
       // Update existing order or add new one
       if (data.orderUuid) {
@@ -426,6 +429,9 @@ const orderSlice = createSlice({
     handleKitchenWsEvent: (state, action) => {
       const data = action.payload;
       if (!data) return;
+      if (!Array.isArray(state.kitchenOrders)) {
+        state.kitchenOrders = [];
+      }
 
       if (data.kotUuid) {
         const idx = state.kitchenOrders.findIndex(
@@ -653,7 +659,20 @@ const orderSlice = createSlice({
       
       // Fetch Kitchen Orders
       .addCase(fetchKitchenOrders.fulfilled, (state, action) => {
-        state.kitchenOrders = action.payload;
+        state.loading = false;
+        state.kitchenOrders = Array.isArray(action.payload)
+          ? action.payload
+          : (action.payload?.data && Array.isArray(action.payload.data) ? action.payload.data : []);
+      })
+      .addCase(fetchKitchenOrders.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchKitchenOrders.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        if (!Array.isArray(state.kitchenOrders)) {
+          state.kitchenOrders = [];
+        }
       })
       
       // Fetch Analytics

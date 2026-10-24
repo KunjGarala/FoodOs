@@ -75,6 +75,7 @@ const CreateOutlet = () => {
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [licenseKeyError, setLicenseKeyError] = useState('');
     const [parentRestaurantId, setParentRestaurantId] = useState(null);
     const [activeStep, setActiveStep] = useState(1);
 
@@ -109,7 +110,20 @@ const CreateOutlet = () => {
             ...prev,
             [name]: value,
         }));
+        if (name === 'licenseKey' && value.trim()) {
+            setLicenseKeyError('');
+        }
     }, []);
+
+    const goToStep = (step) => {
+        if (step > 3 && !formData.licenseKey.trim()) {
+            setLicenseKeyError('License key is required.');
+            setActiveStep(3);
+            return;
+        }
+
+        setActiveStep(step);
+    };
 
     const handleFileChange = useCallback((e) => {
         e.stopPropagation();
@@ -123,6 +137,12 @@ const CreateOutlet = () => {
         e.preventDefault();
 
         if (activeStep !== 4) {
+            return;
+        }
+
+        if (!formData.licenseKey.trim()) {
+            setLicenseKeyError('License key is required.');
+            setActiveStep(3);
             return;
         }
 
@@ -233,7 +253,7 @@ const CreateOutlet = () => {
                                     <li key={step.id} className="shrink-0 lg:shrink">
                                         <button
                                             type="button"
-                                            onClick={() => setActiveStep(step.id)}
+                                            onClick={() => goToStep(step.id)}
                                             className={cn(
                                                 'flex items-center gap-3 w-full rounded-tile px-3 py-2.5 text-left transition-colors',
                                                 active
@@ -495,15 +515,23 @@ const CreateOutlet = () => {
                                             <div className="space-y-2">
                                                 <label className={labelClass}>
                                                     <FileKey className="h-4 w-4" />
-                                                    License Key
+                                                    License Key *
                                                 </label>
                                                 <Input
                                                     name="licenseKey"
                                                     value={formData.licenseKey}
                                                     onChange={handleChange}
-                                                    placeholder="Enter license key if available"
+                                                    required
+                                                    aria-invalid={Boolean(licenseKeyError)}
+                                                    aria-describedby={licenseKeyError ? 'outlet-license-key-error' : undefined}
+                                                    placeholder="Enter license key"
                                                     className={fieldClass}
                                                 />
+                                                {licenseKeyError && (
+                                                    <p id="outlet-license-key-error" className="text-sm text-danger-deep" role="alert">
+                                                        {licenseKeyError}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium text-txt-dark">License Type</label>
@@ -621,7 +649,7 @@ const CreateOutlet = () => {
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    setActiveStep(activeStep + 1);
+                                                    goToStep(activeStep + 1);
                                                 }}
                                             >
                                                 Continue

@@ -16,6 +16,7 @@ import {
 } from '../../store/couponSlice';
 import { selectActiveRestaurant } from '../../store/authSlice';
 import { couponAPI } from '../../services/api';
+import { InapplicableCouponModal } from '../../components/coupon/InapplicableCouponModal';
 
 const AllOffers = () => {
   const { tableUuid } = useParams();
@@ -35,17 +36,31 @@ const AllOffers = () => {
   const [applying, setApplying] = useState(null); // couponCode being applied
   const [appliedCode, setAppliedCode] = useState(couponState.isApplied ? couponState.code : '');
   const [error, setError] = useState(null);
+  const [inapplicableCoupon, setInapplicableCoupon] = useState(null);
 
-  // Fetch all coupons
+  // Fetch only valid coupons where bill is equal to or above minOrderAmount
   useEffect(() => {
     const fetchCoupons = async () => {
       if (!activeRestaurantId) return;
       setLoading(true);
       try {
-        const response = await couponAPI.getAll({ restaurantUuid: activeRestaurantId, size: 50, page: 0 });
+        const response = await couponAPI.getAll({
+          restaurantUuid: activeRestaurantId,
+          orderAmount: subtotal > 0 ? subtotal : undefined,
+          size: 50,
+          page: 0
+        });
         const data = response.data;
         const list = data?.content || data || [];
-        setCoupons(list.filter(c => c.active !== false));
+        // Only display active coupons where current subtotal meets or exceeds minOrderAmount
+        setCoupons(list.filter(c => {
+          if (c.active === false || c.isActive === false) return false;
+          const minRequired = Number(c.minOrderAmount || 0);
+          if (subtotal > 0 && minRequired > 0 && subtotal < minRequired) {
+            return false;
+          }
+          return true;
+        }));
       } catch (err) {
         console.error('Failed to fetch coupons:', err);
         setError('Failed to load offers');
@@ -54,14 +69,29 @@ const AllOffers = () => {
       }
     };
     fetchCoupons();
-  }, [activeRestaurantId]);
+  }, [activeRestaurantId, subtotal]);
 
-  // Apply coupon and go back
+  // Apply coupon and go back, or show detail if inapplicable
   const handleApply = useCallback(async (couponCode) => {
     if (!orderUuid || !couponCode) return;
     setApplying(couponCode);
     setError(null);
     try {
+      // Validate first to catch detailed requirements if not applicable
+      const valRes = await couponAPI.validate({
+        couponCode: couponCode.trim().toUpperCase(),
+        restaurantUuid: activeRestaurantId,
+        orderAmount: subtotal,
+        orderUuid,
+        customerUuid,
+      });
+
+      if (valRes.data && !valRes.data.valid) {
+        setApplying(null);
+        setInapplicableCoupon(valRes.data);
+        return;
+      }
+
       const result = await dispatch(applyCouponToOrder({
         orderUuid,
         couponCode,
@@ -78,7 +108,7 @@ const AllOffers = () => {
       setError(typeof err === 'string' ? err : 'Failed to apply coupon');
       setApplying(null);
     }
-  }, [dispatch, orderUuid, customerUuid, subtotal, tableUuid, navigate]);
+  }, [dispatch, orderUuid, customerUuid, subtotal, tableUuid, navigate, activeRestaurantId]);
 
   // Filter coupons by search
   const filteredCoupons = coupons.filter(c => {
@@ -263,6 +293,14 @@ const AllOffers = () => {
           })
         )}
       </div>
+
+      {/* Inapplicable Coupon Requirements Details Modal */}
+      <InapplicableCouponModal
+        isOpen={Boolean(inapplicableCoupon)}
+        onClose={() => setInapplicableCoupon(null)}
+        coupon={inapplicableCoupon}
+        currentAmount={subtotal}
+      />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import org.foodos.common.utils.S3Service;
 import org.foodos.auth.dto.Request.ProfileUpdateDTO;
 import org.foodos.auth.dto.Request.SignupRequest;
 import org.foodos.auth.dto.Request.EmployeeUpdateRequest;
+import org.foodos.auth.dto.Response.ProfileResponseDTO;
 import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
@@ -225,6 +226,13 @@ public class UserManagementService {
         if (request.getEmployeeCode() != null) targetUser.setEmployeeCode(request.getEmployeeCode());
         if (request.getPin() != null) targetUser.setPin(request.getPin());
         if (request.getIsActive() != null) targetUser.setIsActive(request.getIsActive());
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            if (request.getPassword().trim().length() < 6) {
+                throw new BusinessException("Password must be at least 6 characters");
+            }
+            targetUser.setPassword(passwordEncoder.encode(request.getPassword().trim()));
+            targetUser.setPasswordChangedAt(java.time.LocalDateTime.now());
+        }
 
         if (request.getEmail() != null && !request.getEmail().equals(targetUser.getEmail())) {
             if (userAuthRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
@@ -246,5 +254,16 @@ public class UserManagementService {
         // Role / active status / profile changed -> refresh the target user's /me/context.
         meService.evictContext(saved.getUserUuid());
         return saved;
+    }
+
+    public ProfileResponseDTO getProfile(UserAuthEntity currentUser) {
+        UserAuthEntity user = userAuthRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return userProfileMapper.toProfileDTO(user);
+    }
+
+    public ProfileResponseDTO updateProfileDirect(UserAuthEntity currentUser, ProfileUpdateDTO request) {
+        UserAuthEntity user = updateProfile(currentUser, request, null);
+        return userProfileMapper.toProfileDTO(user);
     }
 }

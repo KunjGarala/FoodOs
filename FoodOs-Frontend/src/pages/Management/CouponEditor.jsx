@@ -175,14 +175,14 @@ const CouponEditor = () => {
     );
   }
 
-  // ── Live preview helpers (presentation only) ──────────────────────────────
+  // ΓöÇΓöÇ Live preview helpers (presentation only) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const isPercent = formData.discountType === 'PERCENTAGE';
   const discountLabel = formData.discountValue
     ? isPercent
       ? `${formData.discountValue}% OFF`
-      : `₹${formData.discountValue} OFF`
-    : '—';
-  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+      : `Γé╣${formData.discountValue} OFF`
+    : 'ΓÇö';
+  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'ΓÇö');
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
@@ -223,7 +223,7 @@ const CouponEditor = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── LEFT: form ──────────────────────────────────────────────── */}
+        {/* ΓöÇΓöÇ LEFT: form ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
         <form id="coupon-form" onSubmit={handleSubmit}>
           <Panel className="p-5 sm:p-6 space-y-5">
             {/* Code + generate */}
@@ -277,7 +277,7 @@ const CouponEditor = () => {
               <Segmented
                 options={[
                   { value: 'PERCENTAGE', label: '%' },
-                  { value: 'FLAT_AMOUNT', label: '₹' },
+                  { value: 'FLAT_AMOUNT', label: 'Γé╣' },
                 ]}
                 value={formData.discountType}
                 onChange={(value) => setFormData({ ...formData, discountType: value })}
@@ -319,7 +319,9 @@ const CouponEditor = () => {
 
             {/* Min order */}
             <div>
-              <label className={LABEL_CLS}>Minimum order amount *</label>
+              <label className={LABEL_CLS}>
+                Minimum order amount * <span className="font-normal normal-case text-txt-muted">(Required Bill to display this coupon)</span>
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -454,7 +456,7 @@ const CouponEditor = () => {
           </Panel>
         </form>
 
-        {/* ── RIGHT: live preview ─────────────────────────────────────── */}
+        {/* ΓöÇΓöÇ RIGHT: live preview ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
         <div className="space-y-4">
           <p className="eyebrow text-[11px] text-txt-faint">Live preview</p>
 
@@ -494,7 +496,7 @@ const CouponEditor = () => {
             </div>
 
             <p className="text-xs text-txt-mutedDark mt-4">
-              Valid {fmtDate(formData.startDate)} – {fmtDate(formData.endDate)}
+              Valid {fmtDate(formData.startDate)} ΓÇô {fmtDate(formData.endDate)}
             </p>
           </div>
 
@@ -508,12 +510,12 @@ const CouponEditor = () => {
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-txt-muted">Min. order</dt>
-                <dd className="font-medium text-ink-text font-mono">₹{formData.minOrderAmount || '0.00'}</dd>
+                <dd className="font-medium text-ink-text font-mono">Γé╣{formData.minOrderAmount || '0.00'}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-txt-muted">Max cap</dt>
                 <dd className="font-medium text-ink-text font-mono">
-                  {formData.maxDiscountAmount ? `₹${formData.maxDiscountAmount}` : '—'}
+                  {formData.maxDiscountAmount ? `Γé╣${formData.maxDiscountAmount}` : 'ΓÇö'}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">

@@ -82,6 +82,7 @@ public class AuthController {
     
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest,
+                                               HttpServletRequest request,
                                                HttpServletResponse response) {
 
         Authentication authResult = authenticationManager.authenticate(
@@ -99,7 +100,7 @@ public class AuthController {
         // Refresh token -> HttpOnly cookie. Access token -> header (kept for
         // backward compatibility) and body.
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
-        GoogleAuthController.generateCookie(response, refreshToken);
+        GoogleAuthController.generateCookie(request, response, refreshToken);
 
         // Outlet list is no longer returned here — the frontend fetches it from
         // GET /api/me/context on app mount (keeps the picker fresh, token small).

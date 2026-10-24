@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { MoreHorizontal, LogOut, Check, X } from 'lucide-react';
+import { MoreHorizontal, LogOut, Check, X, User as UserIcon } from 'lucide-react';
 import { logout, setActiveRestaurant } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
 import { navForRole, resolvePath, isNavActive } from './navItems';
@@ -95,9 +95,17 @@ export const BottomTabs = () => {
               </div>
             )}
 
+            <NavLink
+              to="/app/profile"
+              onClick={() => setMoreOpen(false)}
+              className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-input bg-white/10 text-txt-light font-medium hover:bg-white/15"
+            >
+              <UserIcon className="h-4 w-4 text-marigold" /> My Profile
+            </NavLink>
+
             <button
               onClick={handleLogout}
-              className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-input bg-danger/10 text-danger font-medium"
+              className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-input bg-danger/10 text-danger font-medium"
             >
               <LogOut className="h-4 w-4" /> Logout
             </button>

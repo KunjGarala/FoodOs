@@ -15,6 +15,8 @@ import { Input } from '../../components/ui/Input';
 import { CouponInput } from '../../components/coupon/CouponInput';
 import { CouponList } from '../../components/coupon/CouponList';
 import { CouponSummary } from '../../components/coupon/CouponSummary';
+import { InapplicableCouponModal } from '../../components/coupon/InapplicableCouponModal';
+import { couponAPI } from '../../services/api';
 import { Pill, BtnPrimary, BtnGhost } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 import { downloadInvoicePdf } from '../../utils/downloadInvoicePdf';
@@ -120,6 +122,7 @@ const TableDetails = () => {
 
   // Modals
   const [showOccupyModal, setShowOccupyModal] = useState(false);
+  const [inapplicableCoupon, setInapplicableCoupon] = useState(null);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelItemModal, setShowCancelItemModal] = useState(false);
@@ -534,15 +537,53 @@ const TableDetails = () => {
   }, [couponState.isApplied, couponState.code, couponState.lastCartSignature, couponState.lastOrderAmount, couponCartSignature, subtotal, orderUuid, couponRestaurantUuid, activeOrder?.customerUuid, dispatch]);
 
   // ── Coupon Actions ────────────────────────────────────
-  const applyCouponCode = (code) => {
+  const applyCouponCode = async (code) => {
     if (!orderUuid || !code) return;
-    dispatch(applyCouponToOrder({
-      orderUuid,
-      couponCode: code,
-      customerUuid: activeOrder?.customerUuid,
-      cartSignature: couponCartSignature,
-      orderAmount: subtotal,
-    }));
+    const normalized = code.trim().toUpperCase();
+    try {
+      // Validate coupon first to check requirements and provide breakdown if not applicable
+      const valRes = await couponAPI.validate({
+        couponCode: normalized,
+        restaurantUuid: couponRestaurantUuid,
+        orderAmount: subtotal,
+        orderUuid,
+        customerUuid: activeOrder?.customerUuid,
+      });
+
+      if (valRes.data && !valRes.data.valid) {
+        // If the coupon exists in system but is not applicable for current conditions
+        if (valRes.data.couponCode || valRes.data.minOrderAmount != null) {
+          setInapplicableCoupon(valRes.data);
+          return;
+        }
+      }
+
+      setInapplicableCoupon(null);
+      const actionResult = await dispatch(applyCouponToOrder({
+        orderUuid,
+        couponCode: normalized,
+        customerUuid: activeOrder?.customerUuid,
+        cartSignature: couponCartSignature,
+        orderAmount: subtotal,
+      }));
+
+      if (applyCouponToOrder.rejected.match(actionResult)) {
+        if (valRes.data && valRes.data.couponCode) {
+          setInapplicableCoupon({
+            ...valRes.data,
+            reason: actionResult.payload || valRes.data.reason,
+          });
+        }
+      }
+    } catch {
+      dispatch(applyCouponToOrder({
+        orderUuid,
+        couponCode: normalized,
+        customerUuid: activeOrder?.customerUuid,
+        cartSignature: couponCartSignature,
+        orderAmount: subtotal,
+      }));
+    }
   };
 
   const handleCouponApply = () => applyCouponCode(couponState.code);
@@ -1485,6 +1526,14 @@ const TableDetails = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Inapplicable Coupon Details Modal */}
+      <InapplicableCouponModal
+        isOpen={Boolean(inapplicableCoupon)}
+        onClose={() => setInapplicableCoupon(null)}
+        coupon={inapplicableCoupon}
+        currentAmount={subtotal}
+      />
       </div>
     </div>
   );

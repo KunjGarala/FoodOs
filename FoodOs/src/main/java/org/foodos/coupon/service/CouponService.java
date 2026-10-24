@@ -13,6 +13,7 @@ import org.foodos.order.entity.Order;
 import org.foodos.coupon.dto.request.UpdateCouponRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.math.BigDecimal;
 
 public interface CouponService {
 
@@ -35,6 +36,7 @@ public interface CouponService {
     CouponValidationResponse suggestBestCoupon(SuggestCouponRequest request);
 
     Page<CouponResponse> getAllCoupons(String restaurantUuid, Pageable pageable);
+    Page<CouponResponse> getAllCoupons(String restaurantUuid, BigDecimal orderAmount, Pageable pageable);
 
     CouponResponse getCouponByUuid(String couponUuid);
 

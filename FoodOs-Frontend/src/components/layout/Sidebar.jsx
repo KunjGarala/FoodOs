@@ -19,7 +19,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app' },
     { icon: Armchair, label: 'Tables', path: '/app/tables' },
-    // { icon: UtensilsCrossed, label: 'Orders', path: '/app/order' },
+    { icon: UtensilsCrossed, label: 'Orders', path: '/app/order' },
     { icon: ChefHat, label: 'Kitchen', path: '/app/kitchen' },
     { icon: Layers, label: 'Categories', path: '/app/categories' },
     { icon: Sparkles, label: 'Modifiers', path: '/app/modifiers' },
@@ -30,9 +30,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
   ];
 
   const filteredItems = navItems.filter(item => {
-    if (role === 'CHEF') return ['Dashboard', 'Kitchen'].includes(item.label);
-    if (role === 'WAITER') return ['Dashboard', 'Tables', 'Kitchen'].includes(item.label);
-    if (role === 'CASHIER') return ['Dashboard', 'Tables', 'Menu'].includes(item.label);
+    if (role === 'CHEF') return ['Kitchen'].includes(item.label);
+    if (role === 'WAITER') return ['Tables', 'Kitchen'].includes(item.label);
+    if (role === 'CASHIER') return ['Tables', 'Menu'].includes(item.label);
+    if (!['OWNER', 'MANAGER', 'ADMIN'].includes(role) && item.label === 'Dashboard') return false;
     return true;
   });
 

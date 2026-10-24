@@ -33,7 +33,14 @@ const COLUMN_OF = (status) => {
 
 const elapsedMinutes = (t) => {
   if (!t) return 0;
-  return Math.max(0, Math.floor((Date.now() - new Date(t).getTime()) / 60000));
+  try {
+    const raw = typeof t === 'string' && !t.includes('T') ? t.replace(' ', 'T') : t;
+    const time = new Date(raw).getTime();
+    if (isNaN(time)) return 0;
+    return Math.max(0, Math.floor((Date.now() - time) / 60000));
+  } catch {
+    return 0;
+  }
 };
 
 const fmtElapsed = (m) => (m < 1 ? 'now' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`);
@@ -94,7 +101,9 @@ const KitchenDisplay = () => {
   };
 
   const tickets = useMemo(() => {
-    let list = kitchenOrders || [];
+    let list = Array.isArray(kitchenOrders)
+      ? kitchenOrders
+      : (kitchenOrders?.data && Array.isArray(kitchenOrders.data) ? kitchenOrders.data : []);
     if (station !== 'All') {
       list = list.filter((k) => (k.kitchenStation || '').toLowerCase() === station.toLowerCase());
     }
@@ -103,18 +112,20 @@ const KitchenDisplay = () => {
 
   const columns = useMemo(() => {
     const acc = { new: [], preparing: [], ready: [] };
-    tickets.forEach((k) => {
+    (Array.isArray(tickets) ? tickets : []).forEach((k) => {
       const col = COLUMN_OF(k.status);
-      if (col) acc[col].push(k);
+      if (col && acc[col]) acc[col].push(k);
     });
     return acc;
   }, [tickets]);
 
   const avgTicket = useMemo(() => {
-    const active = tickets.filter((k) => COLUMN_OF(k.status) !== 'ready');
+    if (!Array.isArray(tickets)) return 0;
+    const active = tickets.filter((k) => k && COLUMN_OF(k.status) !== 'ready');
     if (!active.length) return 0;
     const sum = active.reduce((a, k) => a + elapsedMinutes(k.kotTime || k.createdAt), 0);
-    return Math.round(sum / active.length);
+    const avg = Math.round(sum / active.length);
+    return isNaN(avg) ? 0 : avg;
   }, [tickets]);
 
   const COLS = [
@@ -173,7 +184,15 @@ const KitchenDisplay = () => {
       </div>
 
       {/* Body */}
-      {loading && !kitchenOrders?.length ? (
+      {!activeRestaurantId ? (
+        <div className="flex-1 grid place-items-center py-20 text-center">
+          <div className="max-w-sm space-y-2 p-6 rounded-card border border-line-light bg-paper-card">
+            <ChefHat className="h-10 w-10 text-marigold mx-auto mb-2" />
+            <p className="font-display font-bold text-lg text-ink-text">No Outlet Selected</p>
+            <p className="text-sm text-txt-muted">Please select an active restaurant outlet from the menu to view live kitchen tickets.</p>
+          </div>
+        </div>
+      ) : loading && !kitchenOrders?.length ? (
         <div className="flex-1 grid place-items-center"><Loader2 className="h-8 w-8 animate-spin text-txt-faint" /></div>
       ) : (
         <div className="flex-1 p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -181,16 +200,16 @@ const KitchenDisplay = () => {
             <section key={col.key} className="flex flex-col min-w-0">
               <div className="flex items-center justify-between mb-3 px-1">
                 <h2 className="eyebrow text-[11px] text-txt-muted">{col.label}</h2>
-                <span className="text-[11px] font-mono text-txt-faint bg-paper-2 px-2 py-0.5 rounded-full">{columns[col.key].length}</span>
+                <span className="text-[11px] font-mono text-txt-faint bg-paper-2 px-2 py-0.5 rounded-full">{columns[col.key]?.length || 0}</span>
               </div>
 
               <div className="space-y-3">
-                {columns[col.key].length === 0 && (
+                {(columns[col.key]?.length || 0) === 0 && (
                   <div className="rounded-tile border border-dashed border-line-light py-10 text-center text-xs text-txt-faint">
                     No tickets
                   </div>
                 )}
-                {columns[col.key].map((k) => {
+                {(columns[col.key] || []).map((k) => {
                   const mins = elapsedMinutes(k.kotTime || k.createdAt);
                   const ready = col.key === 'ready';
                   const late = mins >= 20 && !ready;
@@ -222,7 +241,11 @@ const KitchenDisplay = () => {
                               <span className="text-ink-text">{item.productName || 'Item'}</span>
                               {item.variationName && <span className="text-txt-faint"> · {item.variationName}</span>}
                               {item.modifiersText && (
-                                <div className="text-[11px] text-txt-muted mt-0.5">{item.modifiersText.split(',').map((m) => `+ ${m.trim()}`).join('  ')}</div>
+                                <div className="text-[11px] text-txt-muted mt-0.5">
+                                  {typeof item.modifiersText === 'string'
+                                    ? item.modifiersText.split(',').map((m) => `+ ${m.trim()}`).join('  ')
+                                    : String(item.modifiersText)}
+                                </div>
                               )}
                               {item.specialInstructions && (
                                 <div className="text-[11px] text-[#9a6500] mt-0.5">⚑ {item.specialInstructions}</div>

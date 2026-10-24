@@ -28,6 +28,7 @@ public interface UserProfileMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userUuid", ignore = true)
+    @Mapping(target = "email", ignore = true) // Email must only be updated after OTP verification
     @Mapping(target = "restaurants", ignore = true)
     @Mapping(target = "primaryRestaurant", ignore = true) // Handled separately in service
     @Mapping(target = "username", ignore = true)

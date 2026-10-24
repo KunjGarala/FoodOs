@@ -56,4 +56,15 @@ public class WebSocketEventService {
         log.debug("WS → {} : {}", dest, payload);
         messagingTemplate.convertAndSend(dest, payload);
     }
+
+    // ─────────────────────────── Notification Events ────────────────────
+
+    /**
+     * Broadcast live notifications (table assignment, KOT fired, KOT ready, etc.).
+     */
+    public void broadcastNotification(String restaurantUuid, Object payload) {
+        String dest = "/topic/notifications/" + restaurantUuid;
+        log.info("WS Notification → {} : {}", dest, payload);
+        messagingTemplate.convertAndSend(dest, payload);
+    }
 }

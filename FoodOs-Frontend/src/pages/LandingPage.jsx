@@ -379,7 +379,7 @@ const LandingPage = () => {
                 Everything you need to run<br className="hidden sm:block" />
                 <span className="text-marigold"> a modern restaurant</span>
               </h2>
-              <p className="mt-5 text-lg text-txt-mutedDark max-w-2xl mx-auto">
+              <p className="mt-5 text-lg text-slate-300 max-w-2xl mx-auto">
                 Powerful features packed in a beautifully simple interface. No training manual needed.
               </p>
             </div>
@@ -389,13 +389,13 @@ const LandingPage = () => {
                 return (
                   <div
                     key={idx}
-                    className="group relative rounded-card border border-ink-line/50 bg-ink-card/40 backdrop-blur-sm p-7 sm:p-8 hover:bg-ink-card/70 transition-all duration-300 hover:border-marigold/30 hover:-translate-y-1"
+                    className="group relative rounded-card border border-white/10 bg-[#1F2B37]/80 backdrop-blur-md p-7 sm:p-8 hover:bg-[#273645]/90 transition-all duration-300 hover:border-marigold/40 hover:-translate-y-1 shadow-lg"
                   >
                     <div className="h-12 w-12 rounded-tile bg-marigold/15 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
                       <FeatureIcon className="h-6 w-6 text-marigold" />
                     </div>
-                    <h3 className="text-lg font-display font-bold text-txt-light mb-2">{feature.title}</h3>
-                    <p className="text-txt-mutedDark leading-relaxed text-sm">{feature.description}</p>
+                    <h3 className="text-lg font-display font-bold text-white mb-2">{feature.title}</h3>
+                    <p className="text-slate-300 leading-relaxed text-sm">{feature.description}</p>
                   </div>
                 );
               })}
@@ -412,7 +412,7 @@ const LandingPage = () => {
                 Simplifying operations<br className="hidden sm:block" />
                 <span className="text-marigold"> from day one</span>
               </h2>
-              <p className="mt-5 text-lg text-txt-mutedDark max-w-2xl mx-auto">
+              <p className="mt-5 text-lg text-slate-300 max-w-2xl mx-auto">
                 Setup takes less than 15 minutes. Train your staff in minutes, not days.
               </p>
             </div>
@@ -424,13 +424,13 @@ const LandingPage = () => {
                     {idx < steps.length - 1 && (
                       <div className="hidden lg:block absolute top-10 left-[calc(50%+40px)] w-[calc(100%-40px)] h-px bg-gradient-to-r from-ink-line to-transparent" />
                     )}
-                    <div className="relative rounded-card border border-ink-line/50 bg-ink-card/40 p-6 text-center hover:bg-ink-card/70 transition-all duration-300 hover:border-marigold/30">
+                    <div className="relative rounded-card border border-white/10 bg-[#1F2B37]/80 p-6 text-center hover:bg-[#273645]/90 transition-all duration-300 hover:border-marigold/40 shadow-lg">
                       <div className="inline-flex items-center justify-center h-14 w-14 rounded-tile bg-marigold/15 border border-marigold/20 mb-4">
                         <StepIcon className="h-6 w-6 text-marigold" />
                       </div>
                       <p className="eyebrow text-xs text-marigold/70 mb-2">STEP {step.num}</p>
-                      <h4 className="text-lg font-display font-bold text-txt-light mb-2">{step.title}</h4>
-                      <p className="text-txt-mutedDark text-sm leading-relaxed">{step.desc}</p>
+                      <h4 className="text-lg font-display font-bold text-white mb-2">{step.title}</h4>
+                      <p className="text-slate-300 text-sm leading-relaxed">{step.desc}</p>
                     </div>
                   </div>
                 );
@@ -466,7 +466,7 @@ const LandingPage = () => {
                 </div>
 
                 <div className="flex-shrink-0 w-full max-w-md">
-                  <div className="relative rounded-card border border-ink-line/60 bg-ink-card/60 backdrop-blur-sm p-7 sm:p-8">
+                  <div className="relative rounded-card border border-white/10 bg-[#1F2B37]/90 backdrop-blur-md p-7 sm:p-8 shadow-xl">
                     <div className="absolute -top-3 -right-3 h-8 w-8 bg-marigold rounded-full flex items-center justify-center shadow-float">
                       <span className="text-ink font-bold text-xs">&ldquo;</span>
                     </div>
@@ -475,11 +475,11 @@ const LandingPage = () => {
                         R
                       </div>
                       <div>
-                        <p className="font-display font-bold text-txt-light">Rajesh Kumar</p>
-                        <p className="text-sm text-txt-mutedDark">Owner, Spicy Wok</p>
+                        <p className="font-display font-bold text-white">Rajesh Kumar</p>
+                        <p className="text-sm text-slate-400">Owner, Spicy Wok</p>
                       </div>
                     </div>
-                    <p className="text-txt-mutedDark italic leading-relaxed">
+                    <p className="text-slate-200 italic leading-relaxed">
                       &ldquo;FoodOS changed how we manage our weekends. The KOT system is a lifesaver, and the billing is super fast. Highly recommended!&rdquo;
                     </p>
                     <div className="flex gap-1 mt-5">
@@ -503,7 +503,7 @@ const LandingPage = () => {
                 Simple, transparent<br className="hidden sm:block" />
                 <span className="text-marigold"> pricing</span>
               </h2>
-              <p className="mt-5 text-lg text-txt-mutedDark">No hidden fees. Cancel anytime.</p>
+              <p className="mt-5 text-lg text-slate-300">No hidden fees. Cancel anytime.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-start">
@@ -513,8 +513,8 @@ const LandingPage = () => {
                   className={cn(
                     'relative rounded-card p-7 sm:p-8 transition-all duration-300 hover:-translate-y-1',
                     plan.popular
-                      ? 'bg-gradient-to-b from-marigold/10 to-marigold/[0.04] border-2 border-marigold/40 shadow-float md:scale-105 z-10'
-                      : 'bg-ink-card/40 border border-ink-line/50 hover:border-marigold/30',
+                      ? 'bg-gradient-to-b from-marigold/20 via-[#1F2B37] to-[#17202A] border-2 border-marigold shadow-2xl md:scale-105 z-10'
+                      : 'bg-[#1F2B37]/80 border border-white/10 hover:border-marigold/30 shadow-lg',
                   )}
                 >
                   {plan.popular && (
@@ -522,14 +522,14 @@ const LandingPage = () => {
                       Most Popular
                     </span>
                   )}
-                  <h3 className="text-xl font-display font-bold text-txt-light">{plan.name}</h3>
+                  <h3 className="text-xl font-display font-bold text-white">{plan.name}</h3>
                   <div className="mt-4 flex items-baseline">
-                    <span className="text-4xl sm:text-5xl font-display font-extrabold text-txt-light tracking-[-0.02em]">{plan.price}</span>
-                    <span className="ml-2 text-txt-mutedDark text-sm">/{plan.period}</span>
+                    <span className="text-4xl sm:text-5xl font-display font-extrabold text-white tracking-[-0.02em]">{plan.price}</span>
+                    <span className="ml-2 text-slate-400 text-sm">/{plan.period}</span>
                   </div>
                   <ul className="mt-8 space-y-4 mb-8">
                     {plan.features.map((feat, i) => (
-                      <li key={i} className="flex items-center text-txt-mutedDark text-sm">
+                      <li key={i} className="flex items-center text-slate-200 text-sm">
                         <CheckCircle className="h-5 w-5 text-success-bright mr-3 flex-shrink-0" />
                         {feat}
                       </li>
@@ -541,7 +541,7 @@ const LandingPage = () => {
                     </BtnPrimary>
                   ) : (
                     <BtnGhost
-                      className="w-full h-12 border-ink-line bg-transparent text-txt-light hover:bg-white/[0.05]"
+                      className="w-full h-12 border border-white/20 bg-white/5 text-white hover:bg-white/10"
                       onClick={handleGetStarted}
                     >
                       {isAuthenticated ? 'Go to Dashboard' : plan.cta}

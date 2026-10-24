@@ -32,14 +32,15 @@ function parseStoredUser() {
 
 function buildUserPayload(decoded, credentials = {}) {
   const username = decoded.username || decoded.sub || credentials.username || null;
-  const userId   = decoded.userId  || decoded.id  || null;
+  const userId   = decoded.userId  || decoded.id  || decoded.userUuid || null;
+  const userUuid = decoded.userUuid || userId;
   const role      = getUserRole(decoded);
   // NOTE: the outlet list no longer rides in the JWT. getAccessibleRestaurants
   // is kept only as a backward-compatible fallback for old tokens; for current
   // tokens it returns [] and the real list comes from GET /api/me/context.
   const restaurantIds = getAccessibleRestaurants(decoded);
 
-  return { username, userId, role, restaurantIds };
+  return { username, userId, userUuid, role, restaurantIds };
 }
 
 // Normalize the /api/me/context payload into the flat shape the store uses.
@@ -62,6 +63,7 @@ function normalizeContext(data) {
 const EMPTY_STATE = {
   user:                null,
   userId:             null,
+  userUuid:           null,
   token:               null,
   role:                null,
   restaurantIds:       [],
@@ -112,9 +114,11 @@ function initializeState() {
     activeRestaurantId = restaurantIds[0];
   }
 
+  const userUuid = decoded.userUuid || userId;
   return {
     user:               username,
     userId,
+    userUuid,
     token,
     role,
     restaurantIds,
@@ -193,6 +197,8 @@ export const login = createAsyncThunk(
       // Persist user info (restaurantIds kept for no-flash hydration on reload).
       localStorage.setItem(KEYS.USER, JSON.stringify({
         username,
+        userId,
+        userUuid,
         roles: Array.isArray(role) ? role : [role],
         restaurantIds,
       }));
@@ -206,7 +212,7 @@ export const login = createAsyncThunk(
       // NOTE: The HttpOnly refresh-token cookie was set automatically by the
       // backend in the Set-Cookie header.  We do NOT touch it here.
 
-      return { user: username, userId, token, role, restaurantIds, restaurants, activeRestaurantId };
+      return { user: username, userId, userUuid, token, role, restaurantIds, restaurants, activeRestaurantId };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message ||
@@ -331,11 +337,12 @@ const authSlice = createSlice({
 
       .addCase(login.pending,    (state)         => { state.loading = true;  state.error = null; })
       .addCase(login.fulfilled,  (state, action) => {
-        const { user, userId, token, role, restaurantIds, restaurants, activeRestaurantId } = action.payload;
+        const { user, userId, userUuid, token, role, restaurantIds, restaurants, activeRestaurantId } = action.payload;
         state.loading            = false;
         state.error              = null;
         state.user               = user;
         state.userId            = userId;
+        state.userUuid           = userUuid || userId;
         state.token              = token;
         state.role               = role;
         state.restaurantIds      = restaurantIds;

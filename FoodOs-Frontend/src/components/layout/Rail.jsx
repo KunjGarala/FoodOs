@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { LogOut, Check } from 'lucide-react';
+import { LogOut, Check, User as UserIcon } from 'lucide-react';
 import { logout, setActiveRestaurant } from '../../store/authSlice';
 import websocketService from '../../services/websocket';
 import { navForRole, resolvePath, isNavActive } from './navItems';
@@ -21,6 +21,9 @@ export const Rail = () => {
 
   const items = navForRole(role);
   const initial = (user || 'U').trim().charAt(0).toUpperCase();
+  const homePath = ['OWNER', 'MANAGER', 'ADMIN'].includes(role)
+    ? '/app'
+    : (role === 'CHEF' ? '/app/kitchen' : (role === 'WAITER' ? '/app/tables' : (role === 'CASHIER' ? '/app/orders' : '/app')));
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -44,7 +47,7 @@ export const Rail = () => {
   return (
     <aside className="hidden lg:flex fixed top-0 left-0 z-40 h-screen w-20 bg-ink-700 flex-col items-center py-4">
       {/* Logo */}
-      <NavLink to="/app" end className="shrink-0">
+      <NavLink to={homePath} end className="shrink-0">
         <img src={logoUrl} alt="FoodOS" className="w-14 h-auto" />
       </NavLink>
 
@@ -81,34 +84,41 @@ export const Rail = () => {
         </button>
 
         {menuOpen && (
-          <div className="absolute bottom-0 left-[52px] w-60 rounded-card bg-ink-card border border-ink-line shadow-float p-2 z-50">
-            <div className="px-2 py-2">
-              <p className="text-sm font-semibold text-txt-light truncate">{user || 'User'}</p>
-              <p className="text-[11px] font-mono uppercase tracking-wider text-txt-faintDark">{role || 'Role'}</p>
+          <div className="absolute bottom-0 left-[52px] w-64 rounded-2xl bg-[#1F2B37] border border-slate-700/80 shadow-2xl p-2.5 z-50 text-white">
+            <div className="px-3 py-2.5 bg-slate-800/60 rounded-xl mb-1.5 border border-slate-750">
+              <p className="text-sm font-bold text-white truncate">{user || 'User'}</p>
+              <p className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold mt-0.5">{role || 'Role'}</p>
             </div>
 
             {restaurantIds && restaurantIds.length > 1 && (
-              <div className="mt-1 border-t border-ink-line pt-2">
-                <p className="px-2 pb-1 text-[10px] font-mono uppercase tracking-wider text-txt-faintDark">Outlet</p>
-                <div className="max-h-44 overflow-y-auto">
+              <div className="mt-1 border-t border-slate-700/60 pt-2">
+                <p className="px-2 pb-1 text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">Switch Outlet</p>
+                <div className="max-h-44 overflow-y-auto space-y-0.5">
                   {restaurantIds.map((id) => (
                     <button
                       key={id}
                       onClick={() => { dispatch(setActiveRestaurant(id)); setMenuOpen(false); }}
-                      className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left text-sm text-txt-mutedDark hover:bg-white/5"
+                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left text-sm text-slate-200 hover:text-white hover:bg-white/10 transition-colors"
                     >
                       <span className="truncate">{restaurantName(id)}</span>
-                      {id === activeRestaurantId && <Check className="h-4 w-4 text-marigold shrink-0" />}
+                      {id === activeRestaurantId && <Check className="h-4 w-4 text-amber-400 shrink-0" />}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="mt-1 border-t border-ink-line pt-1">
+            <div className="mt-1.5 border-t border-slate-700/60 pt-1.5 space-y-0.5">
+              <NavLink
+                to="/app/profile"
+                onClick={() => setMenuOpen(false)}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-medium text-slate-200 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <UserIcon className="h-4 w-4 text-amber-400" /> My Profile
+              </NavLink>
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium text-danger hover:bg-danger/10"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
               >
                 <LogOut className="h-4 w-4" /> Logout
               </button>

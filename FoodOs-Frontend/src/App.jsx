@@ -31,6 +31,7 @@ import ModifierManagement from './pages/Management/ModifierManagement';
 import StaffManagement from './pages/Management/StaffManagement';
 import CouponManagement from './pages/Management/CouponManagement';
 import CouponEditor from './pages/Management/CouponEditor';
+import Profile from './pages/Management/Profile';
 import CustomerCRM from './pages/CRM/CustomerCRM';
 import { MainLayout } from './components/layout/MainLayout';
 
@@ -59,11 +60,15 @@ function App() {
           
           {/* OWNER & MANAGER Routes (The functional App) */}
           <Route path="/app" element={
-            <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF', 'WAITER']}>
+            <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF', 'WAITER', 'ADMIN', 'CASHIER']}>
               <MainLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={
+              <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'ADMIN']}>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
             
             <Route path="tables" element={
                 <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'WAITER']}>
@@ -115,7 +120,7 @@ function App() {
             } />
             
             <Route path="kitchen" element={
-                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF', 'WAITER']}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'CHEF', 'WAITER', 'ADMIN', 'CASHIER']}>
                     <KitchenDisplay />
                 </ProtectedRoute>
             } />
@@ -151,7 +156,7 @@ function App() {
             } />
             
             <Route path="staff" element={
-                <ProtectedRoute allowedRoles={['OWNER' , "MANAGER"]}>
+                <ProtectedRoute allowedRoles={['OWNER', 'MANAGER', 'ADMIN']}>
                     <StaffManagement />
                 </ProtectedRoute>
             } />
@@ -185,6 +190,8 @@ function App() {
                     <RestaurantDetails />
                 </ProtectedRoute>
             } />
+
+            <Route path="profile" element={<Profile />} />
           </Route>
 
           {/* ADMIN Routes */}

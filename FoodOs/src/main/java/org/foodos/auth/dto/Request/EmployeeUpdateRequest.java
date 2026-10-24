@@ -31,4 +31,7 @@ public class EmployeeUpdateRequest {
     private String role;
 
     private Boolean isActive;
+
+    @Size(min = 6, max = 100, message = "Password must be at least 6 characters")
+    private String password;
 }

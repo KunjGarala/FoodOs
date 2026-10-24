@@ -6,6 +6,7 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.common.exceptionhandling.exception.BusinessException;
 import org.foodos.common.exceptionhandling.exception.ResourceNotFoundException;
+import org.foodos.common.dto.NotificationMessage;
 import org.foodos.common.security.RestaurantAccessGuard;
 import org.foodos.config.websocket.WebSocketEventService;
 import org.foodos.order.dto.request.CreateOrderRequest;
@@ -955,6 +956,35 @@ public class RestaurantTableService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Waiter not found with UUID: " + request.getWaiterUuid()));
             table.setCurrentWaiter(waiter);
+
+            NotificationMessage notif = NotificationMessage.builder()
+                    .id(java.util.UUID.randomUUID().toString())
+                    .type("WAITER_ASSIGNED")
+                    .title("Table Assigned")
+                    .message("You have been assigned to Table " + table.getTableNumber() + " (" + request.getNumberOfGuests() + " guests)")
+                    .restaurantUuid(restaurant.getRestaurantUuid())
+                    .recipientRole("WAITER")
+                    .recipientUserUuid(waiter.getUserUuid())
+                    .tableNumber(table.getTableNumber())
+                    .tableUuid(table.getTableUuid())
+                    .timestamp(java.time.LocalDateTime.now())
+                    .build();
+            webSocketEventService.broadcastNotification(restaurant.getRestaurantUuid(), notif);
+        } else {
+            // No waiter assigned -> notify all waiters
+            NotificationMessage notif = NotificationMessage.builder()
+                    .id(java.util.UUID.randomUUID().toString())
+                    .type("WAITER_ASSIGNED")
+                    .title("Table Needs Waiter")
+                    .message("Table " + table.getTableNumber() + " is occupied (" + request.getNumberOfGuests() + " guests) - No waiter assigned")
+                    .restaurantUuid(restaurant.getRestaurantUuid())
+                    .recipientRole("WAITER")
+                    .recipientUserUuid(null)
+                    .tableNumber(table.getTableNumber())
+                    .tableUuid(table.getTableUuid())
+                    .timestamp(java.time.LocalDateTime.now())
+                    .build();
+            webSocketEventService.broadcastNotification(restaurant.getRestaurantUuid(), notif);
         }
 
         tableRepository.save(table);
@@ -1005,6 +1035,21 @@ public class RestaurantTableService {
         TableResponseDto responseDto = tableMapper.toResponseDto(updatedTable);
         webSocketEventService.broadcastTableUpdate(
                 updatedTable.getRestaurant().getRestaurantUuid(), responseDto);
+
+        NotificationMessage notif = NotificationMessage.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .type("WAITER_ASSIGNED")
+                .title("Table Assigned")
+                .message("You have been assigned to Table " + updatedTable.getTableNumber())
+                .restaurantUuid(updatedTable.getRestaurant().getRestaurantUuid())
+                .recipientRole("WAITER")
+                .recipientUserUuid(waiter.getUserUuid())
+                .tableNumber(updatedTable.getTableNumber())
+                .tableUuid(updatedTable.getTableUuid())
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+        webSocketEventService.broadcastNotification(updatedTable.getRestaurant().getRestaurantUuid(), notif);
+
         return responseDto;
     }
 
@@ -1031,6 +1076,21 @@ public class RestaurantTableService {
         TableResponseDto responseDto = tableMapper.toResponseDto(updatedTable);
         webSocketEventService.broadcastTableUpdate(
                 updatedTable.getRestaurant().getRestaurantUuid(), responseDto);
+
+        NotificationMessage notif = NotificationMessage.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .type("WAITER_ASSIGNED")
+                .title("Table Needs Waiter")
+                .message("Table " + updatedTable.getTableNumber() + " has no waiter assigned")
+                .restaurantUuid(updatedTable.getRestaurant().getRestaurantUuid())
+                .recipientRole("WAITER")
+                .recipientUserUuid(null)
+                .tableNumber(updatedTable.getTableNumber())
+                .tableUuid(updatedTable.getTableUuid())
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+        webSocketEventService.broadcastNotification(updatedTable.getRestaurant().getRestaurantUuid(), notif);
+
         return responseDto;
     }
 

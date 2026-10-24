@@ -1,5 +1,6 @@
 package org.foodos.restaurant.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +60,7 @@ public class RestaurantController {
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser,
             @Valid @RequestPart("data") CreateRestaurantRequestDto requestDto,
             @RequestPart(value = "image", required = false) MultipartFile image,
+            HttpServletRequest request,
             HttpServletResponse response
     ) {
         RestaurantResponseDto restaurant =
@@ -71,7 +73,7 @@ public class RestaurantController {
         String refreshToken = jwtUtil.generateToken(updatedUser, 7 * 24 * 60);
 
         response.setHeader("Authorization", "Bearer " + accessToken);
-        GoogleAuthController.generateCookie(response, refreshToken);
+        GoogleAuthController.generateCookie(request, response, refreshToken);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }
@@ -98,6 +100,7 @@ public class RestaurantController {
             @RequestPart(value = "image", required = false) MultipartFile image,
 
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser,
+            HttpServletRequest request,
             HttpServletResponse response
     ) {
         RestaurantResponseDto restaurant =
@@ -115,7 +118,7 @@ public class RestaurantController {
         String refreshToken = jwtUtil.generateToken(updatedUser, 7 * 24 * 60);
 
         response.setHeader("Authorization", "Bearer " + accessToken);
-        GoogleAuthController.generateCookie(response, refreshToken);
+        GoogleAuthController.generateCookie(request, response, refreshToken);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurant);
     }
@@ -151,6 +154,28 @@ public class RestaurantController {
                         image
                 );
 
+        return ResponseEntity.ok(restaurant);
+    }
+
+    @Operation(
+            summary = "Update restaurant details JSON",
+            description = "Updates restaurant/outlet details with JSON body (Owner only)"
+    )
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication , 'OWNER')")
+    @PatchMapping(value = "/{restaurantUuid}/update-details", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RestaurantResponseDto> updateRestaurantJson(
+            @Parameter(description = "Restaurant UUID", required = true)
+            @PathVariable String restaurantUuid,
+            @Valid @RequestBody UpdateRestaurantRequestDto requestDto,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        RestaurantResponseDto restaurant =
+                restaurantService.updateRestaurant(
+                        restaurantUuid,
+                        requestDto,
+                        currentUser,
+                        null
+                );
         return ResponseEntity.ok(restaurant);
     }
 

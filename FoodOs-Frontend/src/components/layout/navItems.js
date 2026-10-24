@@ -9,9 +9,9 @@ import {
  * `outlet` = path is resolved against the active restaurant uuid at render time.
  */
 export const NAV_ITEMS = [
-  { key: 'home', icon: LayoutGrid, label: 'Home', path: '/app' },
+  { key: 'home', icon: LayoutGrid, label: 'Home', path: '/app', roles: ['OWNER', 'MANAGER', 'ADMIN'] },
   { key: 'floor', icon: Armchair, label: 'Floor', path: '/app/tables', roles: ['OWNER', 'MANAGER', 'WAITER', 'ADMIN'] },
-  { key: 'orders', icon: ClipboardList, label: 'Orders', path: '/app/orders', roles: ['OWNER', 'MANAGER', 'WAITER', 'CASHIER', 'ADMIN'] },
+  { key: 'orders', icon: ClipboardList, label: 'Orders', path: '/app/orders', roles: ['OWNER', 'MANAGER', 'CASHIER', 'ADMIN'] },
   { key: 'kitchen', icon: ChefHat, label: 'Kitchen', path: '/app/kitchen', roles: ['OWNER', 'MANAGER', 'CHEF', 'WAITER', 'ADMIN'] },
   // Menu also covers its sub-pages (Categories, Modifier groups) for active state.
   { key: 'menu', icon: UtensilsCrossed, label: 'Menu', path: '/app/menu', match: ['/app/menu', '/app/categories', '/app/modifiers'], roles: ['OWNER', 'MANAGER', 'ADMIN'] },

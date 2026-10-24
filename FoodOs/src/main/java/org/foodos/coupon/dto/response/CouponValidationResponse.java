@@ -15,6 +15,7 @@ public class CouponValidationResponse {
     private String reason;
     private String couponCode;
     private String couponName;
+    private String description;
     private DiscountType discountType;
     private BigDecimal discountValue;
     private BigDecimal maxDiscountAmount;

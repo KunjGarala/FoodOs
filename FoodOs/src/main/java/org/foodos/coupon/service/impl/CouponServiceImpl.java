@@ -120,8 +120,17 @@ public class CouponServiceImpl implements CouponService {
     public CouponValidationResponse validateCoupon(ValidateCouponRequest request) {
         restaurantAccessGuard.assertCanAccess(request.getRestaurantUuid());
         LocalDateTime evalTime = request.getEvaluationTime() != null ? request.getEvaluationTime() : LocalDateTime.now();
-        Coupon coupon = findActiveCouponCached(request.getCouponCode())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid coupon code"));
+        String normalized = request.getCouponCode() != null ? request.getCouponCode().trim().toUpperCase(Locale.ROOT) : "";
+        Coupon coupon = couponRepository.findByCodeIgnoreCaseAndIsDeletedFalse(normalized).orElse(null);
+        if (coupon == null) {
+            return CouponValidationResponse.builder()
+                    .valid(false)
+                    .couponCode(request.getCouponCode())
+                    .reason("Invalid coupon code: code does not exist")
+                    .build();
+        }
+
+
 
         Restaurant restaurant = restaurantRepo.findByRestaurantUuidAndIsDeletedFalse(request.getRestaurantUuid())
                 .orElseThrow(() -> new IllegalArgumentException("Restaurant not found"));
@@ -144,6 +153,7 @@ public class CouponServiceImpl implements CouponService {
         Coupon coupon = couponRepository.findByCodeIgnoreCaseForUpdate(normalizedCode)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid coupon code"));
 
+
         if (order.getCoupon() != null && !order.getCoupon().getId().equals(coupon.getId())) {
             if (!Boolean.TRUE.equals(coupon.getAllowStacking()) && !Boolean.TRUE.equals(order.getCoupon().getAllowStacking())) {
                 throw new IllegalStateException("Only one coupon can be applied to an order");
@@ -157,7 +167,12 @@ public class CouponServiceImpl implements CouponService {
             LocalDateTime.now());
 
         if (!validationResult.valid) {
-            throw new IllegalStateException(validationResult.reason != null ? validationResult.reason : "Coupon is not applicable");
+            String details = String.format("Coupon '%s' not applicable: %s (Required min bill: ₹%s, current bill: ₹%s)",
+                    coupon.getCode(),
+                    validationResult.reason != null ? validationResult.reason : "Requirements not met",
+                    coupon.getMinOrderAmount() != null ? coupon.getMinOrderAmount().toPlainString() : "0",
+                    subtotal.toPlainString());
+            throw new IllegalStateException(details);
         }
 
         applyDiscountToOrder(order, coupon, validationResult);
@@ -266,12 +281,29 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional(readOnly = true)
     public Page<CouponResponse> getAllCoupons(String restaurantUuid, Pageable pageable) {
+        return getAllCoupons(restaurantUuid, null, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CouponResponse> getAllCoupons(String restaurantUuid, BigDecimal orderAmount, Pageable pageable) {
         Page<Coupon> coupons;
         if (StringUtils.hasText(restaurantUuid)) {
             restaurantAccessGuard.assertCanAccess(restaurantUuid);
             coupons = couponRepository.findAllRelevantForRestaurant(restaurantUuid, CouponScopeType.GLOBAL_CHAIN, pageable);
         } else {
             coupons = couponRepository.findAllByIsDeletedFalse(pageable);
+        }
+        if (orderAmount != null) {
+            LocalDateTime now = LocalDateTime.now();
+            List<CouponResponse> filtered = coupons.getContent().stream()
+                    .filter(c -> Boolean.TRUE.equals(c.getIsActive()))
+                    .filter(c -> (c.getMinOrderAmount() == null || orderAmount.compareTo(c.getMinOrderAmount()) >= 0))
+                    .filter(c -> c.getStartDate() == null || !now.isBefore(c.getStartDate()))
+                    .filter(c -> c.getEndDate() == null || !now.isAfter(normalizeEndBoundary(c.getEndDate())))
+                    .map(c -> buildCouponResponse(c, getMappedRestaurants(c)))
+                    .toList();
+            return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
         }
         return coupons.map(c -> buildCouponResponse(c, getMappedRestaurants(c)));
     }
@@ -573,6 +605,7 @@ public class CouponServiceImpl implements CouponService {
                 .reason(result.reason)
                 .couponCode(coupon.getCode())
                 .couponName(coupon.getName())
+                .description(coupon.getDescription())
                 .discountType(coupon.getDiscountType())
                 .discountValue(coupon.getDiscountValue())
                 .maxDiscountAmount(coupon.getMaxDiscountAmount())

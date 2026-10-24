@@ -11,6 +11,7 @@ import modifierReducer       from './modifierSlice';
 import customerReducer       from './customerSlice';
 import couponReducer         from './couponSlice';
 import analyticsReducer from './analyticsSlice';
+import notificationReducer from './notificationSlice';
 import { setupInterceptors } from '../services/api';
 
 // ─────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ export const store = configureStore({
     customers: customerReducer,
     coupon: couponReducer,
     analytics: analyticsReducer,
+    notifications: notificationReducer,
   },
   middleware: (getDefault) => getDefault().concat(interceptorSyncMiddleware),
 });

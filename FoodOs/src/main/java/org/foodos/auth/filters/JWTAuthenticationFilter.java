@@ -66,7 +66,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
                 jwtUtil.generateToken(user, 7 * 24 * 60);
 
         response.setHeader("Authorization", "Bearer " + accessToken);
-        GoogleAuthController.generateCookie(response, refreshToken);
+        GoogleAuthController.generateCookie(request, response, refreshToken);
         response.setStatus(HttpServletResponse.SC_OK);
     }
 }

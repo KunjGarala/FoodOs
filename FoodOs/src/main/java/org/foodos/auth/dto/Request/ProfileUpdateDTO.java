@@ -25,7 +25,6 @@ public class ProfileUpdateDTO {
     private String fullName;
 
     @Schema(description = "Email address", example = "john.doe@example.com")
-    @NotBlank(message = "Email is required")
     @Email(message = "Email should be valid")
     @Size(max = 100, message = "Email cannot exceed 100 characters")
     private String email;

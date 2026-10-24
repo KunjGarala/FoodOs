@@ -25,6 +25,9 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       role === 'ADMIN'   ? '/admin'  :
       role === 'OWNER'   ? '/app'    :
       role === 'MANAGER' ? '/app'    :
+      role === 'CHEF'    ? '/app/kitchen' :
+      role === 'WAITER'  ? '/app/tables' :
+      role === 'CASHIER' ? '/app/orders' :
                            '/unauthorized';
 
     return <Navigate to={fallback} replace />;

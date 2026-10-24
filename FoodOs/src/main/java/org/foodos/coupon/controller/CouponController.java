@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/coupons")
@@ -74,13 +76,14 @@ public class CouponController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get all coupons", description = "List all coupons, optionally filtered by restaurant")
+    @Operation(summary = "Get all coupons", description = "List all coupons, optionally filtered by restaurant and minimum bill amount")
     @GetMapping
-    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'MANAGER')")
+    @PreAuthorize("@permissionEvaluator.hasPermissionLevel(authentication, 'WAITER')")
     public ResponseEntity<Page<CouponResponse>> getAllCoupons(
             @RequestParam(required = false) String restaurantUuid,
+            @RequestParam(required = false) BigDecimal orderAmount,
             Pageable pageable) {
-        Page<CouponResponse> response = couponService.getAllCoupons(restaurantUuid, pageable);
+        Page<CouponResponse> response = couponService.getAllCoupons(restaurantUuid, orderAmount, pageable);
         return ResponseEntity.ok(response);
     }
 

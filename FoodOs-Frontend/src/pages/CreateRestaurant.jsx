@@ -114,6 +114,7 @@ const CreateRestaurant = () => {
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [licenseKeyError, setLicenseKeyError] = useState('');
     const [activeStep, setActiveStep] = useState(1);
 
     const navigate = useNavigate();
@@ -145,7 +146,20 @@ const CreateRestaurant = () => {
             ...prev,
             [name]: value,
         }));
+        if (name === 'licenseKey' && value.trim()) {
+            setLicenseKeyError('');
+        }
     }, []);
+
+    const goToStep = (step) => {
+        if (step > 3 && !formData.licenseKey.trim()) {
+            setLicenseKeyError('License key is required.');
+            setActiveStep(3);
+            return;
+        }
+
+        setActiveStep(step);
+    };
 
     const handleFileChange = useCallback((e) => {
         e.stopPropagation();
@@ -157,6 +171,12 @@ const CreateRestaurant = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.licenseKey.trim()) {
+            setLicenseKeyError('License key is required.');
+            setActiveStep(3);
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -384,14 +404,22 @@ const CreateRestaurant = () => {
                     />
                 </div>
                 <div className="space-y-2">
-                    <FieldLabel icon={FileKey}>License Key</FieldLabel>
+                    <FieldLabel icon={FileKey}>License Key *</FieldLabel>
                     <input
                         name="licenseKey"
                         value={formData.licenseKey}
                         onChange={handleChange}
-                        placeholder="Enter license key if available"
+                        required
+                        aria-invalid={Boolean(licenseKeyError)}
+                        aria-describedby={licenseKeyError ? 'restaurant-license-key-error' : undefined}
+                        placeholder="Enter license key"
                         className={fieldInput}
                     />
+                    {licenseKeyError && (
+                        <p id="restaurant-license-key-error" className="text-sm text-danger-deep" role="alert">
+                            {licenseKeyError}
+                        </p>
+                    )}
                 </div>
                 <div className="space-y-2">
                     <FieldLabel>License Type</FieldLabel>
@@ -617,7 +645,7 @@ const CreateRestaurant = () => {
                                     <React.Fragment key={step.id}>
                                         <button
                                             type="button"
-                                            onClick={() => setActiveStep(step.id)}
+                                            onClick={() => goToStep(step.id)}
                                             className="flex flex-col items-center relative z-10"
                                         >
                                             <div className={cn(
@@ -697,7 +725,7 @@ const CreateRestaurant = () => {
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    setActiveStep(activeStep + 1);
+                                                    goToStep(activeStep + 1);
                                                 }}
                                             >
                                                 Next Step

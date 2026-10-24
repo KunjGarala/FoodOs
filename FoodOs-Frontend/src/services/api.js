@@ -264,11 +264,19 @@ export const restaurantAPI = {
   createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),
   getRestaurantDetail:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/detail`),
   getHierarchySummary:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/hierarchy/summary`),
+  updateRestaurant:      (restaurantUuid, data)       => api.patch(`/api/restaurants/${restaurantUuid}/update-details`, data),
 };
 
 export const employeeAPI = {
   getAll: (params) => api.get('/api/restaurants/employees', { params }),
   update: (userId, data) => api.patch(`/api/users/employee/${userId}`, data),
+};
+
+export const profileAPI = {
+  getProfile: () => api.get('/api/users/profile'),
+  updateProfile: (data) => api.patch('/api/users/profile', data),
+  sendEmailOtp: (newEmail) => api.post('/api/users/profile/email-otp/send', { newEmail }),
+  verifyEmailOtp: (newEmail, otp) => api.post('/api/users/profile/email-otp/verify', { newEmail, otp }),
 };
 
 export const tableAPI = {

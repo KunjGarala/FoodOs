@@ -112,7 +112,15 @@ const Login = () => {
             } else {
                 // For OWNER, MANAGER, CHEF, WAITER roles
                 if (userRestaurantIds && Array.isArray(userRestaurantIds) && userRestaurantIds.length > 0) {
-                    navigate('/app', { replace: true });
+                    if (userRole === 'CHEF') {
+                        navigate('/app/kitchen', { replace: true });
+                    } else if (userRole === 'WAITER') {
+                        navigate('/app/tables', { replace: true });
+                    } else if (userRole === 'CASHIER') {
+                        navigate('/app/orders', { replace: true });
+                    } else {
+                        navigate('/app', { replace: true });
+                    }
                 } else {
                     navigate('/create-restaurant', { replace: true });
                 }

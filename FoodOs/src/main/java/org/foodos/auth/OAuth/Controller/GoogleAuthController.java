@@ -3,12 +3,15 @@ package org.foodos.auth.OAuth.Controller;
 import lombok.RequiredArgsConstructor;
 import org.foodos.auth.OAuth.Service.GoogleAuthService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 
 @RestController
@@ -35,6 +38,7 @@ public class GoogleAuthController {
     @GetMapping("/callback")
     public void handleGoogleCallback(
             @RequestParam("code") String code,
+            HttpServletRequest request,
             HttpServletResponse response
     ) throws IOException {
 
@@ -42,7 +46,7 @@ public class GoogleAuthController {
             Map<String, String> tokens = googleAuthService.processGoogleLogin(code);
 
             // Set refresh token as HttpOnly cookie
-            setRefreshTokenCookie(response, tokens.get("refresh_token"));
+            generateCookie(request, response, tokens.get("refresh_token"));
 
             // Build redirect URL with access token
             String redirectUrl = buildSuccessRedirectUrl(tokens.get("access_token"));
@@ -64,21 +68,37 @@ public class GoogleAuthController {
                 .toUriString();
     }
 
-    /**
-     * Set refresh token as HttpOnly cookie for security
-     */
-    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        generateCookie(response, refreshToken);
+    public static void generateCookie(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String refreshToken
+    ) {
+        boolean secure = isSecureRequest(request);
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite(secure ? "None" : "Lax")
+                .path("/")
+                .maxAge(Duration.ofDays(7))
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    public static void generateCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie("refresh_token", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Set to true in production with HTTPS
-        cookie.setPath("/");
-        cookie.setMaxAge(7 * 24 * 60 * 60); // 7 days in seconds
+    private static boolean isSecureRequest(HttpServletRequest request) {
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        if (forwardedProto != null
+                && "https".equalsIgnoreCase(forwardedProto.split(",", 2)[0].trim())) {
+            return true;
+        }
 
-        response.addCookie(cookie);
+        String forwarded = request.getHeader("Forwarded");
+        if (forwarded != null && forwarded.toLowerCase().contains("proto=https")) {
+            return true;
+        }
+
+        String origin = request.getHeader(HttpHeaders.ORIGIN);
+        return request.isSecure() || (origin != null && origin.startsWith("https://"));
     }
 
 }

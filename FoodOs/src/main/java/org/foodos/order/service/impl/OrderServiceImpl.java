@@ -6,6 +6,7 @@ import org.foodos.auth.entity.UserAuthEntity;
 import org.foodos.auth.entity.UserRole;
 import org.foodos.auth.repository.UserAuthRepository;
 import org.foodos.common.security.RestaurantAccessGuard;
+import org.foodos.common.dto.NotificationMessage;
 import org.foodos.coupon.service.CouponService;
 import org.foodos.order.dto.request.*;
 import org.foodos.order.dto.response.KotResponse;
@@ -364,6 +365,22 @@ public class OrderServiceImpl implements OrderService {
         webSocketEventService.broadcastKitchenUpdate(restaurantUuid, orderMapper.toKotResponse(kot));
         webSocketEventService.broadcastOrderUpdate(restaurantUuid, orderMapper.toOrderResponse(order));
 
+        String tableNum = order.getTable() != null ? order.getTable().getTableNumber() : "Order";
+        NotificationMessage kotNotif = NotificationMessage.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .type("KOT_FIRED")
+                .title("New KOT Fired")
+                .message("New KOT " + kot.getKotNumber() + " fired for Table " + tableNum + " (" + (kot.getKotItems() != null ? kot.getKotItems().size() : 0) + " items)")
+                .restaurantUuid(restaurantUuid)
+                .recipientRole("CHEF")
+                .tableNumber(tableNum)
+                .tableUuid(order.getTable() != null ? order.getTable().getTableUuid() : null)
+                .orderUuid(order.getOrderUuid())
+                .kotNumber(kot.getKotNumber())
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+        webSocketEventService.broadcastNotification(restaurantUuid, kotNotif);
+
         return orderMapper.toOrderResponse(order);
     }
 
@@ -661,6 +678,20 @@ public class OrderServiceImpl implements OrderService {
 
         OrderResponse completeResponse = orderMapper.toOrderResponse(order);
         webSocketEventService.broadcastOrderUpdate(order.getRestaurant().getRestaurantUuid(), completeResponse);
+
+        NotificationMessage dismissNotif = NotificationMessage.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .type("KOT_SERVED")
+                .title("Order Completed")
+                .message("Order completed for Table " + (order.getTable() != null ? order.getTable().getTableNumber() : ""))
+                .restaurantUuid(order.getRestaurant().getRestaurantUuid())
+                .recipientRole("WAITER")
+                .recipientUserUuid(null)
+                .tableUuid(order.getTable() != null ? order.getTable().getTableUuid() : null)
+                .orderUuid(order.getOrderUuid())
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+        webSocketEventService.broadcastNotification(order.getRestaurant().getRestaurantUuid(), dismissNotif);
         return completeResponse;
     }
 
@@ -978,6 +1009,51 @@ public class OrderServiceImpl implements OrderService {
         webSocketEventService.broadcastKitchenUpdate(rUuid, kotResponse);
         // Also broadcast order update since item statuses changed
         webSocketEventService.broadcastOrderUpdate(rUuid, orderMapper.toOrderResponse(kot.getOrder()));
+
+        if (status.equals(KotTicketStatus.READY)) {
+            Order order = kot.getOrder();
+            UserAuthEntity waiter = order != null && order.getTable() != null ? order.getTable().getCurrentWaiter() : null;
+            String tableNum = order != null && order.getTable() != null ? order.getTable().getTableNumber() : "Table";
+            String waiterUuid = waiter != null ? waiter.getUserUuid() : null;
+
+            NotificationMessage readyNotif = NotificationMessage.builder()
+                    .id(java.util.UUID.randomUUID().toString())
+                    .type("KOT_READY")
+                    .title("Order Ready for Pickup!")
+                    .message("Order for Table " + tableNum + " (KOT " + kot.getKotNumber() + ") is READY for pickup!")
+                    .restaurantUuid(rUuid)
+                    .recipientRole("WAITER")
+                    .recipientUserUuid(waiterUuid)
+                    .tableNumber(tableNum)
+                    .tableUuid(order != null && order.getTable() != null ? order.getTable().getTableUuid() : null)
+                    .orderUuid(order != null ? order.getOrderUuid() : null)
+                    .kotNumber(kot.getKotNumber())
+                    .timestamp(java.time.LocalDateTime.now())
+                    .build();
+            webSocketEventService.broadcastNotification(rUuid, readyNotif);
+        } else if (status.equals(KotTicketStatus.COMPLETED)) {
+            // When KOT is marked completed/served -> broadcast removal to waiters
+            Order order = kot.getOrder();
+            String tableNum = order != null && order.getTable() != null ? order.getTable().getTableNumber() : "Table";
+            String tableUuid = order != null && order.getTable() != null ? order.getTable().getTableUuid() : null;
+            String orderUuid = order != null ? order.getOrderUuid() : null;
+
+            NotificationMessage servedNotif = NotificationMessage.builder()
+                    .id(java.util.UUID.randomUUID().toString())
+                    .type("KOT_SERVED")
+                    .title("Order Served")
+                    .message("Order for Table " + tableNum + " (KOT " + kot.getKotNumber() + ") is served")
+                    .restaurantUuid(rUuid)
+                    .recipientRole("WAITER")
+                    .recipientUserUuid(null)
+                    .tableNumber(tableNum)
+                    .tableUuid(tableUuid)
+                    .orderUuid(orderUuid)
+                    .kotNumber(kot.getKotNumber())
+                    .timestamp(java.time.LocalDateTime.now())
+                    .build();
+            webSocketEventService.broadcastNotification(rUuid, servedNotif);
+        }
 
         return kotResponse;
     }

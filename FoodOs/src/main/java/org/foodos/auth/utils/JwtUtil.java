@@ -58,6 +58,7 @@ public class JwtUtil {
                 .claim("username", username)
                 .claim("role", role)
                 .claim("userId", userId)
+                .claim("userUuid", userId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiryMinutes * 60 * 1000))
                 .signWith(key)

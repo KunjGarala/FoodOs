@@ -116,7 +116,7 @@ public class AuthService {
         );
 
         response.setHeader("Authorization", "Bearer " + accessToken);
-        GoogleAuthController.generateCookie(response, refreshToken);
+        GoogleAuthController.generateCookie(request, response, refreshToken);
     }
 
 
