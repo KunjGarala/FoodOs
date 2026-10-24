@@ -37,7 +37,6 @@ const SUB_TABS = [
   { label: 'Items', path: '/app/menu' },
   { label: 'Categories', path: '/app/categories' },
   { label: 'Modifier groups', path: '/app/modifiers' },
-  { label: 'Variations', path: null },
 ];
 
 // Availability UI options. Mapped to availableForDineIn (non-breaking):

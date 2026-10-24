@@ -119,13 +119,27 @@ const EditEmployee = ({ isOpen, onClose, employee, onSuccess }) => {
         payload.pin = formData.pin;
       }
 
-      await employeeAPI.update(employee.userId || employee.id, payload); // Adapt to whatever ID field is used
+      const targetId = employee?.userUuid || employee?.userId || employee?.id || employee?.uuid;
+      if (!targetId) {
+        setErrors({ form: 'Cannot update employee: missing employee identifier.' });
+        return;
+      }
+
+      await employeeAPI.update(targetId, payload);
       onSuccess();
       onClose();
     } catch (err) {
-      console.error(err);
-      // Backend validation errors could be mapped here
-      setErrors({ form: err.response?.data?.message || 'Failed to update employee' });
+      console.error('Failed to update employee:', err);
+      const data = err.response?.data;
+      let msg = 'Failed to update employee';
+      if (typeof data?.message === 'string' && data.message.trim()) {
+        msg = data.message;
+      } else if (typeof data?.error === 'string' && data.error.trim()) {
+        msg = data.error;
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setErrors({ form: msg });
     } finally {
       setLoading(false);
     }

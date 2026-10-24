@@ -26,6 +26,12 @@ public class ProfileResponseDTO {
     @Schema(description = "Unique UUID for user", example = "550e8400-e29b-41d4-a716-446655440000")
     private String userUuid;
 
+    @Schema(description = "Internal database ID for user", example = "1")
+    private Long id;
+
+    @Schema(description = "User ID alias", example = "1")
+    private Long userId;
+
     // ===================== AUTH =====================
     @Schema(description = "Username for login", example = "john.doe")
     private String username;

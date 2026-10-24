@@ -17,6 +17,7 @@ import { CouponList } from '../../components/coupon/CouponList';
 import { CouponSummary } from '../../components/coupon/CouponSummary';
 import { Pill, BtnPrimary, BtnGhost } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
+import { downloadInvoicePdf } from '../../utils/downloadInvoicePdf';
 
 import {
   fetchTableDetails,
@@ -302,7 +303,8 @@ const TableDetails = () => {
   const handleGenerateBill = async () => {
     if (!activeOrder) return;
     try {
-      await dispatch(generateBill(activeOrder.orderUuid)).unwrap();
+      const bill = await dispatch(generateBill(activeOrder.orderUuid)).unwrap();
+      downloadInvoicePdf(bill);
       refreshDetails();
     } catch (err) { console.error('Generate bill failed:', err); }
   };
@@ -395,8 +397,8 @@ const TableDetails = () => {
   const payments = activeOrder?.payments || [];
   const orderUuid = activeOrder?.orderUuid;
   const hasPendingItems = items.some((i) => i.kotStatus === 'PENDING' || !i.kotStatus);
-  // A closed/paid order can't take new items or payments.
-  const isCompleted = ['COMPLETED', 'PAID'].includes((activeOrder?.status || '').toUpperCase());
+  const orderStatus = (activeOrder?.status || '').toUpperCase();
+  const isCompleted = orderStatus === 'COMPLETED';
 
   // Check if all non-cancelled items are SERVED
   const nonCancelledItems = items.filter((i) => i.kotStatus !== 'CANCELLED' && i.status !== 'CANCELLED');
@@ -474,6 +476,7 @@ const TableDetails = () => {
   const total = activeOrder?.totalAmount ?? (subtotal - discount + tax + serviceCharge);
   const paidAmount = activeOrder?.paidAmount ?? payments.reduce((s, p) => s + (p.amount || 0), 0);
   const balance = total - paidAmount;
+  const isFullyPaid = orderStatus === 'PAID' || balance <= 0.01;
 
   // ── Coupon Effects ────────────────────────────────────
   useEffect(() => {
@@ -1137,7 +1140,7 @@ const TableDetails = () => {
                   </BtnGhost>
                 )}
 
-                {hasBillingAccess && isOccupied && items.length > 0 && (
+                {hasBillingAccess && (isOccupied || isBilled) && items.length > 0 && (allItemsServed || isFullyPaid) && (
                   <BtnGhost
                     className="w-full bg-paper-2 border border-line-input text-txt-dark hover:bg-paper-3"
                     onClick={handleGenerateBill}
@@ -1148,7 +1151,7 @@ const TableDetails = () => {
                   </BtnGhost>
                 )}
 
-                {hasBillingAccess && !isCompleted && (
+                {hasBillingAccess && !isCompleted && !isFullyPaid && (
                   <BtnGhost
                     className="w-full bg-paper-2 border border-line-input text-success-deep hover:bg-paper-3"
                     onClick={() => {
@@ -1176,7 +1179,7 @@ const TableDetails = () => {
               )}
 
               {/* Complete Order - only when ALL items served AND payment complete */}
-              {!isCompleted && allItemsServed && paidAmount >= total && total > 0 && (
+              {!isCompleted && allItemsServed && isFullyPaid && total > 0 && (
                 <button
                   className="mt-3 w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-input bg-success text-white font-semibold text-sm hover:brightness-105 transition disabled:opacity-50"
                   onClick={handleCompleteOrder}
@@ -1188,7 +1191,7 @@ const TableDetails = () => {
               )}
 
               {/* Show info when items served but payment pending */}
-              {allItemsServed && (paidAmount < total || total <= 0) && items.length > 0 && (
+              {allItemsServed && !isFullyPaid && items.length > 0 && (
                 <div className="mt-3 bg-paper-2 border border-line-light rounded-tile p-3 text-center">
                   <div className="flex items-center justify-center gap-2 text-ink-text">
                     <CreditCard className="h-4 w-4 text-marigold" />

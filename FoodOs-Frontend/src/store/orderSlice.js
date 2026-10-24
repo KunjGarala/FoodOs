@@ -1,6 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../services/api';
 
+const getRequestErrorMessage = (error, fallback) => {
+  const responseData = error.response?.data;
+  if (typeof responseData === 'string') return responseData;
+  return responseData?.message || responseData?.detail || responseData?.error || error.message || fallback;
+};
+
 // ─────────────────────────────────────────────────────────
 // Async Thunks - Order Management
 // ─────────────────────────────────────────────────────────
@@ -83,7 +89,7 @@ export const cancelOrder = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to cancel order');
+      return rejectWithValue(getRequestErrorMessage(error, 'Failed to cancel order'));
     }
   }
 );
@@ -96,7 +102,7 @@ export const completeOrder = createAsyncThunk(
       const response = await api.post(`/api/v1/orders/${orderUuid}/complete`);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to complete order');
+      return rejectWithValue(getRequestErrorMessage(error, 'Failed to complete order'));
     }
   }
 );
@@ -167,7 +173,7 @@ export const addPayment = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to add payment');
+      return rejectWithValue(getRequestErrorMessage(error, 'Failed to add payment'));
     }
   }
 );
@@ -525,21 +531,63 @@ const orderSlice = createSlice({
       })
       
       // Cancel Order
+      .addCase(cancelOrder.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(cancelOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o.uuid === action.payload.uuid);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
+        state.actionLoading = false;
+        const updatedOrder = action.payload;
+        const updatedUuid = updatedOrder?.orderUuid || updatedOrder?.uuid;
+        if (updatedUuid) {
+          const index = state.orders.findIndex(o => (o.orderUuid || o.uuid) === updatedUuid);
+          if (index !== -1) state.orders[index] = updatedOrder;
+          if ((state.currentOrder?.orderUuid || state.currentOrder?.uuid) === updatedUuid) {
+            state.currentOrder = updatedOrder;
+          }
         }
         state.success = 'Order cancelled';
       })
+      .addCase(cancelOrder.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
       
       // Complete Order
+      .addCase(completeOrder.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(completeOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o.uuid === action.payload.uuid);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
+        state.actionLoading = false;
+        const updatedOrder = action.payload;
+        const updatedUuid = updatedOrder?.orderUuid || updatedOrder?.uuid;
+        if (updatedUuid) {
+          const index = state.orders.findIndex(o => (o.orderUuid || o.uuid) === updatedUuid);
+          if (index !== -1) state.orders[index] = updatedOrder;
+          if ((state.currentOrder?.orderUuid || state.currentOrder?.uuid) === updatedUuid) {
+            state.currentOrder = updatedOrder;
+          }
         }
         state.success = 'Order completed';
+      })
+      .addCase(completeOrder.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Add Payment
+      .addCase(addPayment.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(addPayment.fulfilled, (state) => {
+        state.actionLoading = false;
+        state.success = 'Payment recorded';
+      })
+      .addCase(addPayment.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       })
       
       // Add Items
@@ -559,7 +607,7 @@ const orderSlice = createSlice({
       })
       
       // Send KOT
-      .addCase(sendKot.fulfilled, (state, action) => {
+      .addCase(sendKot.fulfilled, (state) => {
         state.success = 'KOT sent to kitchen';
       })
       

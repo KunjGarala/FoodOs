@@ -158,7 +158,7 @@ const StaffManagement = () => {
             const seen = new Set();
             const merged = [];
             results.flat().forEach((emp) => {
-                const key = emp.uuid || emp.id || emp.username;
+                const key = emp.userUuid || emp.uuid || emp.userId || emp.id || emp.username;
                 if (key && !seen.has(key)) {
                     seen.add(key);
                     merged.push(emp);
@@ -331,7 +331,7 @@ const StaffManagement = () => {
                         const onShift = isOnShift(emp);
                         return (
                             <div
-                                key={emp.uuid || emp.id}
+                                key={emp.userUuid || emp.uuid || emp.userId || emp.id}
                                 className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 hover:bg-paper-2 transition-colors"
                             >
                                 {/* Avatar + identity */}

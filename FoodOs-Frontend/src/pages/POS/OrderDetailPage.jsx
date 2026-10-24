@@ -2,13 +2,14 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  ArrowLeft, Loader2, AlertCircle, Receipt, User, Phone, Mail, MapPin,
+  ArrowLeft, Loader2, AlertCircle, Receipt, User, Phone, Mail, MapPin, Download,
   Calendar, Clock, Hash, CreditCard, ChefHat, FileText, UtensilsCrossed,
   Users, Tag, Percent, Banknote, Wallet, CheckCircle2
 } from 'lucide-react';
 import { Panel, Pill, BtnPrimary, BtnGhost } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
 import { fetchOrderByUuid, clearCurrentOrder } from '../../store/orderSlice';
+import { downloadInvoicePdf } from '../../utils/downloadInvoicePdf';
 
 const STATUS_CONFIG = {
   DRAFT:       { tone: 'neutral',  label: 'Draft' },
@@ -218,6 +219,8 @@ const OrderDetailPage = () => {
   const isPaid = (order.balanceAmount <= 0 || !order.balanceAmount) && order.paidAmount > 0;
   const hasBalance = order.balanceAmount > 0;
 
+  const handleDownloadPdf = () => downloadInvoicePdf(order);
+
   return (
     <div className="min-h-screen bg-paper pb-24 lg:pb-0">
       {/* Header */}
@@ -242,6 +245,10 @@ const OrderDetailPage = () => {
                 {hasBalance && <Pill tone="danger">Partial</Pill>}
               </div>
             </div>
+            <BtnGhost onClick={handleDownloadPdf} className="shrink-0">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Download PDF</span>
+            </BtnGhost>
           </div>
         </div>
       </div>

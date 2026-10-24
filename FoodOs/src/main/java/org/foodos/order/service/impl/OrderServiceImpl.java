@@ -436,11 +436,15 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderUuidAndIsDeletedFalse(orderUuid)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
+
+        if (order.getStatus() == OrderStatus.BILLED) {
+            return orderMapper.toOrderResponse(order);
+        }
+
         if (order.getCoupon() != null) {
             couponService.revalidateAppliedCoupon(order);
         }
-
-        restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
         // Ensure all items are served or ready
         boolean allItemsReady = order.getActiveItems().stream()

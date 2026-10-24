@@ -20,9 +20,50 @@ import {
 import {
   addItemsToOrder,
 } from '../../store/orderSlice';
-import { productModifierGroupAPI } from '../../services/api';
+import { modifierAPI, productModifierGroupAPI } from '../../services/api';
 import { Pill, BtnPrimary, BtnGhost, Sheet } from '../../components/ui/kit';
 import { cn } from '../../utils/cn';
+
+const normalizeModifierGroups = (response) => {
+  let groups = response?.data?.data ?? response?.data;
+  if (!Array.isArray(groups)) {
+    groups = groups?.modifierGroups || groups?.assignedGroups || groups?.content || [];
+  }
+  if (!Array.isArray(groups)) return [];
+
+  return groups.map((group) => {
+    const options = group.modifiers || group.options || group.modifierOptions || [];
+    return {
+      ...group,
+      modifierGroupUuid: group.modifierGroupUuid || group.groupUuid || group.uuid,
+      selectionType: group.selectionType || group.selectionMode || 'MULTIPLE',
+      isRequired: group.isRequired ?? group.required ?? false,
+      minSelection: group.minSelection ?? group.minOptions,
+      maxSelection: group.maxSelection ?? group.maxOptions,
+      modifiers: Array.isArray(options) ? options.map((modifier) => ({
+        ...modifier,
+        modifierUuid: modifier.modifierUuid || modifier.uuid || modifier.id,
+        name: modifier.name || modifier.modifierName || modifier.displayName || 'Option',
+        priceAdd: Number(modifier.priceAdd ?? modifier.priceAdjustment ?? modifier.price ?? 0),
+      })) : [],
+    };
+  }).filter((group) => group.modifierGroupUuid);
+};
+
+const normalizeModifierOptions = (response) => {
+  let options = response?.data?.data ?? response?.data;
+  if (!Array.isArray(options)) {
+    options = options?.modifiers || options?.options || options?.content || [];
+  }
+  if (!Array.isArray(options)) return [];
+
+  return options.map((modifier) => ({
+    ...modifier,
+    modifierUuid: modifier.modifierUuid || modifier.uuid || modifier.id,
+    name: modifier.name || modifier.modifierName || modifier.displayName || 'Option',
+    priceAdd: Number(modifier.priceAdd ?? modifier.priceAdjustment ?? modifier.price ?? 0),
+  })).filter((modifier) => modifier.modifierUuid);
+};
 
 const AddOrderItems = () => {
   const { tableUuid } = useParams();
@@ -137,24 +178,42 @@ const AddOrderItems = () => {
 
   // --- Modifier Logic ---
 
+  const loadProductModifierGroups = async (productUuid) => {
+    if (!activeRestaurantId || !productUuid) return [];
+
+    const response = await productModifierGroupAPI.getAll(activeRestaurantId, productUuid);
+    const groups = normalizeModifierGroups(response);
+    const groupsWithOptions = await Promise.all(groups.map(async (group) => {
+      if (group.modifiers.length > 0) return group;
+
+      const optionsResponse = await modifierAPI.getAll(
+        activeRestaurantId,
+        group.modifierGroupUuid,
+        false,
+      );
+      return { ...group, modifiers: normalizeModifierOptions(optionsResponse) };
+    }));
+
+    return groupsWithOptions
+      .filter((group) => group.isActive !== false)
+      .map((group) => ({
+        ...group,
+        modifiers: group.modifiers.filter((modifier) => modifier.isActive !== false),
+      }))
+      .filter((group) => group.modifiers.length > 0);
+  };
+
   const fetchModifierGroups = async (productUuid) => {
-    if (!activeRestaurantId) return;
     setModifierGroupsLoading(true);
     try {
-      const res = await productModifierGroupAPI.getAll(activeRestaurantId, productUuid);
-      const groups = res.data?.data || res.data || [];
-      // Only show active groups with active modifiers
-      const activeGroups = groups
-        .filter(g => g.isActive !== false)
-        .map(g => ({ ...g, modifiers: (g.modifiers || []).filter(m => m.isActive !== false) }))
-        .filter(g => g.modifiers.length > 0);
+      const activeGroups = await loadProductModifierGroups(productUuid);
       setModifierGroups(activeGroups);
-      // Pre-select default modifiers
+
       const defaults = {};
-      activeGroups.forEach(group => {
-        const defaultMods = group.modifiers.filter(m => m.isDefault);
+      activeGroups.forEach((group) => {
+        const defaultMods = group.modifiers.filter((modifier) => modifier.isDefault);
         if (defaultMods.length > 0) {
-          defaults[group.modifierGroupUuid] = defaultMods.map(m => m.modifierUuid);
+          defaults[group.modifierGroupUuid] = defaultMods.map((modifier) => modifier.modifierUuid);
         }
       });
       setSelectedModifiers(defaults);
@@ -309,12 +368,7 @@ const AddOrderItems = () => {
     // Try dynamically checking for modifier groups
     try {
       if (activeRestaurantId && product.productUuid) {
-        const res = await productModifierGroupAPI.getAll(activeRestaurantId, product.productUuid);
-        const groups = res.data?.data || res.data || [];
-        const activeGroups = groups
-          .filter(g => g.isActive !== false)
-          .map(g => ({ ...g, modifiers: (g.modifiers || []).filter(m => m.isActive !== false) }))
-          .filter(g => g.modifiers.length > 0);
+        const activeGroups = await loadProductModifierGroups(product.productUuid);
         if (activeGroups.length > 0) {
           openModifierSelection(product, variation);
           return;
@@ -343,12 +397,7 @@ const AddOrderItems = () => {
       // Try dynamically checking for modifier groups
       try {
         if (activeRestaurantId && product.productUuid) {
-          const res = await productModifierGroupAPI.getAll(activeRestaurantId, product.productUuid);
-          const groups = res.data?.data || res.data || [];
-          const activeGroups = groups
-            .filter(g => g.isActive !== false)
-            .map(g => ({ ...g, modifiers: (g.modifiers || []).filter(m => m.isActive !== false) }))
-            .filter(g => g.modifiers.length > 0);
+          const activeGroups = await loadProductModifierGroups(product.productUuid);
           if (activeGroups.length > 0) {
             openModifierSelection(product, variation);
             return;
@@ -447,7 +496,7 @@ const AddOrderItems = () => {
             return (
               <div
                 key={`cart-${idx}`}
-                className="bg-ink-card border border-ink-line rounded-tile p-3 group"
+                className="bg-[#1F2B37] border border-[#34465B] rounded-tile p-3 group"
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
@@ -460,9 +509,11 @@ const AddOrderItems = () => {
                         {item.modifiers.map((m, mi) => (
                           <span
                             key={mi}
-                            className="inline-flex items-center text-[10px] text-marigold bg-marigold/[0.12] rounded px-1.5 py-0.5"
+                            className="inline-flex items-center gap-1 text-[11px] text-[#FFFDF8] bg-[#34465B] rounded px-2 py-1"
                           >
-                            +{m.name} {m.priceAdd > 0 && <span className="font-mono ml-0.5">₹{m.priceAdd.toFixed(2)}</span>}
+                            {m.groupName && <span className="text-[#F4A261]">{m.groupName}:</span>}
+                            <span>{m.name}</span>
+                            {m.priceAdd > 0 && <span className="font-mono text-[#F4A261]">+₹{m.priceAdd.toFixed(2)}</span>}
                           </span>
                         ))}
                       </div>
@@ -473,17 +524,19 @@ const AddOrderItems = () => {
                   </p>
                 </div>
                 <div className="flex items-center justify-between mt-2.5">
-                  <div className="flex items-center gap-2 bg-ink-card2 rounded-full p-1">
+                  <div className="flex items-center gap-2 bg-[#273645] border border-[#34465B] rounded-full p-1">
                     <button
                       onClick={() => handleUpdateQuantity(idx, -1)}
-                      className="p-1 rounded-full hover:bg-ink-line transition-colors text-txt-light"
+                      className="p-1 rounded-full hover:bg-[#34465B] transition-colors text-[#FFFDF8]"
+                      aria-label={`Decrease ${item.name} quantity`}
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="text-sm font-display font-bold w-5 text-center text-txt-light">{item.quantity}</span>
+                    <span className="text-sm font-display font-bold w-7 text-center text-[#FFFDF8] tabular-nums" aria-label="Quantity">{item.quantity}</span>
                     <button
                       onClick={() => handleUpdateQuantity(idx, 1)}
-                      className="p-1 rounded-full hover:bg-ink-line transition-colors text-txt-light"
+                      className="p-1 rounded-full hover:bg-[#34465B] transition-colors text-[#FFFDF8]"
+                      aria-label={`Increase ${item.name} quantity`}
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -501,7 +554,7 @@ const AddOrderItems = () => {
         )}
       </div>
 
-      <div className="p-4 bg-ink-card2 border-t border-ink-line space-y-3">
+      <div className="p-4 bg-[#1F2B37] border-t border-[#34465B] space-y-3">
         <div className="flex justify-between items-center">
           <span className="font-semibold text-txt-light">Total</span>
           <span className="font-display font-bold text-2xl text-marigold font-mono">₹{cartTotal.toFixed(2)}</span>

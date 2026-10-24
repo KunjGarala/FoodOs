@@ -36,7 +36,6 @@ const MENU_TABS = [
   { label: 'Items', path: '/app/menu' },
   { label: 'Categories', path: '/app/categories' },
   { label: 'Modifier groups', path: '/app/modifiers' },
-  { label: 'Variations', path: null },
 ];
 
 // Deterministic accent color for initials thumbnails

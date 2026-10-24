@@ -56,8 +56,8 @@ public enum OrderStatus {
             case OPEN -> newStatus == KOT_SENT || newStatus == BILLED || newStatus == CANCELLED;
             case KOT_SENT ->
                 newStatus == IN_PROGRESS || newStatus == CANCELLED || newStatus == READY || newStatus == BILLED;
-            case IN_PROGRESS -> newStatus == READY || newStatus == CANCELLED;
-            case READY -> newStatus == SERVED || newStatus == CANCELLED;
+            case IN_PROGRESS -> newStatus == READY || newStatus == BILLED || newStatus == CANCELLED;
+            case READY -> newStatus == SERVED || newStatus == BILLED || newStatus == CANCELLED;
             case SERVED -> newStatus == BILLED || newStatus == CANCELLED;
             case BILLED -> newStatus == PAID || newStatus == CANCELLED;
             case PAID -> newStatus == COMPLETED;

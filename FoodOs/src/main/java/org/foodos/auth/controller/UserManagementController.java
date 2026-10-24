@@ -69,7 +69,7 @@ public class UserManagementController {
 
     @PatchMapping(value = "/employee/{userId}")
     public ResponseEntity<?> updateEmployee(
-            @PathVariable Long userId,
+            @PathVariable String userId,
             @RequestBody @Valid EmployeeUpdateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
     ) {
@@ -77,6 +77,7 @@ public class UserManagementController {
         return ResponseEntity.ok(Map.of(
                 "message", "Employee details updated successfully",
                 "userId", updatedUser.getId(),
+                "userUuid", updatedUser.getUserUuid(),
                 "username", updatedUser.getUsername()
         ));
     }

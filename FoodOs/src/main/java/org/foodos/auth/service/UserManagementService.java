@@ -159,12 +159,37 @@ public class UserManagementService {
         return saved;
     }
 
+    public UserAuthEntity updateEmployee(String targetUserIdentifier, EmployeeUpdateRequest request, UserAuthEntity currentUserParam) {
+        if (targetUserIdentifier == null || targetUserIdentifier.isBlank() || "undefined".equalsIgnoreCase(targetUserIdentifier)) {
+            throw new BusinessException("A valid employee ID or UUID must be provided.");
+        }
+
+        UserAuthEntity targetUser;
+        try {
+            Long numericId = Long.parseLong(targetUserIdentifier);
+            targetUser = userAuthRepository.findById(numericId)
+                    .or(() -> userAuthRepository.findByUserUuidAndIsDeletedFalse(targetUserIdentifier))
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with ID: " + targetUserIdentifier));
+        } catch (NumberFormatException e) {
+            targetUser = userAuthRepository.findByUserUuidAndIsDeletedFalse(targetUserIdentifier)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with UUID: " + targetUserIdentifier));
+        }
+
+        return updateEmployeeEntity(targetUser, request, currentUserParam);
+    }
+
     public UserAuthEntity updateEmployee(Long targetUserId, EmployeeUpdateRequest request, UserAuthEntity currentUserParam) {
+        if (targetUserId == null) {
+            throw new BusinessException("A valid employee ID must be provided.");
+        }
+        UserAuthEntity targetUser = userAuthRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with ID: " + targetUserId));
+        return updateEmployeeEntity(targetUser, request, currentUserParam);
+    }
+
+    private UserAuthEntity updateEmployeeEntity(UserAuthEntity targetUser, EmployeeUpdateRequest request, UserAuthEntity currentUserParam) {
         UserAuthEntity currentUser = userAuthRepository.findById(currentUserParam.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
-
-        UserAuthEntity targetUser = userAuthRepository.findById(targetUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         // Permissions Check
         if (currentUser.getRole() != UserRole.ADMIN) {
