@@ -336,8 +336,12 @@ const StaffManagement = () => {
                             >
                                 {/* Avatar + identity */}
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className={cn('h-11 w-11 shrink-0 rounded-full flex items-center justify-center font-display font-bold text-sm', avatarStyle(emp.fullName))}>
-                                        {initials(emp.fullName)}
+                                    <div className={cn('h-11 w-11 shrink-0 rounded-full flex items-center justify-center font-display font-bold text-sm overflow-hidden', avatarStyle(emp.fullName))}>
+                                        {emp.profilePictureUrl ? (
+                                            <img src={emp.profilePictureUrl} alt={emp.fullName} className="h-full w-full object-cover" />
+                                        ) : (
+                                            initials(emp.fullName)
+                                        )}
                                     </div>
                                     <div className="min-w-0">
                                         <p className="font-display font-semibold text-ink-text truncate">{emp.fullName}</p>
@@ -472,8 +476,12 @@ const StaffManagement = () => {
                     <div className="space-y-6">
                         {/* Basic Info */}
                         <div className="flex items-start gap-4 pb-4 border-b border-line-light">
-                            <div className={cn('h-16 w-16 rounded-full flex items-center justify-center font-display font-bold text-lg', avatarStyle(selectedEmployee.fullName))}>
-                                {initials(selectedEmployee.fullName)}
+                            <div className={cn('h-16 w-16 rounded-full flex items-center justify-center font-display font-bold text-lg overflow-hidden', avatarStyle(selectedEmployee.fullName))}>
+                                {selectedEmployee.profilePictureUrl ? (
+                                    <img src={selectedEmployee.profilePictureUrl} alt={selectedEmployee.fullName} className="h-full w-full object-cover" />
+                                ) : (
+                                    initials(selectedEmployee.fullName)
+                                )}
                             </div>
                             <div>
                                 <h3 className="font-display text-xl font-bold text-ink-text">{selectedEmployee.fullName}</h3>

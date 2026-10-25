@@ -10,11 +10,18 @@ const PRIMARY_KEYS = ['home', 'floor', 'kitchen', 'menu'];
 
 /** Mobile bottom tab bar (< lg) + a "More" sheet for the rest of the nav. */
 export const BottomTabs = () => {
-  const { user, role, restaurants, restaurantIds, activeRestaurantId } = useSelector((s) => s.auth);
+  const { user, role, restaurants, restaurantIds, activeRestaurantId, profilePictureUrl } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const initial = (user || 'U').trim().charAt(0).toUpperCase();
+
+  // Hide global navigation bottom tabs during dedicated POS ordering workflows
+  // so the action bar (Current Selection & Add to Order) is 100% visible and unobstructed
+  if (pathname.includes('/add-items')) {
+    return null;
+  }
 
   const all = navForRole(role);
   const primary = PRIMARY_KEYS.map((k) => all.find((i) => i.key === k)).filter(Boolean).slice(0, 4);
@@ -56,9 +63,18 @@ export const BottomTabs = () => {
           <div className="absolute inset-0 bg-ink/50" onClick={() => setMoreOpen(false)} />
           <div className="absolute bottom-0 inset-x-0 bg-ink-700 rounded-t-card p-4 pb-8 animate-slide-up max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-semibold text-txt-light">{user || 'User'}</p>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-txt-faintDark">{role || 'Role'}</p>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-gold text-ink font-bold grid place-items-center shrink-0 overflow-hidden text-sm">
+                  {profilePictureUrl ? (
+                    <img src={profilePictureUrl} alt={user || 'User'} className="h-full w-full object-cover" />
+                  ) : (
+                    initial
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-txt-light">{user || 'User'}</p>
+                  <p className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold">{role || 'Role'}</p>
+                </div>
               </div>
               <button onClick={() => setMoreOpen(false)} className="p-2 text-txt-mutedDark hover:text-txt-light">
                 <X className="h-5 w-5" />

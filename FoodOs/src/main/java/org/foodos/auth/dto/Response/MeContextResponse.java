@@ -65,6 +65,9 @@ public class MeContextResponse {
         @Schema(description = "Profile picture URL")
         private String profilePictureUrl;
 
+        @Schema(description = "Whether notifications are enabled for this user")
+        private Boolean notificationEnabled;
+
         @Schema(description = "Whether the user has a PIN configured")
         @JsonProperty("hasPin")
         private boolean hasPin;

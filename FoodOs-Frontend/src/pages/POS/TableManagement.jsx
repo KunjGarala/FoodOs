@@ -82,9 +82,10 @@ const TableManagement = () => {
   // Everyone on the floor view sees every table (vacant, occupied, billing, etc.).
   const displayTables = tables;
 
-  // A waiter may only ACT on tables assigned to them; managers/owners act on any.
+  // If no waiter is assigned to the table (!table.currentWaiterUuid), ANY waiter can take order / act on it.
+  // If a waiter IS assigned, only that assigned waiter (or managers/owners) can act on it.
   const canActOnTable = (table) =>
-    !isWaiter || table.currentWaiterUuid === currentUserUuid;
+    !isWaiter || !table.currentWaiterUuid || table.currentWaiterUuid === currentUserUuid;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);

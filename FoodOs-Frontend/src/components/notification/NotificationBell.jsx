@@ -12,6 +12,7 @@ import {
   toggleSound,
   clearActiveToast,
   toggleManagementNotifications,
+  saveNotificationPreference,
 } from '../../store/notificationSlice';
 
 export const NotificationBell = ({ className = '' }) => {
@@ -249,7 +250,7 @@ export const NotificationBell = ({ className = '' }) => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => dispatch(toggleManagementNotifications())}
+                  onClick={() => dispatch(saveNotificationPreference(!managementNotificationsEnabled))}
                   className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                     managementNotificationsEnabled
                       ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'

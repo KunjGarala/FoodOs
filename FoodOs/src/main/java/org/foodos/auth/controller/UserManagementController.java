@@ -130,6 +130,37 @@ public class UserManagementController {
         return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
     }
 
+    @PostMapping(value = "/profile/picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProfileResponseDTO> uploadProfilePicture(
+            @RequestParam("file") MultipartFile file,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        UserAuthEntity updated = userManagementService.updateProfilePicture(currentUser, file);
+        return ResponseEntity.ok(userManagementService.getProfile(updated));
+    }
+
+    @PatchMapping("/notifications/preference")
+    public ResponseEntity<?> updateNotificationPreference(
+            @RequestBody Map<String, Boolean> body,
+            @Parameter(hidden = true) @AuthenticationPrincipal UserAuthEntity currentUser
+    ) {
+        if (currentUser == null) {
+            throw new BusinessException("Authentication required");
+        }
+        Boolean enabled = body.get("enabled");
+        if (enabled == null) {
+            enabled = body.get("notificationEnabled");
+        }
+        if (enabled == null) {
+            throw new BusinessException("enabled field is required");
+        }
+        UserAuthEntity updated = userManagementService.updateNotificationPreference(currentUser, enabled);
+        return ResponseEntity.ok(Map.of("success", true, "notificationEnabled", updated.getNotificationEnabled()));
+    }
+
     @GetMapping("/roles")
     public ResponseEntity<List<RoleResponse>> listRoles() {
         List<RoleResponse> roles = Arrays.stream(UserRole.values())

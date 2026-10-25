@@ -264,7 +264,14 @@ export const restaurantAPI = {
   createOutlet:          (parentUuid, data)           => api.post(`/api/restaurants/${parentUuid}/outlets`, data),
   getRestaurantDetail:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/detail`),
   getHierarchySummary:   (restaurantUuid)             => api.get(`/api/restaurants/${restaurantUuid}/hierarchy/summary`),
-  updateRestaurant:      (restaurantUuid, data)       => api.patch(`/api/restaurants/${restaurantUuid}/update-details`, data),
+  updateRestaurant:      (restaurantUuid, data)       => {
+    if (data instanceof FormData) {
+      return api.patch(`/api/restaurants/${restaurantUuid}/update`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.patch(`/api/restaurants/${restaurantUuid}/update-details`, data);
+  },
 };
 
 export const employeeAPI = {
@@ -275,6 +282,15 @@ export const employeeAPI = {
 export const profileAPI = {
   getProfile: () => api.get('/api/users/profile'),
   updateProfile: (data) => api.patch('/api/users/profile', data),
+  uploadProfilePicture: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/api/users/profile/picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  updateNotificationPreference: (enabled) =>
+    api.patch('/api/users/notifications/preference', { enabled }),
   sendEmailOtp: (newEmail) => api.post('/api/users/profile/email-otp/send', { newEmail }),
   verifyEmailOtp: (newEmail, otp) => api.post('/api/users/profile/email-otp/verify', { newEmail, otp }),
 };

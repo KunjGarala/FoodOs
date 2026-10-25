@@ -18,6 +18,18 @@ import { selectActiveRestaurant } from '../../store/authSlice';
 import { couponAPI } from '../../services/api';
 import { InapplicableCouponModal } from '../../components/coupon/InapplicableCouponModal';
 
+// Clean any corrupted UTF-8 mojibake (e.g. 'Γé╣' or 'â‚¹') into proper '₹'
+const cleanMojibake = (str) => {
+  if (!str || typeof str !== 'string') return str || '';
+  return str
+    .replace(/Γé╣/g, '₹')
+    .replace(/â‚¹/g, '₹')
+    .replace(/Ã¢â‚¬Â¹/g, '₹')
+    .replace(/ΓÇö/g, '—')
+    .replace(/ΓÇô/g, '–');
+};
+
+
 const AllOffers = () => {
   const { tableUuid } = useParams();
   const [searchParams] = useSearchParams();
@@ -51,7 +63,13 @@ const AllOffers = () => {
           page: 0
         });
         const data = response.data;
-        const list = data?.content || data || [];
+        const rawList = data?.content || data || [];
+        const list = rawList.map((c) => ({
+          ...c,
+          name: cleanMojibake(c.name),
+          code: cleanMojibake(c.code),
+          description: cleanMojibake(c.description),
+        }));
         // Only display active coupons where current subtotal meets or exceeds minOrderAmount
         setCoupons(list.filter(c => {
           if (c.active === false || c.isActive === false) return false;

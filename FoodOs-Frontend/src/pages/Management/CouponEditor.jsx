@@ -15,8 +15,22 @@ import {
   AlertCircle,
   Sparkles,
   Ticket,
+  IndianRupee,
+  Percent,
 } from 'lucide-react';
 import { couponAPI } from '../../services/api';
+
+// Clean any corrupted UTF-8 mojibake (e.g. 'Γé╣' or 'â‚¹') into proper '₹'
+const cleanMojibake = (str) => {
+  if (!str || typeof str !== 'string') return str || '';
+  return str
+    .replace(/Γé╣/g, '₹')
+    .replace(/â‚¹/g, '₹')
+    .replace(/Ã¢â‚¬Â¹/g, '₹')
+    .replace(/ΓÇö/g, '—')
+    .replace(/ΓÇô/g, '–');
+};
+
 
 const INPUT_CLS =
   'w-full h-10 px-3 rounded-input bg-paper-2 border border-line-input text-sm text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/40 focus:border-marigold disabled:opacity-60 disabled:cursor-not-allowed';
@@ -68,9 +82,9 @@ const CouponEditor = () => {
           const coupon = response.data;
 
           setFormData({
-            code: coupon.code || '',
-            name: coupon.name || '',
-            description: coupon.description || '',
+            code: cleanMojibake(coupon.code) || '',
+            name: cleanMojibake(coupon.name) || '',
+            description: cleanMojibake(coupon.description) || '',
             discountType: coupon.discountType || 'PERCENTAGE',
             discountValue: coupon.discountValue !== null ? String(coupon.discountValue) : '',
             maxDiscountAmount: coupon.maxDiscountAmount !== null ? String(coupon.maxDiscountAmount) : '',
@@ -131,6 +145,9 @@ const CouponEditor = () => {
 
       const payload = {
         ...formData,
+        code: cleanMojibake(formData.code),
+        name: cleanMojibake(formData.name),
+        description: cleanMojibake(formData.description),
         discountType: formData.discountType,
         discountValue: parseFloat(formData.discountValue),
         maxDiscountAmount: formData.discountType === 'FIXED' ? null : (formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null),
@@ -175,14 +192,14 @@ const CouponEditor = () => {
     );
   }
 
-  // ΓöÇΓöÇ Live preview helpers (presentation only) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  // ── Live preview helpers (presentation only) ──────────────────────────────
   const isPercent = formData.discountType === 'PERCENTAGE';
   const discountLabel = formData.discountValue
     ? isPercent
       ? `${formData.discountValue}% OFF`
-      : `Γé╣${formData.discountValue} OFF`
-    : 'ΓÇö';
-  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'ΓÇö');
+      : `₹${formData.discountValue} OFF`
+    : '—';
+  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
@@ -223,7 +240,7 @@ const CouponEditor = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ΓöÇΓöÇ LEFT: form ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+        {/* ── LEFT: form ──────────────────────────────────────────────── */}
         <form id="coupon-form" onSubmit={handleSubmit}>
           <Panel className="p-5 sm:p-6 space-y-5">
             {/* Code + generate */}
@@ -276,8 +293,22 @@ const CouponEditor = () => {
               <label className={LABEL_CLS}>Discount type *</label>
               <Segmented
                 options={[
-                  { value: 'PERCENTAGE', label: '%' },
-                  { value: 'FLAT_AMOUNT', label: 'Γé╣' },
+                  {
+                    value: 'PERCENTAGE',
+                    label: (
+                      <span className="flex items-center gap-1.5 font-semibold text-xs sm:text-sm">
+                        <Percent className="h-4 w-4" /> Percentage (%)
+                      </span>
+                    ),
+                  },
+                  {
+                    value: 'FLAT_AMOUNT',
+                    label: (
+                      <span className="flex items-center gap-1.5 font-semibold text-xs sm:text-sm">
+                        <IndianRupee className="h-4 w-4" /> Flat Amount (₹)
+                      </span>
+                    ),
+                  },
                 ]}
                 value={formData.discountType}
                 onChange={(value) => setFormData({ ...formData, discountType: value })}
@@ -288,31 +319,41 @@ const CouponEditor = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Discount value *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder={isPercent ? '20' : '15.00'}
-                  value={formData.discountValue}
-                  onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                  required
-                  className={INPUT_CLS}
-                />
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-txt-muted text-sm font-semibold">
+                    {isPercent ? <Percent className="h-4 w-4 text-marigold" /> : <IndianRupee className="h-4 w-4 text-marigold" />}
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder={isPercent ? '20' : '15.00'}
+                    value={formData.discountValue}
+                    onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
+                    required
+                    className={cn(INPUT_CLS, 'pl-9 font-mono')}
+                  />
+                </div>
               </div>
               <div>
                 <label className={LABEL_CLS}>Max cap amount</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Optional max cap"
-                  value={formData.maxDiscountAmount}
-                  onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
-                  disabled={formData.discountType === 'FLAT_AMOUNT'}
-                  className={INPUT_CLS}
-                />
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-txt-muted text-sm font-semibold">
+                    <IndianRupee className="h-4 w-4 text-txt-muted" />
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Optional max cap"
+                    value={formData.maxDiscountAmount}
+                    onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
+                    disabled={formData.discountType === 'FLAT_AMOUNT'}
+                    className={cn(INPUT_CLS, 'pl-9 font-mono')}
+                  />
+                </div>
                 {isPercent && (
-                  <p className="text-xs text-txt-faint mt-1.5">Maximum discount a customer can receive.</p>
+                  <p className="text-xs text-txt-faint mt-1.5">Maximum discount a customer can receive (in ₹).</p>
                 )}
               </div>
             </div>
@@ -322,15 +363,20 @@ const CouponEditor = () => {
               <label className={LABEL_CLS}>
                 Minimum order amount * <span className="font-normal normal-case text-txt-muted">(Required Bill to display this coupon)</span>
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.minOrderAmount}
-                onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
-                required
-                className={INPUT_CLS}
-              />
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-txt-muted text-sm font-semibold">
+                  <IndianRupee className="h-4 w-4 text-txt-muted" />
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.minOrderAmount}
+                  onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
+                  required
+                  className={cn(INPUT_CLS, 'pl-9 font-mono')}
+                />
+              </div>
             </div>
 
             {/* Date range */}
@@ -456,7 +502,7 @@ const CouponEditor = () => {
           </Panel>
         </form>
 
-        {/* ΓöÇΓöÇ RIGHT: live preview ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+        {/* ── RIGHT: live preview ─────────────────────────────────────── */}
         <div className="space-y-4">
           <p className="eyebrow text-[11px] text-txt-faint">Live preview</p>
 
@@ -474,7 +520,7 @@ const CouponEditor = () => {
             </div>
 
             <p className="font-display font-bold text-[28px] leading-tight mt-3">{discountLabel}</p>
-            <p className="text-sm text-txt-mutedDark mt-0.5 truncate">{formData.name || 'Promotion name'}</p>
+            <p className="text-sm text-txt-mutedDark mt-0.5 truncate">{cleanMojibake(formData.name) || 'Promotion name'}</p>
 
             <div className="my-5 border-t border-dashed border-ink-line" />
 
@@ -496,7 +542,7 @@ const CouponEditor = () => {
             </div>
 
             <p className="text-xs text-txt-mutedDark mt-4">
-              Valid {fmtDate(formData.startDate)} ΓÇô {fmtDate(formData.endDate)}
+              Valid {fmtDate(formData.startDate)} – {fmtDate(formData.endDate)}
             </p>
           </div>
 
@@ -510,12 +556,12 @@ const CouponEditor = () => {
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-txt-muted">Min. order</dt>
-                <dd className="font-medium text-ink-text font-mono">Γé╣{formData.minOrderAmount || '0.00'}</dd>
+                <dd className="font-medium text-ink-text font-mono">₹{formData.minOrderAmount || '0.00'}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-txt-muted">Max cap</dt>
                 <dd className="font-medium text-ink-text font-mono">
-                  {formData.maxDiscountAmount ? `Γé╣${formData.maxDiscountAmount}` : 'ΓÇö'}
+                  {formData.maxDiscountAmount ? `₹${formData.maxDiscountAmount}` : '—'}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">

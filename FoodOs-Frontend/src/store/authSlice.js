@@ -18,6 +18,7 @@ function clearLocalStorage() {
   localStorage.removeItem(KEYS.TOKEN);
   localStorage.removeItem(KEYS.USER);
   localStorage.removeItem(KEYS.ACTIVE_RESTAURANT);
+  localStorage.removeItem('refreshToken'); // Ensure legacy/stale tokens are purged
 }
 
 function parseStoredUser() {
@@ -54,7 +55,10 @@ function normalizeContext(data) {
     data?.primaryRestaurant?.restaurantUuid ||
     restaurantIds[0] ||
     null;
-  return { restaurants, restaurantIds, primaryRestaurantUuid };
+  const identity = data?.identity || data?.user || {};
+  const profilePictureUrl = identity?.profilePictureUrl || null;
+  const notificationEnabled = identity?.notificationEnabled !== false;
+  return { restaurants, restaurantIds, primaryRestaurantUuid, profilePictureUrl, notificationEnabled };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -69,6 +73,8 @@ const EMPTY_STATE = {
   restaurantIds:       [],
   restaurants:         [], // full RestaurantBasicDTOs from /api/me/context (for the picker)
   activeRestaurantId:  null,
+  profilePictureUrl:   null,
+  notificationEnabled: true,
   isAuthenticated:     false,
   loading:             false,
   error:               null,
@@ -115,6 +121,8 @@ function initializeState() {
   }
 
   const userUuid = decoded.userUuid || userId;
+  const profilePictureUrl = storedUser?.profilePictureUrl || null;
+  const notificationEnabled = storedUser?.notificationEnabled !== false;
   return {
     user:               username,
     userId,
@@ -124,6 +132,8 @@ function initializeState() {
     restaurantIds,
     restaurants:        [],
     activeRestaurantId,
+    profilePictureUrl,
+    notificationEnabled,
     // ✅ Stay authenticated even if access token is expired.
     //    The interceptor will refresh it before any real request hits the server.
     isAuthenticated:    true,
@@ -251,6 +261,18 @@ const authSlice = createSlice({
   initialState: initializeState(),
 
   reducers: {
+    setProfilePictureUrl: (state, action) => {
+      state.profilePictureUrl = action.payload;
+      const stored = parseStoredUser() || {};
+      localStorage.setItem(KEYS.USER, JSON.stringify({ ...stored, profilePictureUrl: action.payload }));
+    },
+
+    setNotificationPreference: (state, action) => {
+      state.notificationEnabled = action.payload;
+      const stored = parseStoredUser() || {};
+      localStorage.setItem(KEYS.USER, JSON.stringify({ ...stored, notificationEnabled: action.payload }));
+    },
+
     // ── Full logout ──────────────────────────────────────
     logout: (state) => {
       Object.assign(state, EMPTY_STATE);
@@ -358,9 +380,11 @@ const authSlice = createSlice({
 
       // ── /me/context refresh (app mount, OAuth) ───────────
       .addCase(fetchMeContext.fulfilled, (state, action) => {
-        const { restaurantIds, restaurants, primaryRestaurantUuid } = action.payload;
+        const { restaurantIds, restaurants, primaryRestaurantUuid, profilePictureUrl, notificationEnabled } = action.payload;
         state.restaurantIds = restaurantIds;
         state.restaurants   = restaurants;
+        if (profilePictureUrl !== undefined) state.profilePictureUrl = profilePictureUrl;
+        if (notificationEnabled !== undefined) state.notificationEnabled = notificationEnabled;
 
         // Keep the current selection if it's still accessible; otherwise fall
         // back to the primary outlet (or the first one).
@@ -373,7 +397,7 @@ const authSlice = createSlice({
 
         // Refresh the persisted outlet list so the next reload hydrates fresh.
         const storedUser = parseStoredUser() || {};
-        localStorage.setItem(KEYS.USER, JSON.stringify({ ...storedUser, restaurantIds }));
+        localStorage.setItem(KEYS.USER, JSON.stringify({ ...storedUser, restaurantIds, profilePictureUrl: state.profilePictureUrl, notificationEnabled: state.notificationEnabled }));
       });
   },
 });
@@ -387,11 +411,14 @@ export const {
   setActiveRestaurant,
   updateTokenAndRole,
   setGoogleAuthTokens,
+  setProfilePictureUrl,
+  setNotificationPreference,
 } = authSlice.actions;
 
 export const selectRole              = (state) => state.auth.role;
 export const selectActiveRestaurant  = (state) => state.auth.activeRestaurantId;
 export const selectCurrentUser       = (state) => state.auth.user;
+export const selectProfilePictureUrl = (state) => state.auth.profilePictureUrl;
 export const selectIsAuthenticated   = (state) => state.auth.isAuthenticated;
 
 export default authSlice.reducer;

@@ -173,12 +173,6 @@ const CreateOutlet = () => {
                 dispatch(updateTokenAndRole(token));
             }
 
-            // Check if refresh token is provided in headers
-            const refreshToken = response.headers['refresh-token'];
-            if (refreshToken) {
-                localStorage.setItem('refreshToken', refreshToken);
-            }
-
             navigate('/app');
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to create outlet');

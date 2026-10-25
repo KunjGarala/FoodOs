@@ -56,4 +56,10 @@ public class ProfileUpdateDTO {
 
     @Schema(description = "Primary restaurant UUID", example = "123e4567-e89b-12d3-a456-426614174000")
     private String primaryRestaurantUuid;
+
+    @Schema(description = "Profile picture URL")
+    private String profilePictureUrl;
+
+    @Schema(description = "Whether notifications are enabled for this user")
+    private Boolean notificationEnabled;
 }

@@ -39,6 +39,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Order Service Implementation
@@ -455,7 +456,8 @@ public class OrderServiceImpl implements OrderService {
 
         restaurantAccessGuard.assertCanAccess(order.getRestaurant().getRestaurantUuid());
 
-        if (order.getStatus() == OrderStatus.BILLED) {
+        // If order is already billed, paid, or completed, the bill is already finalized
+        if (order.getStatus() == OrderStatus.BILLED || order.getStatus() == OrderStatus.PAID || order.getStatus() == OrderStatus.COMPLETED) {
             return orderMapper.toOrderResponse(order);
         }
 
@@ -709,6 +711,20 @@ public class OrderServiceImpl implements OrderService {
         if(order.getStatus().equals(OrderStatus.DRAFT)){
             order.setStatus(OrderStatus.OPEN);
         }
+        if (order.getWaiter() == null && currentUserId != null) {
+            Optional<UserAuthEntity> userOpt = userRepository.findById(currentUserId);
+            if (userOpt.isPresent()) {
+                UserAuthEntity user = userOpt.get();
+                if (user.getRole() == org.foodos.auth.entity.UserRole.WAITER) {
+                    order.setWaiter(user);
+                    if (order.getTable() != null && order.getTable().getCurrentWaiter() == null) {
+                        order.getTable().setCurrentWaiter(user);
+                        tableRepository.save(order.getTable());
+                    }
+                }
+            }
+        }
+
         for (OrderItemRequest itemRequest : items) {
             OrderItem orderItem = createOrderItem(itemRequest, order);
             order.addItem(orderItem);

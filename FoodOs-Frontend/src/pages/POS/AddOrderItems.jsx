@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   ArrowLeft, Search, Plus, Minus, Trash2, Loader2,
-  ShoppingCart, Check, Settings2
+  ShoppingCart, Check, Settings2, X
 } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import {
@@ -77,6 +77,7 @@ const AddOrderItems = () => {
   const [variationSelectionProduct, setVariationSelectionProduct] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCartSheet, setShowCartSheet] = useState(false);
+  const [mobileViewTab, setMobileViewTab] = useState('menu'); // 'menu' | 'selection'
 
   // Modifier selection state
   const [modifierSelectionProduct, setModifierSelectionProduct] = useState(null);
@@ -471,14 +472,25 @@ const AddOrderItems = () => {
             Current Selection
           </h2>
         </div>
-        {itemCart.length > 0 && (
-          <button
-            onClick={handleClearCart}
-            className="text-xs font-medium text-danger hover:brightness-110 transition"
-          >
-            Clear All
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {itemCart.length > 0 && (
+            <button
+              onClick={handleClearCart}
+              className="text-xs font-medium text-danger hover:brightness-110 transition bg-danger/10 px-2.5 py-1 rounded-lg"
+            >
+              Clear All
+            </button>
+          )}
+          {showCartSheet && (
+            <button
+              onClick={() => setShowCartSheet(false)}
+              className="lg:hidden p-1.5 text-txt-mutedDark hover:text-txt-light rounded-lg hover:bg-[#34465B] transition"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -554,20 +566,20 @@ const AddOrderItems = () => {
         )}
       </div>
 
-      <div className="p-4 bg-[#1F2B37] border-t border-[#34465B] space-y-3">
+      <div className="p-4 bg-[#1F2B37] border-t border-[#34465B] space-y-3 shrink-0 sticky bottom-0 z-10 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="flex justify-between items-center">
           <span className="font-semibold text-txt-light">Total</span>
           <span className="font-display font-bold text-2xl text-marigold font-mono">₹{cartTotal.toFixed(2)}</span>
         </div>
         <BtnPrimary
-          className="w-full h-11"
+          className="w-full h-12 text-sm font-bold shadow-md"
           onClick={handleSubmit}
           disabled={itemCart.length === 0 || isSubmitting}
         >
           {isSubmitting ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Adding...</>
+            <><Loader2 className="h-4 w-4 animate-spin" /> Adding to Order...</>
           ) : (
-            <><Plus className="h-4 w-4" /> Add to Order</>
+            <><Plus className="h-4 w-4" /> Add to Order ({cartCount} item{cartCount === 1 ? '' : 's'})</>
           )}
         </BtnPrimary>
       </div>
@@ -581,72 +593,129 @@ const AddOrderItems = () => {
       <div className="flex-1 flex flex-col gap-4 min-w-0">
         {/* Header: back + search + categories */}
         <div className="flex flex-col gap-3 sm:gap-4 bg-paper-card p-3 sm:p-4 rounded-card border border-line-light">
-          <div className="flex items-center gap-3">
-            <BtnGhost
-              onClick={() => navigate(-1)}
-              className="h-10 w-10 px-0 shrink-0"
-              title="Back to table"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </BtnGhost>
-            <div>
-              <p className="eyebrow text-[10px] text-txt-faint">Point of Sale</p>
-              <h1 className="font-display font-bold text-lg sm:text-xl text-ink-text leading-tight">
-                {tableLabel ? `Table ${tableLabel} · Add Items` : 'Add Items'}
-              </h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <BtnGhost
+                onClick={() => navigate(-1)}
+                className="h-10 w-10 px-0 shrink-0"
+                title="Back to table"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </BtnGhost>
+              <div className="min-w-0">
+                <p className="eyebrow text-[10px] text-txt-faint truncate">Point of Sale</p>
+                <h1 className="font-display font-bold text-lg sm:text-xl text-ink-text leading-tight truncate">
+                  {tableLabel ? `Table ${tableLabel} · Add Items` : 'Add Items'}
+                </h1>
+              </div>
             </div>
-          </div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-txt-faint" />
-            <input
-              placeholder="Search items..."
-              className="w-full pl-10 pr-3 py-2.5 text-sm bg-paper-2 border border-line-input rounded-input text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/50 focus:border-transparent"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {/* Category chips */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {/* Mobile Header Cart Shortcut */}
             <button
-              onClick={() => setActiveCategory('all')}
+              type="button"
+              onClick={() => setShowCartSheet(true)}
+              className="lg:hidden relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ink text-txt-light border border-ink-line shadow-xs active:scale-95 transition shrink-0"
+              title="View current selection"
+            >
+              <ShoppingCart className="h-4 w-4 text-marigold" />
+              <span className="text-xs font-semibold">Selection</span>
+              {cartCount > 0 && (
+                <span className="bg-marigold text-ink text-[11px] font-bold px-1.5 py-0.2 rounded-full min-w-[20px] text-center font-mono">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile View Toggle: Menu vs Current Selection */}
+          <div className="lg:hidden flex bg-paper-2 p-1 rounded-xl border border-line-light text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setMobileViewTab('menu')}
               className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
-                activeCategory === 'all'
-                  ? 'bg-marigold text-ink'
-                  : 'bg-paper-3 text-txt-muted hover:bg-paper-2'
+                'flex-1 py-2 rounded-lg text-center font-semibold transition flex items-center justify-center gap-1.5',
+                mobileViewTab === 'menu'
+                  ? 'bg-marigold text-ink shadow-xs'
+                  : 'text-txt-muted hover:text-ink-text'
               )}
             >
-              All Categories
+              🍽️ Menu Items
             </button>
-            {menuLoading ? (
-              <div className="flex items-center gap-2 px-4 py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-txt-faint" />
-                <span className="text-sm text-txt-muted">Loading...</span>
-              </div>
-            ) : (
-              hierarchicalCategories.map(cat => (
-                <button
-                  key={cat.categoryUuid}
-                  onClick={() => setActiveCategory(cat.name)}
-                  className={cn(
-                    'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
-                    activeCategory === cat.name
-                      ? 'bg-marigold text-ink'
-                      : 'bg-paper-3 text-txt-muted hover:bg-paper-2',
-                    !cat.isParent && 'pl-6'
-                  )}
-                >
-                  {cat.isParent ? cat.name : cat.displayName}
-                </button>
-              ))
-            )}
+            <button
+              type="button"
+              onClick={() => setMobileViewTab('selection')}
+              className={cn(
+                'flex-1 py-2 rounded-lg text-center font-semibold transition flex items-center justify-center gap-1.5',
+                mobileViewTab === 'selection'
+                  ? 'bg-ink text-txt-light shadow-xs'
+                  : 'text-txt-muted hover:text-ink-text'
+              )}
+            >
+              <ShoppingCart className="h-3.5 w-3.5 text-marigold" />
+              <span>Selection ({cartCount})</span>
+              {cartTotal > 0 && <span className="text-marigold font-mono font-bold">₹{cartTotal.toFixed(0)}</span>}
+            </button>
+          </div>
+
+          {/* Mobile View Tab Content: When Selection tab is active, display the cart section right here */}
+          {mobileViewTab === 'selection' && (
+            <div className="lg:hidden flex-1 flex flex-col bg-ink rounded-card border border-ink-line overflow-hidden my-1">
+              {cartBody}
+            </div>
+          )}
+
+          <div className={cn("flex flex-col gap-3", mobileViewTab === 'selection' && "hidden lg:flex")}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-txt-faint" />
+              <input
+                placeholder="Search items..."
+                className="w-full pl-10 pr-3 py-2.5 text-sm bg-paper-2 border border-line-input rounded-input text-ink-text placeholder:text-txt-faint focus:outline-none focus:ring-2 focus:ring-marigold/50 focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Category chips */}
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                onClick={() => setActiveCategory('all')}
+                className={cn(
+                  'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+                  activeCategory === 'all'
+                    ? 'bg-marigold text-ink'
+                    : 'bg-paper-3 text-txt-muted hover:bg-paper-2'
+                )}
+              >
+                All Categories
+              </button>
+              {menuLoading ? (
+                <div className="flex items-center gap-2 px-4 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-txt-faint" />
+                  <span className="text-sm text-txt-muted">Loading...</span>
+                </div>
+              ) : (
+                hierarchicalCategories.map(cat => (
+                  <button
+                    key={cat.categoryUuid}
+                    onClick={() => setActiveCategory(cat.name)}
+                    className={cn(
+                      'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+                      activeCategory === cat.name
+                        ? 'bg-marigold text-ink'
+                        : 'bg-paper-3 text-txt-muted hover:bg-paper-2',
+                      !cat.isParent && 'pl-6'
+                    )}
+                  >
+                    {cat.isParent ? cat.name : cat.displayName}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto pb-24 lg:pb-0">
+        <div className={cn("flex-1 overflow-y-auto pb-32 lg:pb-0", mobileViewTab === 'selection' && "hidden lg:block")}>
           {menuLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-marigold" />
@@ -737,24 +806,54 @@ const AddOrderItems = () => {
         {cartBody}
       </aside>
 
-      {/* Mobile sticky "View selection" bar */}
-      {itemCart.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-ink border-t border-ink-line">
+      {/* Mobile sticky bottom action bar */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-50 p-3 bg-ink/95 backdrop-blur-md border-t border-ink-line shadow-2xl pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setShowCartSheet(true)}
-            className="w-full flex items-center justify-between bg-marigold text-ink rounded-input px-4 py-3 font-semibold"
+            className="flex-1 flex items-center justify-between bg-[#1F2B37] hover:bg-[#273645] border border-[#34465B] text-txt-light rounded-xl px-3.5 py-2.5 transition text-left"
           >
-            <span className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              View selection · {cartCount} item{cartCount === 1 ? '' : 's'}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative shrink-0">
+                <ShoppingCart className="h-5 w-5 text-marigold" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-marigold text-ink text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center font-mono">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 truncate">
+                <p className="text-xs font-semibold text-txt-light truncate">
+                  {cartCount === 0 ? 'Current Selection' : `${cartCount} item${cartCount === 1 ? '' : 's'}`}
+                </p>
+                <p className="text-[10px] text-txt-mutedDark truncate">
+                  {cartCount === 0 ? 'Tap to view selection' : 'Review & adjust items'}
+                </p>
+              </div>
+            </div>
+            <span className="font-display font-bold text-marigold font-mono text-sm ml-2 shrink-0">
+              ₹{cartTotal.toFixed(2)}
             </span>
-            <span className="font-display font-bold font-mono">₹{cartTotal.toFixed(2)}</span>
           </button>
+
+          <BtnPrimary
+            type="button"
+            onClick={handleSubmit}
+            disabled={itemCart.length === 0 || isSubmitting}
+            className="h-11 px-4 text-xs font-bold shrink-0 shadow-md"
+          >
+            {isSubmitting ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Adding...</>
+            ) : (
+              <><Plus className="h-4 w-4" /> Add to Order</>
+            )}
+          </BtnPrimary>
         </div>
-      )}
+      </div>
 
       {/* Mobile cart Sheet */}
-      <Sheet open={showCartSheet} onClose={() => setShowCartSheet(false)} side="bottom" className="bg-ink p-0">
+      <Sheet open={showCartSheet} onClose={() => setShowCartSheet(false)} side="bottom" className="bg-ink p-0 overflow-hidden">
         <div className="flex flex-col max-h-[85vh]">
           {cartBody}
         </div>

@@ -3,12 +3,14 @@ package org.foodos.restaurant.controller;
 import lombok.RequiredArgsConstructor;
 import org.foodos.common.utils.S3Service;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/test/s3")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class S3TestController {
 
     private final S3Service s3Service;

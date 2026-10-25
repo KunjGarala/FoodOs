@@ -92,7 +92,11 @@ public class UserAuthEntity extends BaseSoftDeleteEntity implements UserDetails 
     private String employeeCode;
 
     @Column(name = "profile_picture_url")
-    private  String profilePictureUrl;
+    private String profilePictureUrl;
+
+    @Column(name = "notification_enabled")
+    @Builder.Default
+    private Boolean notificationEnabled = true;
 
     // ===================== SECURITY FLAGS =====================
     @Column(name = "email_verified")

@@ -85,7 +85,7 @@ public class GoogleAuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private static boolean isSecureRequest(HttpServletRequest request) {
+    public static boolean isSecureRequest(HttpServletRequest request) {
         String forwardedProto = request.getHeader("X-Forwarded-Proto");
         if (forwardedProto != null
                 && "https".equalsIgnoreCase(forwardedProto.split(",", 2)[0].trim())) {

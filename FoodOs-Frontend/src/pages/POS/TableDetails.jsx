@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -6,7 +6,8 @@ import {
   CheckCircle, XCircle, Loader2, AlertCircle, X, Trash2, Ban,
   UtensilsCrossed, Hash, UserCircle, Phone, Mail, MapPin, Settings2,
   Split as ArrowResult, // Using Split icon for Demerge
-  UserCheck, RefreshCw, Edit3, ChevronDown, ChevronUp, Tag
+  UserCheck, RefreshCw, Edit3, ChevronDown, ChevronUp, Tag,
+  Sparkles, Calendar, Check
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -34,6 +35,7 @@ import {
   handleTableWsEvent,
   assignWaiter,
   removeWaiter,
+  updateTableStatus,
 } from '../../store/tableSlice';
 import { employeeAPI } from '../../services/api';
 import {
@@ -161,16 +163,27 @@ const TableDetails = () => {
   const isOccupied = table?.status === 'OCCUPIED';
   const isBilled = table?.status === 'BILLED';
   const isVacant = table?.status === 'VACANT';
+  const isDirty = table?.status === 'DIRTY';
+  const isReserved = table?.status === 'RESERVED';
 
-  // ── Fetch Details ──────────────────────────────────────
+  // ── Fetch Details (Debounced to prevent multiple redundant server calls) ──
+  const refreshTimerRef = useRef(null);
+
   const refreshDetails = useCallback(() => {
-    if (tableUuid) dispatch(fetchTableDetails(tableUuid));
+    if (!tableUuid) return;
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      dispatch(fetchTableDetails(tableUuid));
+    }, 200);
   }, [dispatch, tableUuid]);
 
   useEffect(() => {
-    refreshDetails();
-    return () => { dispatch(clearTableDetails()); };
-  }, [refreshDetails, dispatch]);
+    if (tableUuid) dispatch(fetchTableDetails(tableUuid));
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      dispatch(clearTableDetails());
+    };
+  }, [tableUuid, dispatch]);
 
   // ─── WebSocket: live updates for this table & order ───
   useWebSocket(
@@ -306,10 +319,25 @@ const TableDetails = () => {
   const handleGenerateBill = async () => {
     if (!activeOrder) return;
     try {
-      const bill = await dispatch(generateBill(activeOrder.orderUuid)).unwrap();
-      downloadInvoicePdf(bill);
+      const actionResult = await dispatch(generateBill(activeOrder.orderUuid));
+      const bill = actionResult?.payload?.data || actionResult?.payload || activeOrder;
+      downloadInvoicePdf(bill || activeOrder);
       refreshDetails();
-    } catch (err) { console.error('Generate bill failed:', err); }
+    } catch (err) {
+      console.warn('Generate bill failed, falling back to active order data:', err);
+      if (activeOrder) {
+        downloadInvoicePdf(activeOrder);
+      }
+    }
+  };
+
+  const handleMarkAsClean = async () => {
+    try {
+      await dispatch(updateTableStatus({ tableUuid, statusData: { status: 'VACANT' } })).unwrap();
+      refreshDetails();
+    } catch (err) {
+      console.error('Failed to mark table as clean:', err);
+    }
   };
 
   const handleAddPayment = async () => {
@@ -505,24 +533,27 @@ const TableDetails = () => {
     }));
   }, [orderCouponCode, orderDiscountAmount, orderOrderUuid, couponCartSignature, subtotal, dispatch]);
 
+  const isOrderFinalized = orderStatus === 'PAID' || orderStatus === 'COMPLETED' || isBilled;
+
   useEffect(() => {
-    if (!orderUuid || !couponRestaurantUuid || subtotal <= 0) return;
+    if (isOrderFinalized || !orderUuid || !couponRestaurantUuid || subtotal <= 0) return;
     dispatch(fetchCouponSuggestions({
       restaurantUuid: couponRestaurantUuid,
       orderAmount: subtotal,
       orderUuid,
       customerUuid: activeOrder?.customerUuid,
     }));
-  }, [dispatch, orderUuid, couponRestaurantUuid, subtotal, activeOrder?.customerUuid]);
+  }, [dispatch, orderUuid, couponRestaurantUuid, subtotal, activeOrder?.customerUuid, isOrderFinalized]);
 
-  // Fetch all available coupons for the restaurant
+  // Fetch all available coupons for the restaurant (only once if not already loaded)
   useEffect(() => {
-    if (!couponRestaurantUuid) return;
+    if (isOrderFinalized || !couponRestaurantUuid) return;
+    if (couponState.availableCoupons && couponState.availableCoupons.length > 0) return;
     dispatch(fetchAvailableCoupons({ restaurantUuid: couponRestaurantUuid }));
-  }, [dispatch, couponRestaurantUuid]);
+  }, [dispatch, couponRestaurantUuid, isOrderFinalized, couponState.availableCoupons]);
 
   useEffect(() => {
-    if (!couponState.isApplied || !couponState.code) return;
+    if (isOrderFinalized || !couponState.isApplied || !couponState.code) return;
     if (!orderUuid || !couponRestaurantUuid) return;
     const signatureChanged = couponState.lastCartSignature !== couponCartSignature || couponState.lastOrderAmount !== subtotal;
     if (!signatureChanged) return;
@@ -612,7 +643,9 @@ const TableDetails = () => {
 
 
   // ── Loading / Error ────────────────────────────────────
-  if (detailsLoading) {
+  // Only show full-page loader on initial fetch when no table data is present
+  // Background refreshes keep the existing UI stable without flashing blank
+  if (detailsLoading && !tableDetails) {
     return (
       <div className="space-y-5">
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -721,7 +754,7 @@ const TableDetails = () => {
         )}
 
         {/* Waiter info (if assigned) */}
-        {(isOccupied || isBilled) && (
+        {(isOccupied || isBilled || activeOrder) && (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 pl-0 sm:pl-12">
             {table.currentWaiterName ? (
               <div className="flex items-center gap-2 bg-paper-2 border border-line-light rounded-input px-3 py-1.5">
@@ -759,35 +792,8 @@ const TableDetails = () => {
         )}
       </div>
 
-      {/* ───── VACANT STATE ───── */}
-      {isVacant && (
-        <div className="bg-paper-card border border-line-light rounded-card text-center py-16 px-4">
-          <UtensilsCrossed className="h-16 w-16 text-txt-faint mx-auto mb-4" />
-          <h2 className="font-display text-xl font-semibold text-ink-text mb-2">Table is Vacant</h2>
-          <p className="text-txt-muted mb-6">No active order. Occupy this table to create a new order.</p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <BtnPrimary onClick={() => setShowOccupyModal(true)}>
-              <Plus className="h-4 w-4" /> Occupy Table
-            </BtnPrimary>
-            <BtnGhost onClick={() => navigate(`/app/tables/${tableUuid}/history`)}>
-              <Receipt className="h-4 w-4" /> View Order History
-            </BtnGhost>
-          </div>
-
-          {/* Demerge Button: Show if table is merged and vacant */}
-          {(table?.isMerged === true || !!table?.mergedWithTableIds) && (
-            <div className="mt-4">
-              <BtnGhost onClick={handleDemergeTable}>
-                <ArrowResult className="h-4 w-4" />
-                Demerge Tables
-              </BtnGhost>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ───── OCCUPIED / BILLED STATE ───── */}
-      {(isOccupied || isBilled) && activeOrder && (
+      {/* ───── ACTIVE ORDER PRESENT (Occupied, Billed, Paid, etc.) ───── */}
+      {activeOrder ? (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* LEFT: Items + Customer */}
           <div className="xl:col-span-2 space-y-4 sm:space-y-6">
@@ -1181,14 +1187,14 @@ const TableDetails = () => {
                   </BtnGhost>
                 )}
 
-                {hasBillingAccess && (isOccupied || isBilled) && items.length > 0 && (allItemsServed || isFullyPaid) && (
+                {hasBillingAccess && items.length > 0 && (
                   <BtnGhost
                     className="w-full bg-paper-2 border border-line-input text-txt-dark hover:bg-paper-3"
                     onClick={handleGenerateBill}
                     disabled={orderActionLoading}
                   >
                     {orderActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
-                    Generate Bill
+                    {isFullyPaid || isBilled || isCompleted ? 'Print / Download Bill' : 'Generate Bill'}
                   </BtnGhost>
                 )}
 
@@ -1252,6 +1258,59 @@ const TableDetails = () => {
               )}
             </div>
           </div>
+        </div>
+      ) : isDirty ? (
+        /* ───── DIRTY STATE ───── */
+        <div className="bg-paper-card border border-line-light rounded-card text-center py-16 px-4 shadow-sm">
+          <Sparkles className="h-16 w-16 text-amber-500 mx-auto mb-4 animate-pulse" />
+          <h2 className="font-display text-xl font-semibold text-ink-text mb-2">Table Needs Cleaning</h2>
+          <p className="text-txt-muted mb-6 max-w-md mx-auto">This table was vacated and needs to be cleared and sanitized before seating new guests.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <BtnPrimary onClick={handleMarkAsClean}>
+              <Check className="h-4 w-4" /> Mark as Clean / Available
+            </BtnPrimary>
+            <BtnGhost onClick={() => navigate(`/app/tables/${tableUuid}/history`)}>
+              <Receipt className="h-4 w-4" /> View Order History
+            </BtnGhost>
+          </div>
+        </div>
+      ) : isReserved ? (
+        /* ───── RESERVED STATE ───── */
+        <div className="bg-paper-card border border-line-light rounded-card text-center py-16 px-4 shadow-sm">
+          <Calendar className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+          <h2 className="font-display text-xl font-semibold text-ink-text mb-2">Table is Reserved</h2>
+          <p className="text-txt-muted mb-6 max-w-md mx-auto">This table has an active reservation.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <BtnPrimary onClick={() => setShowOccupyModal(true)}>
+              <Plus className="h-4 w-4" /> Seat Guests & Occupy
+            </BtnPrimary>
+            <BtnGhost onClick={() => navigate(`/app/tables/${tableUuid}/history`)}>
+              <Receipt className="h-4 w-4" /> View Order History
+            </BtnGhost>
+          </div>
+        </div>
+      ) : (
+        /* ───── VACANT / DEFAULT STATE ───── */
+        <div className="bg-paper-card border border-line-light rounded-card text-center py-16 px-4">
+          <UtensilsCrossed className="h-16 w-16 text-txt-faint mx-auto mb-4" />
+          <h2 className="font-display text-xl font-semibold text-ink-text mb-2">Table is Vacant</h2>
+          <p className="text-txt-muted mb-6">No active order. Occupy this table to create a new order.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <BtnPrimary onClick={() => setShowOccupyModal(true)}>
+              <Plus className="h-4 w-4" /> Occupy Table
+            </BtnPrimary>
+            <BtnGhost onClick={() => navigate(`/app/tables/${tableUuid}/history`)}>
+              <Receipt className="h-4 w-4" /> View Order History
+            </BtnGhost>
+          </div>
+          {(table?.isMerged === true || !!table?.mergedWithTableIds) && (
+            <div className="mt-4">
+              <BtnGhost onClick={handleDemergeTable}>
+                <ArrowResult className="h-4 w-4" />
+                Demerge Tables
+              </BtnGhost>
+            </div>
+          )}
         </div>
       )}
 

@@ -970,6 +970,11 @@ public class RestaurantTableService {
                     .timestamp(java.time.LocalDateTime.now())
                     .build();
             webSocketEventService.broadcastNotification(restaurant.getRestaurantUuid(), notif);
+        } else if (userId != null && userAuthRepository.findById(userId).map(u -> u.getRole() == org.foodos.auth.entity.UserRole.WAITER).orElse(false)) {
+            UserAuthEntity actingWaiter = userAuthRepository.findById(userId).get();
+            table.setCurrentWaiter(actingWaiter);
+            order.setWaiter(actingWaiter);
+            orderRepository.save(order);
         } else {
             // No waiter assigned -> notify all waiters
             NotificationMessage notif = NotificationMessage.builder()
@@ -1103,7 +1108,7 @@ public class RestaurantTableService {
         TableResponseDto tableResponse = tableMapper.toResponseDto(table);
 
         OrderResponse activeOrder = null;
-        if (table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED) {
+        if (table.getStatus() == TableStatus.OCCUPIED || table.getStatus() == TableStatus.BILLED || table.getCurrentOrder() != null) {
             try {
                 activeOrder = orderService.getActiveOrderByTable(tableUuid);
             } catch (Exception e) {

@@ -56,6 +56,12 @@ public class ProfileResponseDTO {
     @Schema(description = "Employee code/ID", example = "EMP001")
     private String employeeCode;
 
+    @Schema(description = "Profile picture URL")
+    private String profilePictureUrl;
+
+    @Schema(description = "Whether notifications are enabled for this user")
+    private Boolean notificationEnabled;
+
     // ===================== MULTI-TENANT =====================
     @Schema(description = "List of restaurants user has access to")
     private Set<RestaurantBasicDTO> restaurants;

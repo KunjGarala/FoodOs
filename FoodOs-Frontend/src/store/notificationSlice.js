@@ -168,4 +168,14 @@ export const {
   setManagementNotificationsEnabled,
 } = notificationSlice.actions;
 
+export const saveNotificationPreference = (enabled) => async (dispatch) => {
+  dispatch(setManagementNotificationsEnabled(enabled));
+  try {
+    const { profileAPI } = await import('../services/api');
+    await profileAPI.updateNotificationPreference(enabled);
+  } catch (err) {
+    console.warn('Failed to save notification preference to DB:', err);
+  }
+};
+
 export default notificationSlice.reducer;

@@ -9,8 +9,14 @@ import org.springframework.stereotype.Component;
 public class PermissionEvaluatorService {
 
     public boolean hasPermissionLevel(Authentication authentication , String requiredRole) {
-        UserAuthEntity user = (UserAuthEntity) authentication.getPrincipal();
-        UserRole required = UserRole.valueOf(requiredRole);
-        return user.hasPermissionLevel(required);
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserAuthEntity user)) {
+            return false;
+        }
+        try {
+            UserRole required = UserRole.valueOf(requiredRole);
+            return user.hasPermissionLevel(required);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 }

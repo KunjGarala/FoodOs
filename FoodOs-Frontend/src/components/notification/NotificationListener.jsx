@@ -1,13 +1,24 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import useWebSocket from '../../hooks/useWebSocket';
-import { addNotification, dismissNotificationsByContext } from '../../store/notificationSlice';
+import {
+  addNotification,
+  dismissNotificationsByContext,
+  setManagementNotificationsEnabled
+} from '../../store/notificationSlice';
 import { soundEffects } from '../../utils/soundEffects';
 
 export const NotificationListener = () => {
   const dispatch = useDispatch();
-  const { role, userId, userUuid, activeRestaurantId } = useSelector((s) => s.auth);
+  const { role, userId, userUuid, activeRestaurantId, notificationEnabled } = useSelector((s) => s.auth);
   const { soundEnabled, managementNotificationsEnabled } = useSelector((s) => s.notifications);
+
+  // Sync preference from DB/auth state when loaded
+  useEffect(() => {
+    if (notificationEnabled !== undefined && notificationEnabled !== null) {
+      dispatch(setManagementNotificationsEnabled(notificationEnabled));
+    }
+  }, [notificationEnabled, dispatch]);
 
   const handleNotification = useCallback(
     (notif) => {

@@ -70,6 +70,7 @@ public class MeService {
                 .fullName(user.getFullName())
                 .role(user.getRole().name())
                 .profilePictureUrl(user.getProfilePictureUrl())
+                .notificationEnabled(user.getNotificationEnabled() != null ? user.getNotificationEnabled() : true)
                 .hasPin(user.hasPin())
                 .build();
 

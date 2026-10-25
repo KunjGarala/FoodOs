@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Edit3,
   Save,
-  Loader2
+  Loader2,
+  Upload
 } from 'lucide-react';
 
 const RestaurantDetails = () => {
@@ -46,6 +47,8 @@ const RestaurantDetails = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
     businessName: '',
@@ -140,6 +143,8 @@ const RestaurantDetails = () => {
       panNumber: restaurant.panNumber || '',
       restaurantType: restaurant.restaurantType || 'FINE_DINING',
     });
+    setEditImageFile(null);
+    setEditImagePreview(restaurant.logoUrl || null);
     setEditError('');
     setShowEditModal(true);
   };
@@ -150,7 +155,14 @@ const RestaurantDetails = () => {
     setEditError('');
     try {
       const targetUuid = restaurantUuid || restaurant?.restaurantUuid;
-      await restaurantAPI.updateRestaurant(targetUuid, editFormData);
+      if (editImageFile) {
+        const formData = new FormData();
+        formData.append('data', new Blob([JSON.stringify(editFormData)], { type: 'application/json' }));
+        formData.append('image', editImageFile);
+        await restaurantAPI.updateRestaurant(targetUuid, formData);
+      } else {
+        await restaurantAPI.updateRestaurant(targetUuid, editFormData);
+      }
       setShowEditModal(false);
       fetchRestaurantDetails();
     } catch (err) {
@@ -664,6 +676,48 @@ const RestaurantDetails = () => {
                 {editError}
               </div>
             )}
+
+            {/* Restaurant Logo / Image Upload */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <label className="block text-xs font-semibold text-slate-700 uppercase">
+                Restaurant Logo / Image
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="relative h-20 w-20 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
+                  {editImagePreview ? (
+                    <img src={editImagePreview} alt="Logo preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <Store className="h-8 w-8 text-slate-500" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-700 hover:bg-amber-500/25 text-xs font-semibold cursor-pointer transition-colors">
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>{editImagePreview ? 'Change Logo Image' : 'Upload Logo Image'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setEditImageFile(file);
+                          setEditImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </label>
+                  {editImageFile && (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      Selected: {editImageFile.name} ({(editImageFile.size / 1024).toFixed(1)} KB)
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-500">
+                    Recommended: Square PNG or JPG, at least 400x400px.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

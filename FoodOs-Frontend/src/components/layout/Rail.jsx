@@ -12,7 +12,7 @@ import logoUrl from '../../assets/small-logo.png';
  * Logo top · nav tiles middle · user avatar (with outlet/logout popover) bottom.
  */
 export const Rail = () => {
-  const { user, role, restaurants, restaurantIds, activeRestaurantId } = useSelector((s) => s.auth);
+  const { user, role, restaurants, restaurantIds, activeRestaurantId, profilePictureUrl } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -77,17 +77,30 @@ export const Rail = () => {
       <div className="relative shrink-0 mt-2" ref={popRef}>
         <button
           onClick={() => setMenuOpen((o) => !o)}
-          className="h-[42px] w-[42px] rounded-full bg-gold text-ink font-display font-bold grid place-items-center hover:ring-2 hover:ring-marigold/40 transition"
+          className="h-[42px] w-[42px] rounded-full bg-gold text-ink font-display font-bold grid place-items-center hover:ring-2 hover:ring-marigold/40 transition overflow-hidden"
           aria-label="Account menu"
         >
-          {initial}
+          {profilePictureUrl ? (
+            <img src={profilePictureUrl} alt={user || 'User'} className="h-full w-full object-cover" />
+          ) : (
+            initial
+          )}
         </button>
 
         {menuOpen && (
           <div className="absolute bottom-0 left-[52px] w-64 rounded-2xl bg-[#1F2B37] border border-slate-700/80 shadow-2xl p-2.5 z-50 text-white">
-            <div className="px-3 py-2.5 bg-slate-800/60 rounded-xl mb-1.5 border border-slate-750">
-              <p className="text-sm font-bold text-white truncate">{user || 'User'}</p>
-              <p className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold mt-0.5">{role || 'Role'}</p>
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 rounded-xl mb-1.5 border border-slate-750">
+              <div className="h-9 w-9 rounded-full bg-gold text-ink font-bold grid place-items-center shrink-0 overflow-hidden text-xs">
+                {profilePictureUrl ? (
+                  <img src={profilePictureUrl} alt={user || 'User'} className="h-full w-full object-cover" />
+                ) : (
+                  initial
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white truncate">{user || 'User'}</p>
+                <p className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-semibold mt-0.5">{role || 'Role'}</p>
+              </div>
             </div>
 
             {restaurantIds && restaurantIds.length > 1 && (

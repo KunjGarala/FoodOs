@@ -573,12 +573,12 @@ const OrderEntry = () => {
         {cartBody}
       </aside>
 
-      {/* Mobile sticky "View cart" bar */}
+      {/* Mobile sticky "View cart" bar - elevated above bottom tabs */}
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-ink border-t border-ink-line">
+        <div className="lg:hidden fixed bottom-16 inset-x-0 z-40 p-3 bg-ink/95 backdrop-blur-md border-t border-ink-line shadow-lg">
           <button
             onClick={() => setShowCartSheet(true)}
-            className="w-full flex items-center justify-between bg-marigold text-ink rounded-input px-4 py-3 font-semibold"
+            className="w-full flex items-center justify-between bg-marigold text-ink rounded-input px-4 py-3 font-semibold shadow-md active:scale-[0.99] transition"
           >
             <span className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" />

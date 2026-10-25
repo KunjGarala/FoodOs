@@ -15,6 +15,18 @@ import { PageHeader, Panel, Kpi, Pill, Toggle, BtnPrimary, BtnGhost } from '../.
 import { cn } from '../../utils/cn';
 import { couponAPI } from '../../services/api';
 
+// Clean any corrupted UTF-8 mojibake (e.g. 'Γé╣' or 'â‚¹') into proper '₹'
+const cleanMojibake = (str) => {
+  if (!str || typeof str !== 'string') return str || '';
+  return str
+    .replace(/Γé╣/g, '₹')
+    .replace(/â‚¹/g, '₹')
+    .replace(/Ã¢â‚¬Â¹/g, '₹')
+    .replace(/ΓÇö/g, '—')
+    .replace(/ΓÇô/g, '–');
+};
+
+
 const CouponManagement = () => {
   const navigate = useNavigate();
   const [coupons, setCoupons] = useState([]);
@@ -40,7 +52,14 @@ const CouponManagement = () => {
     try {
       setLoading(true);
       const response = await couponAPI.getAll({ restaurantUuid: activeRestaurantId, size: 100 });
-      setCoupons(response.data.content || []);
+      const rawList = response.data.content || [];
+      const sanitized = rawList.map((c) => ({
+        ...c,
+        name: cleanMojibake(c.name),
+        code: cleanMojibake(c.code),
+        description: cleanMojibake(c.description),
+      }));
+      setCoupons(sanitized);
       fetchStats();
     } catch {
       setError('Failed to load coupons. Please try again.');

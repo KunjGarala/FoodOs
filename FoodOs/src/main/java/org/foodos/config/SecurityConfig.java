@@ -91,13 +91,38 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-
-        String frontendUrllocal = "http://localhost:" + frontendUrl.substring(frontendUrl.indexOf(":") + 1);
-
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(frontendUrl, frontendUrllocal));
+
+        java.util.Set<String> origins = new java.util.LinkedHashSet<>();
+
+        // Add configured frontendUrl (supports comma-separated list and trims trailing slashes)
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            for (String part : frontendUrl.split(",")) {
+                String trimmed = part.trim();
+                if (!trimmed.isEmpty()) {
+                    origins.add(trimmed.replaceAll("/+$", ""));
+                }
+            }
+        }
+
+        // Standard local development origins
+        origins.add("http://localhost:5173");
+        origins.add("http://localhost:5174");
+        origins.add("http://localhost:3000");
+        origins.add("http://localhost:8080");
+        origins.add("http://localhost:8081");
+        origins.add("http://127.0.0.1:5173");
+        origins.add("http://127.0.0.1:3000");
+
+        configuration.setAllowedOrigins(new java.util.ArrayList<>(origins));
+        configuration.setAllowedOriginPatterns(List.of(
+                "https://*.onrender.com",
+                "https://*.vercel.app",
+                "http://localhost:*",
+                "http://127.0.0.1:*"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
         configuration.setExposedHeaders(List.of("Authorization", "Refresh-Token"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
@@ -119,12 +144,18 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(contentType -> {})
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/signup", "/auth/google/**",
-                                "/actuator/**", "/api/auth/verify-email",
+                                "/actuator/health", "/actuator/health/**", "/actuator/info",
+                                "/api/auth/verify-email",
                                 "/api/auth/login",
+                                "/api/auth/logout",
                                 "/refresh-token",
                                 "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html",

@@ -262,6 +262,30 @@ public class UserManagementService {
         return userProfileMapper.toProfileDTO(user);
     }
 
+    public UserAuthEntity updateProfilePicture(UserAuthEntity currentUserParam, MultipartFile image) {
+        UserAuthEntity user = userAuthRepository.findById(currentUserParam.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (image != null && !image.isEmpty()) {
+            String profileUrl = s3Service.uploadImage(image, "users/profile");
+            user.setProfilePictureUrl(profileUrl);
+        }
+
+        UserAuthEntity saved = userAuthRepository.save(user);
+        meService.evictContext(saved.getUserUuid());
+        return saved;
+    }
+
+    public UserAuthEntity updateNotificationPreference(UserAuthEntity currentUserParam, boolean enabled) {
+        UserAuthEntity user = userAuthRepository.findById(currentUserParam.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setNotificationEnabled(enabled);
+        UserAuthEntity saved = userAuthRepository.save(user);
+        meService.evictContext(saved.getUserUuid());
+        return saved;
+    }
+
     public ProfileResponseDTO updateProfileDirect(UserAuthEntity currentUser, ProfileUpdateDTO request) {
         UserAuthEntity user = updateProfile(currentUser, request, null);
         return userProfileMapper.toProfileDTO(user);

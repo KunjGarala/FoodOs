@@ -3,9 +3,13 @@ import { jsPDF } from 'jspdf';
 const money = (value) => `INR ${(Number(value) || 0).toFixed(2)}`;
 
 export const downloadInvoicePdf = (order) => {
-  if (!order) return;
+  if (!order) {
+    console.warn('downloadInvoicePdf: no order provided');
+    return false;
+  }
 
-  const pdf = new jsPDF();
+  try {
+    const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const left = 14;
@@ -111,4 +115,14 @@ export const downloadInvoicePdf = (order) => {
 
   const filename = `invoice-${String(order.orderNumber || order.orderUuid || 'order').replace(/[^a-z0-9_-]/gi, '-')}.pdf`;
   pdf.save(filename);
+  return true;
+} catch (err) {
+  console.error('Failed to generate or download invoice PDF:', err);
+  try {
+    window.print();
+  } catch (printErr) {
+    console.warn('Fallback window.print() failed:', printErr);
+  }
+  return false;
+}
 };

@@ -88,9 +88,9 @@ public class CouponServiceImpl implements CouponService {
                 : null;
 
         Coupon coupon = Coupon.builder()
-                .code(request.getCode())
-                .name(request.getName())
-                .description(request.getDescription())
+                .code(cleanMojibake(request.getCode()))
+                .name(cleanMojibake(request.getName()))
+                .description(cleanMojibake(request.getDescription()))
                 .discountType(request.getDiscountType())
                 .discountValue(request.getDiscountValue())
                 .maxDiscountAmount(request.getMaxDiscountAmount())
@@ -242,7 +242,7 @@ public class CouponServiceImpl implements CouponService {
 
         return CouponUsageSummaryResponse.builder()
                 .couponUuid(coupon.getCouponUuid())
-                .couponCode(coupon.getCode())
+                .couponCode(cleanMojibake(coupon.getCode()))
                 .totalUses(totalUses)
                 .totalDiscountGiven(totalDiscount)
                 .build();
@@ -334,8 +334,8 @@ public class CouponServiceImpl implements CouponService {
             throw new IllegalArgumentException("End date must be after start date");
         }
         
-        coupon.setName(request.getName());
-        coupon.setDescription(request.getDescription());
+        coupon.setName(cleanMojibake(request.getName()));
+        coupon.setDescription(cleanMojibake(request.getDescription()));
         coupon.setDiscountType(request.getDiscountType());
         coupon.setDiscountValue(request.getDiscountValue());
         coupon.setMaxDiscountAmount(request.getMaxDiscountAmount());
@@ -576,12 +576,21 @@ public class CouponServiceImpl implements CouponService {
         log.info("Coupon detached from order {}: {}", order.getOrderUuid(), reason);
     }
 
+    private String cleanMojibake(String input) {
+        if (input == null) return null;
+        return input.replace("Γé╣", "₹")
+                    .replace("â‚¹", "₹")
+                    .replace("Ã¢â‚¬Â¹", "₹")
+                    .replace("ΓÇö", "—")
+                    .replace("ΓÇô", "–");
+    }
+
     private CouponResponse buildCouponResponse(Coupon coupon, List<String> restaurantUuids) {
         return CouponResponse.builder()
                 .couponUuid(coupon.getCouponUuid())
-                .code(coupon.getCode())
-                .name(coupon.getName())
-                .description(coupon.getDescription())
+                .code(cleanMojibake(coupon.getCode()))
+                .name(cleanMojibake(coupon.getName()))
+                .description(cleanMojibake(coupon.getDescription()))
                 .discountType(coupon.getDiscountType())
                 .discountValue(coupon.getDiscountValue())
                 .maxDiscountAmount(coupon.getMaxDiscountAmount())
@@ -604,8 +613,8 @@ public class CouponServiceImpl implements CouponService {
                 .valid(result.valid)
                 .reason(result.reason)
                 .couponCode(coupon.getCode())
-                .couponName(coupon.getName())
-                .description(coupon.getDescription())
+                .couponName(cleanMojibake(coupon.getName()))
+                .description(cleanMojibake(coupon.getDescription()))
                 .discountType(coupon.getDiscountType())
                 .discountValue(coupon.getDiscountValue())
                 .maxDiscountAmount(coupon.getMaxDiscountAmount())

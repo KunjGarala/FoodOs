@@ -34,6 +34,8 @@ import CouponEditor from './pages/Management/CouponEditor';
 import Profile from './pages/Management/Profile';
 import CustomerCRM from './pages/CRM/CustomerCRM';
 import { MainLayout } from './components/layout/MainLayout';
+import ServerHealthGuard from './components/ServerHealthGuard';
+import ServerCookingScreen from './components/ServerCookingScreen';
 
 import './index.css';
 
@@ -45,9 +47,13 @@ const Unauthorized = () => <div className="p-8 text-center"><h1 className="text-
 function App() {
   return (
     <Provider store={store}>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
+      <ServerHealthGuard>
+        <Router>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            {/* Actuator Health / Cooking Server Status Monitor Route */}
+            <Route path="/health" element={<ServerCookingScreen isStandalone={true} />} />
+            <Route path="/server-status" element={<ServerCookingScreen isStandalone={true} />} />
 
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
@@ -225,6 +231,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
+      </ServerHealthGuard>
     </Provider>
   );
 }

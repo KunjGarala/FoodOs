@@ -36,9 +36,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Build secure allowed origin patterns for STOMP over SockJS
+        java.util.List<String> allowedPatterns = new java.util.ArrayList<>();
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            for (String part : frontendUrl.split(",")) {
+                String trimmed = part.trim().replaceAll("/+$", "");
+                if (!trimmed.isEmpty()) {
+                    allowedPatterns.add(trimmed);
+                }
+            }
+        }
+        allowedPatterns.add("http://localhost:*");
+        allowedPatterns.add("http://127.0.0.1:*");
+        allowedPatterns.add("https://*.onrender.com");
+        allowedPatterns.add("https://*.vercel.app");
+
         // SockJS fallback endpoint – the frontend connects here
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(allowedPatterns.toArray(new String[0]))
                 .withSockJS();
     }
 }

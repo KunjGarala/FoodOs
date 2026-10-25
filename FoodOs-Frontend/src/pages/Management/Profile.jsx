@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { setProfilePictureUrl } from '../../store/authSlice';
+import { saveNotificationPreference } from '../../store/notificationSlice';
 import {
   User, Mail, Phone, Shield, Building, Globe, Clock, CheckCircle2,
-  AlertCircle, KeyRound, ArrowRight, Loader2, Save, Send, RefreshCw
+  AlertCircle, KeyRound, ArrowRight, Loader2, Save, Send, RefreshCw,
+  Camera, Bell, BellOff, Upload
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +19,11 @@ const Profile = () => {
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsSuccess, setDetailsSuccess] = useState('');
   const [detailsError, setDetailsError] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
+  const dispatch = useDispatch();
+  const authState = useSelector((s) => s.auth);
+  const { managementNotificationsEnabled } = useSelector((s) => s.notifications);
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -67,6 +76,42 @@ const Profile = () => {
     fetchProfileData();
   }, []);
 
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setDetailsError('Please select a valid image file (PNG, JPG, WEBP).');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setDetailsError('');
+    setDetailsSuccess('');
+
+    try {
+      const res = await profileAPI.uploadProfilePicture(file);
+      const newUrl = res.data?.profilePictureUrl;
+      if (newUrl) {
+        setProfile((prev) => ({ ...prev, profilePictureUrl: newUrl }));
+        dispatch(setProfilePictureUrl(newUrl));
+        setDetailsSuccess('Profile picture updated successfully!');
+        setTimeout(() => setDetailsSuccess(''), 4000);
+      }
+    } catch (err) {
+      console.error('Failed to upload profile picture:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to upload profile picture';
+      setDetailsError(msg);
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleToggleNotifications = async () => {
+    const nextState = !managementNotificationsEnabled;
+    dispatch(saveNotificationPreference(nextState));
+  };
   const handleDetailsSubmit = async (e) => {
     e.preventDefault();
     setSavingDetails(true);
@@ -158,8 +203,44 @@ const Profile = () => {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-6 sm:p-8 shadow-md border border-slate-700/60">
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-2xl font-bold text-white shadow-inner">
-              {(profile?.fullName || profile?.username || 'U')[0].toUpperCase()}
+            <div className="relative group shrink-0">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="relative h-20 w-20 rounded-2xl overflow-hidden bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-2xl font-bold text-white shadow-inner cursor-pointer ring-2 ring-white/20 hover:ring-amber-400 transition-all"
+                title="Click to change profile picture"
+              >
+                {profile?.profilePictureUrl ? (
+                  <img
+                    src={profile.profilePictureUrl}
+                    alt={profile.fullName || profile.username || 'User'}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <span>{(profile?.fullName || profile?.username || 'U')[0].toUpperCase()}</span>
+                )}
+
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-semibold transition-opacity backdrop-blur-[2px]">
+                  {uploadingAvatar ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="h-5 w-5 mb-0.5" />
+                      <span>Edit</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
